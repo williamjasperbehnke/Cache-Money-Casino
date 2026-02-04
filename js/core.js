@@ -63,6 +63,25 @@ export const state = {
   slots: {
     bet: 0,
   },
+  holdem: {
+    pot: 0,
+    playerBet: 0,
+    dealerBet: 0,
+    currentBet: 0,
+    betAmount: 0,
+    blindSmall: 5,
+    blindBig: 10,
+    dealerButton: false,
+    awaitingRaise: false,
+    skipBetting: false,
+    deck: [],
+    player: [],
+    dealer: [],
+    community: [],
+    phase: "idle",
+    awaitingClear: false,
+    inRound: false,
+  },
 };
 
 class BalanceManager {
