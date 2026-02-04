@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cache Money Casino - Git Push Poker</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="centerToast" class="center-toast-stack" aria-live="polite"></div>
+<header class="topbar">
+  <div class="logo">CACHE MONEY CASINO</div>
+  <div class="balance" aria-live="polite">
+    BANK: <span id="balance">$0</span>
+    <span id="balanceDelta" class="balance-delta" aria-live="polite"></span>
+  </div>
+  <button id="resetBank" class="btn ghost">Reset Bank</button>
+</header>
+
+
+    <main class="layout">
+      <nav class="arcade-tabs" role="navigation">
+        <a class="tab active" href="poker.html">5-Card Poker</a>
+        <a class="tab" href="blackjack.html">Blackjack</a>
+        <a class="tab" href="roulette.html">Roulette</a>
+        <a class="tab" href="slots.html">Slots</a>
+      </nav>
+
+      <section class="panel" id="poker">
+        <h2>Git Push Poker</h2>
+        <div class="bet-row" id="pokerBetRow">
+          <label id="pokerBetLabel">Total Pot</label>
+          <div id="pokerBetTotal" class="total-bet">$0</div>
+          <button id="pokerClearTable" class="btn ghost hidden">Clear Table</button>
+          <div class="poker-actions-inline">
+            <button id="pokerDeal" class="btn">Deal</button>
+            <button id="pokerDraw" class="btn">Discard</button>
+            <button id="pokerCallRaise" class="btn hidden">Call Raise</button>
+            <button id="pokerFold" class="btn ghost hidden">Fold</button>
+          </div>
+        </div>
+        <div id="pokerBettingPanel" class="poker-betting-panel">
+          <div class="chip-stack inline" id="pokerPotStack"></div>
+          <div class="chips" data-target="pokerBet" id="pokerChips">
+            <button class="chip" data-amount="5">$5</button>
+            <button class="chip" data-amount="25">$25</button>
+            <button class="chip" data-amount="50">$50</button>
+            <button class="chip" data-amount="100">$100</button>
+            <button class="chip" data-amount="500">$500</button>
+            <button class="chip" data-amount="1000">$1k</button>
+            <button class="chip all-in" id="pokerAllIn">All In</button>
+          </div>
+        </div>
+        <div class="table">
+          <div>
+            <h3>Player</h3>
+            <div id="pokerPlayer" class="cards"></div>
+            <div id="pokerPlayerResult" class="hand-result"></div>
+            <div id="pokerHolds" class="holds"></div>
+          </div>
+          <div>
+            <h3>Dealer</h3>
+            <div id="pokerDealer" class="cards"></div>
+            <div id="pokerDealerResult" class="hand-result"></div>
+          </div>
+        </div>
+        <div id="pokerStatus" class="status" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <footer class="footer">
+  For entertainment purposes only. Gamble responsibly with your imaginary chips.
+</footer>
+
+
+    <script type="module" src="js/page-poker.js"></script>
+  </body>
+</html>

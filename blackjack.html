@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cache Money Casino - Segfault 21</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="centerToast" class="center-toast-stack" aria-live="polite"></div>
+<header class="topbar">
+  <div class="logo">CACHE MONEY CASINO</div>
+  <div class="balance" aria-live="polite">
+    BANK: <span id="balance">$0</span>
+    <span id="balanceDelta" class="balance-delta" aria-live="polite"></span>
+  </div>
+  <button id="resetBank" class="btn ghost">Reset Bank</button>
+</header>
+
+
+    <main class="layout">
+      <nav class="arcade-tabs" role="navigation">
+        <a class="tab" href="poker.html">5-Card Poker</a>
+        <a class="tab active" href="blackjack.html">Blackjack</a>
+        <a class="tab" href="roulette.html">Roulette</a>
+        <a class="tab" href="slots.html">Slots</a>
+      </nav>
+
+      <section class="panel" id="blackjack">
+        <h2>Segfault 21</h2>
+        <div class="bet-row">
+          <label>Total Bet</label>
+          <div id="bjBetTotal" class="total-bet">$0</div>
+          <div class="bj-play-actions">
+            <button id="bjHit" class="btn hidden">Hit</button>
+            <button id="bjStand" class="btn hidden">Stand</button>
+            <button id="bjDouble" class="btn hidden">Double</button>
+            <button id="bjSplit" class="btn hidden">Split</button>
+          </div>
+          <button id="bjDeal" class="btn">Deal</button>
+          <button id="bjClear" class="btn ghost">Clear Bet</button>
+          <button id="bjMax" class="btn ghost">Max Bet</button>
+          <label class="auto-toggle auto-inline bj-auto">
+            <input id="bjAuto" type="checkbox" />
+            <span class="toggle-track"></span>
+            <span class="toggle-label">Auto‑bet</span>
+          </label>
+        </div>
+        <div class="chips" data-target="bjBet">
+          <button class="chip" data-amount="5">$5</button>
+          <button class="chip" data-amount="25">$25</button>
+          <button class="chip" data-amount="50">$50</button>
+          <button class="chip" data-amount="100">$100</button>
+        </div>
+        <div class="table">
+          <div>
+            <h3>Player</h3>
+            <div id="bjPlayer" class="cards"></div>
+            <div id="bjPlayerTotal" class="total"></div>
+          </div>
+          <div>
+            <h3>Dealer</h3>
+            <div id="bjDealer" class="cards"></div>
+            <div id="bjDealerTotal" class="total"></div>
+          </div>
+        </div>
+        <div id="bjStatus" class="status" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <footer class="footer">
+  For entertainment purposes only. Gamble responsibly with your imaginary chips.
+</footer>
+
+
+    <script type="module" src="js/page-blackjack.js"></script>
+  </body>
+</html>

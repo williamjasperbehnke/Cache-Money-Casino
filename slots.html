@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cache Money Casino - Slot Machine Learning</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="centerToast" class="center-toast-stack" aria-live="polite"></div>
+<header class="topbar">
+  <div class="logo">CACHE MONEY CASINO</div>
+  <div class="balance" aria-live="polite">
+    BANK: <span id="balance">$0</span>
+    <span id="balanceDelta" class="balance-delta" aria-live="polite"></span>
+  </div>
+  <button id="resetBank" class="btn ghost">Reset Bank</button>
+</header>
+
+
+    <main class="layout">
+      <nav class="arcade-tabs" role="navigation">
+        <a class="tab" href="poker.html">5-Card Poker</a>
+        <a class="tab" href="blackjack.html">Blackjack</a>
+        <a class="tab" href="roulette.html">Roulette</a>
+        <a class="tab active" href="slots.html">Slots</a>
+      </nav>
+
+      <section class="panel" id="slots">
+        <h2>Slot Machine Learning</h2>
+        <div class="slot-machine">
+          <div class="slots-marquee">
+            <span>JACKPOT</span>
+          </div>
+          <div class="slots-display">
+            <div id="slotsReels" class="reels slots-reels">
+              <div class="reel">?</div>
+              <div class="reel">?</div>
+              <div class="reel">?</div>
+            </div>
+            <div class="slots-glow"></div>
+          </div>
+          <div class="slots-warning">
+            💥💥💥 wipes your balance.
+          </div>
+          <div class="slots-controls">
+            <div class="bet-row slots-bet">
+              <button id="slotsSpin" class="btn pull-btn">Pull Lever</button>
+            </div>
+            <div class="slots-presets" role="group" aria-label="Slot bet presets">
+              <button class="preset" data-amount="1">$1</button>
+              <button class="preset active" data-amount="5">$5</button>
+              <button class="preset" data-amount="10">$10</button>
+              <button class="preset" data-amount="25">$25</button>
+            </div>
+            <div class="slots-panel">
+              <label class="auto-toggle auto-inline slots-auto-panel">
+                <input id="slotsAuto" type="checkbox" />
+                <span class="toggle-track"></span>
+                <span class="toggle-label">Auto‑bet</span>
+              </label>
+              <div class="slots-payout-light">WIN</div>
+            </div>
+          </div>
+          <div class="slots-lever" id="slotsLever" role="button" tabindex="0" aria-label="Pull lever">
+            <div class="lever-arm">
+              <div class="lever-ball"></div>
+              <div class="lever-stick"></div>
+            </div>
+          </div>
+        </div>
+        <div id="slotsStatus" class="status" aria-live="polite"></div>
+        <div class="payouts">
+          <label>Payouts</label>
+          <div class="payout-grid">
+            <div class="payout-card" data-payout="3-diamond">
+              <span>💎 💎 💎</span>
+              <strong>20x</strong>
+            </div>
+            <div class="payout-card" data-payout="3-star">
+              <span>⭐ ⭐ ⭐</span>
+              <strong>12x</strong>
+            </div>
+            <div class="payout-card" data-payout="3-bell">
+              <span>🔔 🔔 🔔</span>
+              <strong>8x</strong>
+            </div>
+            <div class="payout-card" data-payout="3-grape">
+              <span>🍇 🍇 🍇</span>
+              <strong>6x</strong>
+            </div>
+            <div class="payout-card" data-payout="3-cherry">
+              <span>🍒 🍒 🍒</span>
+              <strong>5x</strong>
+            </div>
+            <div class="payout-card" data-payout="3-lemon">
+              <span>🍋 🍋 🍋</span>
+              <strong>4x</strong>
+            </div>
+            <div class="payout-card" data-payout="3-any">
+              <span>Any 3</span>
+              <strong>3x</strong>
+            </div>
+            <div class="payout-card" data-payout="2-any">
+              <span>Any 2</span>
+              <strong>1.5x</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+  For entertainment purposes only. Gamble responsibly with your imaginary chips.
+</footer>
+
+
+    <script type="module" src="js/page-slots.js"></script>
+  </body>
+</html>

@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cache Money Casino - Race Condition Roulette</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="centerToast" class="center-toast-stack" aria-live="polite"></div>
+<header class="topbar">
+  <div class="logo">CACHE MONEY CASINO</div>
+  <div class="balance" aria-live="polite">
+    BANK: <span id="balance">$0</span>
+    <span id="balanceDelta" class="balance-delta" aria-live="polite"></span>
+  </div>
+  <button id="resetBank" class="btn ghost">Reset Bank</button>
+</header>
+
+
+    <main class="layout">
+      <nav class="arcade-tabs" role="navigation">
+        <a class="tab" href="poker.html">5-Card Poker</a>
+        <a class="tab" href="blackjack.html">Blackjack</a>
+        <a class="tab active" href="roulette.html">Roulette</a>
+        <a class="tab" href="slots.html">Slots</a>
+      </nav>
+
+      <section class="panel" id="roulette">
+        <h2>Race Condition Roulette</h2>
+        <div class="bet-row">
+          <label>Total Bet</label>
+          <div id="rouletteBet" class="total-bet">$0</div>
+          <button id="rouletteSpin" class="btn">Spin</button>
+          <button id="rouletteClear" class="btn ghost">Clear Bets</button>
+          <button id="rouletteChaos" class="btn ghost">Luck Grenade</button>
+          <label class="auto-toggle auto-inline roulette-auto">
+            <input id="rouletteAuto" type="checkbox" />
+            <span class="toggle-track"></span>
+            <span class="toggle-label">Auto‑bet</span>
+          </label>
+        </div>
+        <div class="chips" data-target="rouletteBet">
+          <button class="chip" data-amount="5">$5</button>
+          <button class="chip" data-amount="10">$10</button>
+          <button class="chip" data-amount="25">$25</button>
+          <button class="chip" data-amount="50">$50</button>
+        </div>
+        <div class="roulette-wheel-wrap">
+          <div class="roulette-pointer"></div>
+          <div class="roulette-wheel-shell">
+            <div id="rouletteWheel" class="roulette-wheel">
+              <div id="rouletteRing" class="roulette-ring"></div>
+            </div>
+          </div>
+          <div id="rouletteBall" class="roulette-ball"></div>
+        </div>
+        <div class="roulette-table">
+          <div class="roulette-zeros">
+            <div class="roulette-zero" data-number="0" data-tooltip="0 pays 35:1">
+              0
+              <div class="chip-stack" data-stack="table-number"></div>
+            </div>
+            <div class="roulette-zero double-zero" data-number="00" data-tooltip="00 pays 35:1">
+              00
+              <div class="chip-stack" data-stack="table-number"></div>
+            </div>
+          </div>
+          <div id="rouletteGrid" class="roulette-grid"></div>
+          <div class="roulette-odds">
+            <div class="bet-zone color red" data-tooltip="Red pays 1:1">
+              Red
+              <div class="chip-stack" data-stack="table-color"></div>
+            </div>
+            <div class="bet-zone color black" data-tooltip="Black pays 1:1">
+              Black
+              <div class="chip-stack" data-stack="table-color"></div>
+            </div>
+            <div class="bet-zone parity odd" data-tooltip="Odd pays 1:1">
+              Odd
+              <div class="chip-stack" data-stack="table-parity"></div>
+            </div>
+            <div class="bet-zone parity even" data-tooltip="Even pays 1:1">
+              Even
+              <div class="chip-stack" data-stack="table-parity"></div>
+            </div>
+          </div>
+        </div>
+        <div class="roulette-result" id="rouletteResult">Place a bet and spin.</div>
+        <div id="rouletteStatus" class="status" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <footer class="footer">
+  For entertainment purposes only. Gamble responsibly with your imaginary chips.
+</footer>
+
+
+    <script type="module" src="js/page-roulette.js"></script>
+  </body>
+</html>
