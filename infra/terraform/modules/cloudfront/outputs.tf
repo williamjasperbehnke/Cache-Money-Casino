@@ -1,7 +1,3 @@
-output "distribution_id" {
-  value       = aws_cloudfront_distribution.site.id
-  description = "CloudFront distribution id."
-}
 
 output "distribution_arn" {
   value       = aws_cloudfront_distribution.site.arn
