@@ -423,7 +423,6 @@ export class RouletteGame {
       const spin = rouletteOrder[Math.floor(Math.random() * rouletteOrder.length)];
       this.spinWheel(spin);
       setTimeout(() => {
-        const wins = [];
         let winnings = 0;
         let winningStake = 0;
 
@@ -431,7 +430,6 @@ export class RouletteGame {
         if (numberAmount) {
           winnings += numberAmount * 35;
           winningStake += numberAmount;
-          wins.push(`Number ${spin}`);
         }
 
         const color = redNumbers.has(Number(spin)) ? "red" : "black";
@@ -439,7 +437,6 @@ export class RouletteGame {
         if (colorAmount) {
           winnings += colorAmount;
           winningStake += colorAmount;
-          wins.push(`${color} wins`);
         }
 
         const parity = Number(spin) % 2 === 0 ? "even" : "odd";
@@ -447,7 +444,6 @@ export class RouletteGame {
         if (parityAmount) {
           winnings += parityAmount;
           winningStake += parityAmount;
-          wins.push(`${parity} wins`);
         }
 
         if (winnings > 0) {
