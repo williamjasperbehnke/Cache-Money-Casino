@@ -13,267 +13,269 @@ import {
   draw,
   handTotal,
   makeChipStack,
-  setStatus,
 } from "./core.js";
 
-function resetBlackjackRound(keepBet = false) {
-  state.blackjack.bet = 0;
-  if (!keepBet) {
-    state.blackjack.betAmount = 0;
-    updateBetTotal(0, "bjBetTotal");
-  }
-  state.blackjack.hands = [];
-  state.blackjack.bets = [];
-  state.blackjack.doubled = [];
-  state.blackjack.busted = [];
-  state.blackjack.pendingMessages = [];
-  state.blackjack.activeHand = 0;
-  state.blackjack.splitUsed = false;
-  state.blackjack.deck = [];
-  state.blackjack.player = [];
-  state.blackjack.dealer = [];
-  state.blackjack.inRound = false;
-  state.blackjack.revealDealer = false;
-  state.blackjack.awaitingClear = false;
-  document.getElementById("bjHit").classList.add("hidden");
-  document.getElementById("bjStand").classList.add("hidden");
-  document.getElementById("bjDouble").classList.add("hidden");
-  document.getElementById("bjSplit").classList.add("hidden");
-  document.getElementById("bjDealer").innerHTML = "";
-  document.getElementById("bjPlayer").innerHTML = "";
-  document.getElementById("bjDealerTotal").textContent = "";
-  document.getElementById("bjPlayerTotal").textContent = "";
-  setStatus("bjStatus", "");
-  if (keepBet) {
-    updateBetTotal(state.blackjack.betAmount, "bjBetTotal");
-  }
-}
+const MAX_BET = 100;
+const AUTO_DEAL_DELAY = 200;
+const ROUND_RESET_DELAY = 1800;
 
 export class BlackjackGame {
-  init() {
-    const dealBtn = document.getElementById("bjDeal");
-    const hitBtn = document.getElementById("bjHit");
-    const standBtn = document.getElementById("bjStand");
-    const doubleBtn = document.getElementById("bjDouble");
-    const splitBtn = document.getElementById("bjSplit");
-    const clearBtn = document.getElementById("bjClear");
-    const maxBtn = document.getElementById("bjMax");
-    const bjChips = document.querySelectorAll('#blackjack .chip');
-    const autoBet = document.getElementById("bjAuto");
+  constructor() {
+    this.ui = {};
+  }
 
-    const updateBjTotal = () => {
-      const total =
-        state.blackjack.inRound && state.blackjack.bets.length > 0
-          ? state.blackjack.bets.reduce((sum, val) => sum + val, 0)
-          : state.blackjack.betAmount;
-      updateBetTotal(total, "bjBetTotal");
+  cacheElements() {
+    this.ui = {
+      dealBtn: document.getElementById("bjDeal"),
+      hitBtn: document.getElementById("bjHit"),
+      standBtn: document.getElementById("bjStand"),
+      doubleBtn: document.getElementById("bjDouble"),
+      splitBtn: document.getElementById("bjSplit"),
+      clearBtn: document.getElementById("bjClear"),
+      maxBtn: document.getElementById("bjMax"),
+      dealerEl: document.getElementById("bjDealer"),
+      playerEl: document.getElementById("bjPlayer"),
+      dealerTotal: document.getElementById("bjDealerTotal"),
+      playerTotal: document.getElementById("bjPlayerTotal"),
+      chipsWrap: document.querySelector("#blackjack .chips"),
+      chips: document.querySelectorAll("#blackjack .chip"),
+      autoBet: document.getElementById("bjAuto"),
     };
+  }
 
-    const syncBetTotal = () => {
-      updateBjTotal();
-    };
+  updateTotal() {
+    const total =
+      state.blackjack.inRound && state.blackjack.bets.length > 0
+        ? state.blackjack.bets.reduce((sum, val) => sum + val, 0)
+        : state.blackjack.betAmount;
+    updateBetTotal(total, "bjBetTotal");
+  }
 
-    const scheduleAutoBet = () => {
-      if (!autoBet?.checked || state.blackjack.lastBet <= 0) return;
-      setTimeout(() => {
-        if (state.blackjack.inRound) return;
-        state.blackjack.betAmount = state.blackjack.lastBet;
-        updateBjTotal();
-        dealBtn.click();
-      }, 200);
-    };
+  scheduleAutoBet() {
+    const { autoBet, dealBtn } = this.ui;
+    if (!autoBet?.checked || state.blackjack.lastBet <= 0) return;
+    setTimeout(() => {
+      if (state.blackjack.inRound) return;
+      state.blackjack.betAmount = state.blackjack.lastBet;
+      this.updateTotal();
+      dealBtn?.click();
+    }, AUTO_DEAL_DELAY);
+  }
 
-    const renderBlackjackHands = () => {
-      const playerEl = document.getElementById("bjPlayer");
-      playerEl.innerHTML = "";
-      const showLabels = state.blackjack.hands.length > 1;
-      state.blackjack.hands.forEach((hand, index) => {
-        const wrapper = document.createElement("div");
-        wrapper.className = showLabels ? "hand-block" : "hand-block single";
-        if (index === state.blackjack.activeHand) {
-          wrapper.classList.add("active-hand");
-        }
-        if (showLabels) {
-          const label = document.createElement("div");
-          label.className = "hand-label";
-          label.textContent = `Hand ${index + 1}`;
-          wrapper.appendChild(label);
-        }
-        const cardsEl = document.createElement("div");
-        cardsEl.className = "cards";
-        hand.forEach((card) => {
-          const div = document.createElement("div");
-          div.className = "card";
-          div.textContent = `${card.rank}${card.suit}`;
-          div.setAttribute("data-rank", `${card.rank}${card.suit}`);
-          if (card.suit === "♥" || card.suit === "♦") {
-            div.classList.add("red");
-          } else {
-            div.classList.add("black");
-          }
-          cardsEl.appendChild(div);
+  renderHands() {
+    const playerEl = this.ui.playerEl;
+    if (!playerEl) return;
+    playerEl.innerHTML = "";
+    const showLabels = state.blackjack.hands.length > 1;
+    state.blackjack.hands.forEach((hand, index) => {
+      const wrapper = document.createElement("div");
+      wrapper.className = showLabels ? "hand-block" : "hand-block single";
+      if (index === state.blackjack.activeHand) wrapper.classList.add("active-hand");
+      if (showLabels) {
+        const label = document.createElement("div");
+        label.className = "hand-label";
+        label.textContent = `Hand ${index + 1}`;
+        wrapper.appendChild(label);
+      }
+      const cardsEl = document.createElement("div");
+      cardsEl.className = "cards";
+      renderCards(cardsEl, hand);
+      const totalEl = document.createElement("div");
+      totalEl.className = "total";
+      totalEl.textContent = `Total: ${handTotal(hand)}`;
+      const stackEl = document.createElement("div");
+      stackEl.className = "chip-stack inline hand-stack";
+      makeChipStack(stackEl, state.blackjack.bets[index] || 0);
+      wrapper.appendChild(cardsEl);
+      wrapper.appendChild(totalEl);
+      wrapper.appendChild(stackEl);
+      playerEl.appendChild(wrapper);
+    });
+  }
+
+  updateControls() {
+    const {
+      dealBtn,
+      hitBtn,
+      standBtn,
+      doubleBtn,
+      splitBtn,
+      clearBtn,
+      maxBtn,
+      chipsWrap,
+    } = this.ui;
+    if (!state.blackjack.inRound) {
+      hitBtn?.classList.add("hidden");
+      standBtn?.classList.add("hidden");
+      doubleBtn?.classList.add("hidden");
+      splitBtn?.classList.add("hidden");
+      dealBtn?.classList.remove("hidden");
+      clearBtn?.classList.remove("hidden");
+      maxBtn?.classList.remove("hidden");
+      if (!state.blackjack.awaitingClear) chipsWrap?.classList.remove("hidden");
+      else chipsWrap?.classList.add("hidden");
+      return;
+    }
+    dealBtn?.classList.add("hidden");
+    clearBtn?.classList.add("hidden");
+    maxBtn?.classList.add("hidden");
+    chipsWrap?.classList.add("hidden");
+    hitBtn?.classList.remove("hidden");
+    standBtn?.classList.remove("hidden");
+    const hand = state.blackjack.hands[state.blackjack.activeHand] || [];
+    const canDouble = hand.length === 2 && !state.blackjack.doubled[state.blackjack.activeHand];
+    doubleBtn?.classList.toggle("hidden", !canDouble);
+    const canSplit =
+      !state.blackjack.splitUsed && hand.length === 2 && hand[0].rank === hand[1].rank;
+    splitBtn?.classList.toggle("hidden", !canSplit);
+  }
+
+  resetRound(keepBet = false) {
+    state.blackjack.bet = 0;
+    if (!keepBet) {
+      state.blackjack.betAmount = 0;
+      updateBetTotal(0, "bjBetTotal");
+    }
+    state.blackjack.hands = [];
+    state.blackjack.bets = [];
+    state.blackjack.doubled = [];
+    state.blackjack.busted = [];
+    state.blackjack.pendingMessages = [];
+    state.blackjack.activeHand = 0;
+    state.blackjack.splitUsed = false;
+    state.blackjack.deck = [];
+    state.blackjack.player = [];
+    state.blackjack.dealer = [];
+    state.blackjack.inRound = false;
+    state.blackjack.revealDealer = false;
+    state.blackjack.awaitingClear = false;
+    this.ui.hitBtn?.classList.add("hidden");
+    this.ui.standBtn?.classList.add("hidden");
+    this.ui.doubleBtn?.classList.add("hidden");
+    this.ui.splitBtn?.classList.add("hidden");
+    if (this.ui.dealerEl) this.ui.dealerEl.innerHTML = "";
+    if (this.ui.playerEl) this.ui.playerEl.innerHTML = "";
+    if (this.ui.dealerTotal) this.ui.dealerTotal.textContent = "";
+    if (this.ui.playerTotal) this.ui.playerTotal.textContent = "";
+    if (keepBet) updateBetTotal(state.blackjack.betAmount, "bjBetTotal");
+  }
+
+  finishRound() {
+    const { autoBet, dealBtn } = this.ui;
+    const dealerTotal = handTotal(state.blackjack.dealer);
+    renderCards("bjDealer", state.blackjack.dealer);
+    revealDealer("bjDealer");
+    if (this.ui.dealerTotal) this.ui.dealerTotal.textContent = `Total: ${dealerTotal}`;
+
+    const outcomeQueue = [];
+    const pending = state.blackjack.pendingMessages || [];
+    state.blackjack.hands.forEach((hand, index) => {
+      if (state.blackjack.busted[index]) return;
+      const playerTotal = handTotal(hand);
+      const bet = state.blackjack.bets[index];
+      const multiple = state.blackjack.hands.length > 1;
+      const labelPrefix = multiple ? `Hand ${index + 1} ` : "";
+      if (playerTotal > 21) {
+        playSfx("lose");
+        outcomeQueue.push({
+          text: multiple ? `${labelPrefix}busts.` : "You bust.",
+          tone: "danger",
         });
-        const totalEl = document.createElement("div");
-        totalEl.className = "total";
-        totalEl.textContent = `Total: ${handTotal(hand)}`;
-        const stackEl = document.createElement("div");
-        stackEl.className = "chip-stack inline hand-stack";
-        const betValue = state.blackjack.bets[index] || 0;
-        makeChipStack(stackEl, betValue);
-        wrapper.appendChild(cardsEl);
-        wrapper.appendChild(totalEl);
-        wrapper.appendChild(stackEl);
-        playerEl.appendChild(wrapper);
-      });
-    };
-
-    const updateBlackjackControls = () => {
-      const chips = document.querySelector('#blackjack .chips');
-      if (!state.blackjack.inRound) {
-        hitBtn.classList.add("hidden");
-        standBtn.classList.add("hidden");
-        doubleBtn.classList.add("hidden");
-        splitBtn.classList.add("hidden");
-        dealBtn.classList.remove("hidden");
-        clearBtn.classList.remove("hidden");
-        maxBtn.classList.remove("hidden");
-        if (!state.blackjack.awaitingClear) {
-          chips?.classList.remove("hidden");
-        } else {
-          chips?.classList.add("hidden");
-        }
-        return;
-      }
-      dealBtn.classList.add("hidden");
-      clearBtn.classList.add("hidden");
-      maxBtn.classList.add("hidden");
-      chips?.classList.add("hidden");
-      hitBtn.classList.remove("hidden");
-      standBtn.classList.remove("hidden");
-      const hand = state.blackjack.hands[state.blackjack.activeHand] || [];
-      const canDouble = hand.length === 2 && !state.blackjack.doubled[state.blackjack.activeHand];
-      if (canDouble) doubleBtn.classList.remove("hidden");
-      else doubleBtn.classList.add("hidden");
-      const canSplit =
-        !state.blackjack.splitUsed &&
-        hand.length === 2 &&
-        hand[0].rank === hand[1].rank;
-      if (canSplit) splitBtn.classList.remove("hidden");
-      else splitBtn.classList.add("hidden");
-    };
-
-    const advanceHandOrDealer = () => {
-      if (state.blackjack.activeHand < state.blackjack.hands.length - 1) {
-        state.blackjack.activeHand += 1;
-        renderBlackjackHands();
-        updateBlackjackControls();
-        return;
-      }
-      const allBusted = state.blackjack.hands.every(
-        (hand, index) => state.blackjack.busted[index] || handTotal(hand) > 21
-      );
-      if (!allBusted) {
-        while (handTotal(state.blackjack.dealer) < 17) {
-          state.blackjack.dealer.push(draw(state.blackjack.deck));
-        }
-      }
-      const dealerTotal = handTotal(state.blackjack.dealer);
-      renderCards("bjDealer", state.blackjack.dealer);
-      revealDealer("bjDealer");
-      document.getElementById("bjDealerTotal").textContent = `Total: ${dealerTotal}`;
-
-      const outcomeQueue = [];
-      const pending = state.blackjack.pendingMessages || [];
-      state.blackjack.hands.forEach((hand, index) => {
-        if (state.blackjack.busted[index]) return;
-        const playerTotal = handTotal(hand);
-        const bet = state.blackjack.bets[index];
-        const multiple = state.blackjack.hands.length > 1;
-        const labelPrefix = multiple ? `Hand ${index + 1} ` : "";
-        if (playerTotal > 21) {
-          playSfx("lose");
-          outcomeQueue.push({
-            text: multiple ? `${labelPrefix}busts.` : "You bust.",
-            tone: "danger",
-          });
-        } else if (dealerTotal > 21 || playerTotal > dealerTotal) {
-          payout(bet * 2);
-          playSfx("win");
-          outcomeQueue.push({
-            text: multiple ? `${labelPrefix}wins!` : "You win!",
-            tone: "win",
-          });
-        } else if (dealerTotal === playerTotal) {
-          payout(bet);
-          playSfx("win");
-          outcomeQueue.push({
-            text: multiple ? `${labelPrefix}pushes.` : "Push.",
-            tone: "win",
-          });
-        } else {
-          playSfx("lose");
-          outcomeQueue.push({
-            text: multiple ? `${labelPrefix}loses.` : "You lose.",
-            tone: "danger",
-          });
-        }
-      });
-      const combinedMessages = [...pending, ...outcomeQueue];
-      if (combinedMessages.length > 0) {
-        showCenterToasts(combinedMessages);
-      }
-      state.blackjack.pendingMessages = [];
-
-      state.blackjack.inRound = false;
-      state.blackjack.awaitingClear = true;
-      const auto = autoBet?.checked;
-      if (!auto) {
-        state.blackjack.betAmount = 0;
-        updateBetTotal(0, "bjBetTotal");
+      } else if (dealerTotal > 21 || playerTotal > dealerTotal) {
+        payout(bet * 2);
+        playSfx("win");
+        outcomeQueue.push({
+          text: multiple ? `${labelPrefix}wins!` : "You win!",
+          tone: "win",
+        });
+      } else if (dealerTotal === playerTotal) {
+        payout(bet);
+        playSfx("win");
+        outcomeQueue.push({
+          text: multiple ? `${labelPrefix}pushes.` : "Push.",
+          tone: "win",
+        });
       } else {
-        syncBetTotal();
+        playSfx("lose");
+        outcomeQueue.push({
+          text: multiple ? `${labelPrefix}loses.` : "You lose.",
+          tone: "danger",
+        });
       }
-      updateBlackjackControls();
-      setTimeout(() => {
-        resetBlackjackRound(auto);
-        updateBlackjackControls();
-        if (auto) {
-          dealBtn.click();
-        } else {
-          scheduleAutoBet();
-        }
-      }, 1800);
-    };
+    });
 
-    const addBjBet = (amount) => {
-      if (state.blackjack.inRound) {
-        showCenterToast("Round running.", "danger");
-        return;
-      }
-      const next = Math.min(100, state.blackjack.betAmount + amount);
-      if (next === state.blackjack.betAmount) {
-        showCenterToast("Max bet is $100.", "danger");
-        return;
-      }
-      state.blackjack.betAmount = next;
-      updateBjTotal();
-    };
+    const combinedMessages = [...pending, ...outcomeQueue];
+    if (combinedMessages.length > 0) showCenterToasts(combinedMessages);
+    state.blackjack.pendingMessages = [];
 
-    const removeBjBet = (amount) => {
-      if (state.blackjack.inRound) {
-        showCenterToast("Round running.", "danger");
-        return;
-      }
-      state.blackjack.betAmount = Math.max(0, state.blackjack.betAmount - amount);
-      updateBjTotal();
-    };
+    state.blackjack.inRound = false;
+    state.blackjack.awaitingClear = true;
+    const auto = autoBet?.checked;
+    if (!auto) {
+      state.blackjack.betAmount = 0;
+      updateBetTotal(0, "bjBetTotal");
+    } else {
+      this.updateTotal();
+    }
+    this.updateControls();
+    setTimeout(() => {
+      this.resetRound(auto);
+      this.updateControls();
+      if (auto) dealBtn?.click();
+      else this.scheduleAutoBet();
+    }, ROUND_RESET_DELAY);
+  }
 
-    bjChips.forEach((chip) => {
+  advanceHandOrDealer() {
+    if (state.blackjack.activeHand < state.blackjack.hands.length - 1) {
+      state.blackjack.activeHand += 1;
+      this.renderHands();
+      this.updateControls();
+      return;
+    }
+    const allBusted = state.blackjack.hands.every(
+      (hand, index) => state.blackjack.busted[index] || handTotal(hand) > 21
+    );
+    if (!allBusted) {
+      while (handTotal(state.blackjack.dealer) < 17) {
+        state.blackjack.dealer.push(draw(state.blackjack.deck));
+      }
+    }
+    this.finishRound();
+  }
+
+  addBet(amount) {
+    if (state.blackjack.inRound) {
+      showCenterToast("Round running.", "danger");
+      return;
+    }
+    const next = Math.min(MAX_BET, state.blackjack.betAmount + amount);
+    if (next === state.blackjack.betAmount) {
+      showCenterToast("Max bet is $100.", "danger");
+      return;
+    }
+    state.blackjack.betAmount = next;
+    this.updateTotal();
+  }
+
+  removeBet(amount) {
+    if (state.blackjack.inRound) {
+      showCenterToast("Round running.", "danger");
+      return;
+    }
+    state.blackjack.betAmount = Math.max(0, state.blackjack.betAmount - amount);
+    this.updateTotal();
+  }
+
+  bindEvents() {
+    const { dealBtn, hitBtn, standBtn, doubleBtn, splitBtn, clearBtn, maxBtn, chips } = this.ui;
+
+    chips?.forEach((chip) => {
       const amount = Number(chip.dataset.amount) || 0;
-      chip.addEventListener("click", () => addBjBet(amount));
+      chip.addEventListener("click", () => this.addBet(amount));
       chip.addEventListener("contextmenu", (event) => {
         event.preventDefault();
-        removeBjBet(amount);
+        this.removeBet(amount);
       });
     });
 
@@ -283,7 +285,7 @@ export class BlackjackGame {
         return;
       }
       state.blackjack.betAmount = 0;
-      updateBjTotal();
+      this.updateTotal();
     });
 
     maxBtn?.addEventListener("click", () => {
@@ -291,8 +293,8 @@ export class BlackjackGame {
         showCenterToast("Round running.", "danger");
         return;
       }
-      state.blackjack.betAmount = Math.min(100, state.balance);
-      updateBjTotal();
+      state.blackjack.betAmount = Math.min(MAX_BET, state.balance);
+      this.updateTotal();
     });
 
     dealBtn?.addEventListener("click", () => {
@@ -325,41 +327,40 @@ export class BlackjackGame {
       state.blackjack.dealer = [draw(state.blackjack.deck), draw(state.blackjack.deck)];
       state.blackjack.inRound = true;
       state.blackjack.revealDealer = false;
-      renderBlackjackHands();
+      this.renderHands();
       renderCards("bjDealer", state.blackjack.dealer, true);
-      document.getElementById("bjDealerTotal").textContent = "Total: ?";
-      updateBlackjackControls();
-      syncBetTotal();
+      if (this.ui.dealerTotal) this.ui.dealerTotal.textContent = "Total: ?";
+      this.updateControls();
+      this.updateTotal();
     });
 
     hitBtn?.addEventListener("click", () => {
       if (!state.blackjack.inRound) return;
       const hand = state.blackjack.hands[state.blackjack.activeHand];
       hand.push(draw(state.blackjack.deck));
-      renderBlackjackHands();
+      this.renderHands();
       const total = handTotal(hand);
       if (total > 21) {
         const multiple = state.blackjack.hands.length > 1;
         const message = multiple
           ? `Hand ${state.blackjack.activeHand + 1} busts.`
           : "You bust.";
+        playSfx("lose");
         if (state.blackjack.activeHand === state.blackjack.hands.length - 1) {
-          playSfx("lose");
           state.blackjack.pendingMessages.push({ text: message, tone: "danger" });
         } else {
-          playSfx("lose");
           showCenterToast(message, "danger");
         }
         state.blackjack.busted[state.blackjack.activeHand] = true;
-        advanceHandOrDealer();
+        this.advanceHandOrDealer();
       }
-      updateBlackjackControls();
+      this.updateControls();
     });
 
     standBtn?.addEventListener("click", () => {
       if (!state.blackjack.inRound) return;
-      advanceHandOrDealer();
-      updateBlackjackControls();
+      this.advanceHandOrDealer();
+      this.updateControls();
     });
 
     doubleBtn?.addEventListener("click", () => {
@@ -376,10 +377,10 @@ export class BlackjackGame {
       state.blackjack.bets[state.blackjack.activeHand] = bet * 2;
       state.blackjack.doubled[state.blackjack.activeHand] = true;
       hand.push(draw(state.blackjack.deck));
-      renderBlackjackHands();
-      advanceHandOrDealer();
-      updateBlackjackControls();
-      syncBetTotal();
+      this.renderHands();
+      this.advanceHandOrDealer();
+      this.updateControls();
+      this.updateTotal();
     });
 
     splitBtn?.addEventListener("click", () => {
@@ -405,18 +406,21 @@ export class BlackjackGame {
       state.blackjack.pendingMessages = [];
       state.blackjack.activeHand = 0;
       state.blackjack.splitUsed = true;
-      syncBetTotal();
-      renderBlackjackHands();
-      updateBlackjackControls();
+      this.updateTotal();
+      this.renderHands();
+      this.updateControls();
     });
+  }
 
-    resetBlackjackRound(false);
-    updateBjTotal();
-    updateBlackjackControls();
+  init() {
+    this.cacheElements();
+    this.bindEvents();
+    this.resetRound(false);
+    this.updateTotal();
+    this.updateControls();
   }
 
   reset() {
-    resetBlackjackRound(false);
-    setStatus("bjStatus", "");
+    this.resetRound(false);
   }
 }

@@ -3,9 +3,15 @@ const balanceDeltaEl = document.getElementById("balanceDelta");
 const centerToastEl = document.getElementById("centerToast");
 const resetBankBtn = document.getElementById("resetBank");
 
+const STORAGE_KEY = "casino-balance";
+const DEFAULT_BALANCE = 1000;
+const SUITS = ["♠", "♥", "♦", "♣"];
+const RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+const CHIP_DENOMS = [1000, 500, 100, 50, 25, 10, 5, 1];
+
 export const state = {
-  balance: Number(localStorage.getItem("pixel-casino-balance")) || 1000,
-  lastBalance: Number(localStorage.getItem("pixel-casino-balance")) || 1000,
+  balance: Number(localStorage.getItem(STORAGE_KEY)) || DEFAULT_BALANCE,
+  lastBalance: Number(localStorage.getItem(STORAGE_KEY)) || DEFAULT_BALANCE,
   poker: {
     bet: 0,
     betAmount: 0,
@@ -59,69 +65,255 @@ export const state = {
   },
 };
 
-const suits = ["♠", "♥", "♦", "♣"];
-const ranks = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+class BalanceManager {
+  constructor(stateRef, balanceNode, deltaNode) {
+    this.state = stateRef;
+    this.balanceNode = balanceNode;
+    this.deltaNode = deltaNode;
+  }
 
-let audioCtx = null;
+  update(stateRef) {
+    if (stateRef) this.state = stateRef;
+    const diff = this.state.balance - this.state.lastBalance;
+    if (this.balanceNode) this.balanceNode.textContent = `$${this.state.balance}`;
+    if (diff !== 0 && this.deltaNode) {
+      this.deltaNode.textContent = diff > 0 ? `+${diff}` : `${diff}`;
+      this.deltaNode.classList.remove("positive", "negative", "show");
+      this.deltaNode.classList.add(diff > 0 ? "positive" : "negative");
+      void this.deltaNode.offsetWidth;
+      this.deltaNode.classList.add("show");
+      setTimeout(() => this.deltaNode.classList.remove("show"), 1200);
+    }
+    this.state.lastBalance = this.state.balance;
+    localStorage.setItem(STORAGE_KEY, String(this.state.balance));
+  }
 
-function saveBalance() {
-  localStorage.setItem("pixel-casino-balance", String(state.balance));
+  reset(stateRef, onReset) {
+    if (stateRef) this.state = stateRef;
+    this.state.balance = DEFAULT_BALANCE;
+    this.update();
+    if (onReset) onReset();
+  }
+
+  init(stateRef, onReset) {
+    if (stateRef) this.state = stateRef;
+    this.update();
+    resetBankBtn?.addEventListener("click", () => this.reset(this.state, onReset));
+  }
 }
 
-export function updateBalance() {
-  const diff = state.balance - state.lastBalance;
-  if (balanceEl) balanceEl.textContent = `$${state.balance}`;
-  if (diff !== 0 && balanceDeltaEl) {
-    balanceDeltaEl.textContent = diff > 0 ? `+${diff}` : `${diff}`;
-    balanceDeltaEl.classList.remove("positive", "negative", "show");
-    balanceDeltaEl.classList.add(diff > 0 ? "positive" : "negative");
-    void balanceDeltaEl.offsetWidth;
-    balanceDeltaEl.classList.add("show");
-    setTimeout(() => balanceDeltaEl.classList.remove("show"), 1200);
+class AudioManager {
+  constructor() {
+    this.audioCtx = null;
+    this.settings = {
+      deal: { freq: 520, dur: 0.08 },
+      hit: { freq: 640, dur: 0.08 },
+      spin: { freq: 420, dur: 0.12 },
+      win: { freq: 880, dur: 0.18 },
+      lose: { freq: 220, dur: 0.16 },
+      big: { freq: 1040, dur: 0.24 },
+      stop: { freq: 560, dur: 0.06 },
+    };
   }
-  state.lastBalance = state.balance;
-  saveBalance();
+
+  play(type) {
+    const settings = this.settings[type];
+    if (!settings) return;
+    if (!this.audioCtx) {
+      this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    const now = this.audioCtx.currentTime;
+    const osc = this.audioCtx.createOscillator();
+    const gain = this.audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(this.audioCtx.destination);
+
+    osc.type = "square";
+    osc.frequency.setValueAtTime(settings.freq, now);
+    gain.gain.setValueAtTime(0.08, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + settings.dur);
+    osc.start(now);
+    osc.stop(now + settings.dur);
+  }
+}
+
+class ToastManager {
+  constructor(container) {
+    this.container = container;
+  }
+
+  showToasts(messages) {
+    if (!this.container) return;
+    this.container.innerHTML = "";
+    messages.forEach((msg) => {
+      const el = document.createElement("div");
+      el.className = "center-toast-item";
+      if (msg.tone === "danger") el.classList.add("negative");
+      if (msg.tone === "win") el.classList.add("positive");
+      el.textContent = msg.text;
+      this.container.appendChild(el);
+      requestAnimationFrame(() => {
+        el.classList.add("show");
+      });
+      const duration = Number.isFinite(msg.duration) ? msg.duration : 1200;
+      setTimeout(() => el.classList.remove("show"), duration);
+    });
+  }
+}
+
+export class Card {
+  constructor(rank, suit) {
+    this.rank = rank;
+    this.suit = suit;
+  }
+
+  value() {
+    if (this.rank === "A") return 14;
+    if (this.rank === "K") return 13;
+    if (this.rank === "Q") return 12;
+    if (this.rank === "J") return 11;
+    return Number(this.rank);
+  }
+
+  blackjackValue() {
+    if (this.rank === "A") return 11;
+    if (["K", "Q", "J"].includes(this.rank)) return 10;
+    return Number(this.rank);
+  }
+
+  static from(raw) {
+    return raw instanceof Card ? raw : new Card(raw.rank, raw.suit);
+  }
+}
+
+class CardUtils {
+  static format(card) {
+    return `${card.rank}${card.suit}`;
+  }
+
+  static buildDeck() {
+    const deck = [];
+    for (const suit of SUITS) {
+      for (const rank of RANKS) {
+        deck.push(new Card(rank, suit));
+      }
+    }
+    return deck;
+  }
+
+  static shuffle(deck) {
+    for (let i = deck.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+    return deck;
+  }
+
+  static draw(deck) {
+    return deck.pop();
+  }
+
+  static drawSpecific(deck, rank) {
+    const index = deck.findIndex((card) => card.rank === rank);
+    if (index === -1) return CardUtils.draw(deck);
+    return deck.splice(index, 1)[0];
+  }
+
+  static total(cards) {
+    let total = 0;
+    let aces = 0;
+    cards.forEach((card) => {
+      total += card.blackjackValue();
+      if (card.rank === "A") aces += 1;
+    });
+    while (total > 21 && aces > 0) {
+      total -= 10;
+      aces -= 1;
+    }
+    return total;
+  }
+}
+
+class ChipRenderer {
+  static renderStack(container, amount) {
+    if (!container) return;
+    container.innerHTML = "";
+    if (!amount || amount <= 0) return;
+    let remaining = amount;
+    CHIP_DENOMS.forEach((denom) => {
+      const count = Math.floor(remaining / denom);
+      remaining -= count * denom;
+      for (let i = 0; i < count; i += 1) {
+        const chip = document.createElement("div");
+        chip.className = `mini-chip d${denom}`;
+        const label = denom >= 1000 ? "1k" : `${denom}`;
+        chip.setAttribute("data-value", label);
+        container.appendChild(chip);
+      }
+    });
+  }
+
+  static updateTotal(amount, totalId) {
+    const totalEl = document.getElementById(totalId);
+    if (totalEl) totalEl.textContent = `$${amount}`;
+  }
+
+  static animate(fromEl, toEl) {
+    if (!fromEl || !toEl) return;
+    const from = fromEl.getBoundingClientRect();
+    const to = toEl.getBoundingClientRect();
+    const chip = document.createElement("div");
+    chip.className = "flying-chip";
+    chip.style.transform = `translate(${from.left + from.width / 2}px, ${
+      from.top + from.height / 2
+    }px)`;
+    document.body.appendChild(chip);
+    requestAnimationFrame(() => {
+      chip.style.transform = `translate(${to.left + to.width / 2}px, ${
+        to.top + to.height / 2
+      }px)`;
+      chip.style.opacity = "0.2";
+    });
+    chip.addEventListener(
+      "transitionend",
+      () => {
+        chip.remove();
+      },
+      { once: true }
+    );
+  }
+}
+
+const balanceManager = new BalanceManager(state, balanceEl, balanceDeltaEl);
+const audioManager = new AudioManager();
+const toastManager = new ToastManager(centerToastEl);
+
+export function updateBalance() {
+  balanceManager.update(state);
 }
 
 export function initCore(onReset) {
-  updateBalance();
-  resetBankBtn?.addEventListener("click", () => {
-    state.balance = 1000;
-    updateBalance();
-    if (onReset) onReset();
-  });
+  balanceManager.init(state, onReset);
 }
 
 export function formatCard(card) {
-  return `${card.rank}${card.suit}`;
+  return CardUtils.format(card);
 }
 
 export function buildDeck() {
-  const deck = [];
-  for (const suit of suits) {
-    for (const rank of ranks) {
-      deck.push({ rank, suit });
-    }
-  }
-  return deck;
+  return CardUtils.buildDeck();
 }
 
 export function shuffle(deck) {
-  for (let i = deck.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [deck[i], deck[j]] = [deck[j], deck[i]];
-  }
-  return deck;
+  return CardUtils.shuffle(deck);
 }
 
 export function draw(deck) {
-  return deck.pop();
+  return CardUtils.draw(deck);
 }
 
 export function drawSpecific(deck, rank) {
-  const index = deck.findIndex((card) => card.rank === rank);
-  if (index === -1) return draw(deck);
-  return deck.splice(index, 1)[0];
+  return CardUtils.drawSpecific(deck, rank);
 }
 
 export function withBet(amount, onSuccess) {
@@ -143,32 +335,7 @@ export function payout(amount) {
 }
 
 export function playSfx(type) {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
-  const now = audioCtx.currentTime;
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-
-  const settings = {
-    deal: { freq: 520, dur: 0.08 },
-    hit: { freq: 640, dur: 0.08 },
-    spin: { freq: 420, dur: 0.12 },
-    win: { freq: 880, dur: 0.18 },
-    lose: { freq: 220, dur: 0.16 },
-    big: { freq: 1040, dur: 0.24 },
-    stop: { freq: 560, dur: 0.06 },
-  }[type];
-
-  if (!settings) return;
-  osc.type = "square";
-  osc.frequency.setValueAtTime(settings.freq, now);
-  gain.gain.setValueAtTime(0.08, now);
-  gain.gain.exponentialRampToValueAtTime(0.001, now + settings.dur);
-  osc.start(now);
-  osc.stop(now + settings.dur);
+  audioManager.play(type);
 }
 
 export function triggerBigWin(withSound = true) {
@@ -186,63 +353,43 @@ export function triggerSmallWin() {
   setTimeout(() => document.body.classList.remove("small-win"), 240);
 }
 
-export function setStatus(id, message, tone = "") {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.textContent = message;
-  if (tone === "danger") {
-    el.style.color = "var(--danger)";
-  } else if (tone === "win") {
-    el.style.color = "var(--accent)";
-  } else {
-    el.style.color = "var(--accent)";
-  }
-}
-
 export function showCenterToast(message, tone = "", duration = 1200) {
   showCenterToasts([{ text: message, tone, duration }]);
 }
 
 export function showCenterToasts(messages) {
-  if (!centerToastEl) return;
-  centerToastEl.innerHTML = "";
-  messages.forEach((msg) => {
-    const el = document.createElement("div");
-    el.className = "center-toast-item";
-    if (msg.tone === "danger") el.classList.add("negative");
-    if (msg.tone === "win") el.classList.add("positive");
-    el.textContent = msg.text;
-    centerToastEl.appendChild(el);
-    requestAnimationFrame(() => {
-      el.classList.add("show");
-    });
-    const duration = Number.isFinite(msg.duration) ? msg.duration : 1200;
-    setTimeout(() => el.classList.remove("show"), duration);
-  });
+  toastManager.showToasts(messages);
 }
 
 export function renderCards(containerId, cards, hideFirst = false) {
-  const container = document.getElementById(containerId);
+  const container =
+    typeof containerId === "string" ? document.getElementById(containerId) : containerId;
   if (!container) return;
   container.classList.remove("reveal");
   container.innerHTML = "";
   cards.forEach((card, index) => {
-    const div = document.createElement("div");
-    div.className = "card";
-    if (hideFirst && index === 0) {
-      div.classList.add("back");
-      div.textContent = "??";
-    } else {
-      div.textContent = formatCard(card);
-      div.setAttribute("data-rank", formatCard(card));
-      if (card.suit === "♥" || card.suit === "♦") {
-        div.classList.add("red");
-      } else {
-        div.classList.add("black");
-      }
-    }
+    const div = buildCardEl(card, hideFirst && index === 0);
     container.appendChild(div);
   });
+}
+
+export function buildCardEl(card, hidden = false) {
+  const div = document.createElement("div");
+  div.className = "card";
+  if (hidden) {
+    div.classList.add("back");
+    div.textContent = "??";
+    return div;
+  }
+  const label = formatCard(card);
+  div.textContent = label;
+  div.setAttribute("data-rank", label);
+  if (card.suit === "♥" || card.suit === "♦") {
+    div.classList.add("red");
+  } else {
+    div.classList.add("black");
+  }
+  return div;
 }
 
 export function renderHiddenCards(containerId, count) {
@@ -266,71 +413,18 @@ export function revealDealer(containerId) {
   container.classList.add("reveal");
 }
 
-export function getCardValue(card) {
-  if (card.rank === "A") return 11;
-  if (["K", "Q", "J"].includes(card.rank)) return 10;
-  return Number(card.rank);
-}
-
 export function handTotal(cards) {
-  let total = 0;
-  let aces = 0;
-  cards.forEach((card) => {
-    total += getCardValue(card);
-    if (card.rank === "A") aces += 1;
-  });
-  while (total > 21 && aces > 0) {
-    total -= 10;
-    aces -= 1;
-  }
-  return total;
+  return CardUtils.total(cards);
 }
 
 export function makeChipStack(container, amount) {
-  if (!container) return;
-  container.innerHTML = "";
-  if (!amount || amount <= 0) return;
-  const denoms = [1000, 500, 100, 50, 25, 10, 5, 1];
-  let remaining = amount;
-  denoms.forEach((denom) => {
-    const count = Math.floor(remaining / denom);
-    remaining -= count * denom;
-    for (let i = 0; i < count; i += 1) {
-      const chip = document.createElement("div");
-      chip.className = `mini-chip d${denom}`;
-      const label = denom >= 1000 ? "1k" : `${denom}`;
-      chip.setAttribute("data-value", label);
-      container.appendChild(chip);
-    }
-  });
+  ChipRenderer.renderStack(container, amount);
 }
 
 export function updateBetTotal(amount, totalId) {
-  const totalEl = document.getElementById(totalId);
-  if (totalEl) totalEl.textContent = `$${amount}`;
+  ChipRenderer.updateTotal(amount, totalId);
 }
 
 export function animateChip(fromEl, toEl) {
-  if (!fromEl || !toEl) return;
-  const from = fromEl.getBoundingClientRect();
-  const to = toEl.getBoundingClientRect();
-  const chip = document.createElement("div");
-  chip.className = "flying-chip";
-  chip.style.transform = `translate(${from.left + from.width / 2}px, ${
-    from.top + from.height / 2
-  }px)`;
-  document.body.appendChild(chip);
-  requestAnimationFrame(() => {
-    chip.style.transform = `translate(${to.left + to.width / 2}px, ${
-      to.top + to.height / 2
-    }px)`;
-    chip.style.opacity = "0.2";
-  });
-  chip.addEventListener(
-    "transitionend",
-    () => {
-      chip.remove();
-    },
-    { once: true }
-  );
+  ChipRenderer.animate(fromEl, toEl);
 }
