@@ -426,6 +426,8 @@ export class HoldemGame {
           state.holdem.dealerBet = raiseTo;
           state.holdem.currentBet = raiseTo;
           state.holdem.pot += add;
+          state.holdem.dealerRaised = true;
+          state.holdem.betAmount = 0;
           this.updatePotUI();
           state.holdem.awaitingRaise = true;
           showCenterToast(`Dealer bets $${raiseTo}.`, "danger", 2000);
@@ -454,6 +456,8 @@ export class HoldemGame {
         state.holdem.dealerBet = raiseTo;
         state.holdem.currentBet = raiseTo;
         state.holdem.pot += add;
+        state.holdem.dealerRaised = true;
+        state.holdem.betAmount = 0;
         this.updatePotUI();
         state.holdem.awaitingRaise = true;
         showCenterToast(`Dealer raises to $${raiseTo}.`, "danger", 2000);
