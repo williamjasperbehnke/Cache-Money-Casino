@@ -7,7 +7,7 @@ variable "project_name" {
 variable "aws_region" {
   type        = string
   description = "AWS region for S3 + Route53 (CloudFront is global)."
-  default     = "us-east-2"
+  default     = "us-east-1"
 }
 
 variable "bucket_name" {

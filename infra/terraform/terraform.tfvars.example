@@ -4,5 +4,5 @@ bucket_name = "your-unique-bucket-name"
 # Optional
 # domain_name   = "casino.example.com"
 # hosted_zone_id = "Z1234567890ABC"
-# aws_region     = "us-east-2"
+# aws_region     = "us-east-1"
 # project_name   = "cache-money-casino"
