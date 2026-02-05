@@ -14,6 +14,7 @@ import {
   updateBetTotal,
   bindBetChips,
 } from "./core.js";
+import { auth } from "./auth.js";
 
 const BETTING_PHASES = new Set(["preflop", "flop", "turn", "river"]);
 
@@ -254,6 +255,7 @@ export class HoldemGame {
 
   resetRound() {
     state.holdem.pot = 0;
+    state.holdem.playerPaid = 0;
     state.holdem.playerBet = 0;
     state.holdem.dealerBet = 0;
     state.holdem.currentBet = 0;
@@ -291,6 +293,7 @@ export class HoldemGame {
     state.balance -= playerBlind;
     updateBalance();
     state.holdem.playerBet = playerBlind;
+    state.holdem.playerPaid = playerBlind;
     state.holdem.dealerBet = dealerBlind;
     state.holdem.currentBet = Math.max(playerBlind, dealerBlind);
     state.holdem.pot = playerBlind + dealerBlind;
@@ -449,6 +452,12 @@ export class HoldemGame {
     if (strength <= 1 && Math.random() > 0.85) {
       showCenterToast("Dealer folds. You win!", "win", 2000);
       payout(state.holdem.pot);
+      auth.recordResult({
+        game: "holdem",
+        bet: state.holdem.playerPaid,
+        net: state.holdem.pot - state.holdem.playerPaid,
+        result: "win",
+      });
       this.endHand();
       return;
     }
@@ -491,6 +500,7 @@ export class HoldemGame {
       state.balance -= amount;
       updateBalance();
       state.holdem.pot += amount;
+      state.holdem.playerPaid += amount;
       state.holdem.playerBet += amount;
       if (amount === toCall) {
         state.holdem.playerBet = state.holdem.currentBet;
@@ -531,6 +541,7 @@ export class HoldemGame {
     state.balance -= totalNeeded;
     updateBalance();
     state.holdem.pot += totalNeeded;
+    state.holdem.playerPaid += totalNeeded;
     state.holdem.playerBet += totalNeeded;
     state.holdem.currentBet = state.holdem.playerBet;
     state.holdem.awaitingRaise = false;
@@ -560,6 +571,12 @@ export class HoldemGame {
   playerFold() {
     if (!state.holdem.inRound) return;
     showCenterToast("You folded. Dealer wins.", "danger", 2000);
+    auth.recordResult({
+      game: "holdem",
+      bet: state.holdem.playerPaid,
+      net: -state.holdem.playerPaid,
+      result: "loss",
+    });
     this.endHand();
   }
 
@@ -589,13 +606,31 @@ export class HoldemGame {
       payout(state.holdem.pot);
       playSfx("win");
       showCenterToast(`You win with ${playerBest.eval.label}!`, "win", 2400);
+      auth.recordResult({
+        game: "holdem",
+        bet: state.holdem.playerPaid,
+        net: state.holdem.pot - state.holdem.playerPaid,
+        result: "win",
+      });
     } else if (result < 0) {
       playSfx("lose");
       showCenterToast(`Dealer wins with ${dealerBest.eval.label}.`, "danger", 2400);
+      auth.recordResult({
+        game: "holdem",
+        bet: state.holdem.playerPaid,
+        net: -state.holdem.playerPaid,
+        result: "loss",
+      });
     } else {
       payout(state.holdem.pot / 2);
       playSfx("win");
       showCenterToast("Push. Pot split.", "win", 2000);
+      auth.recordResult({
+        game: "holdem",
+        bet: state.holdem.playerPaid,
+        net: 0,
+        result: "push",
+      });
     }
 
     state.holdem.awaitingClear = true;

@@ -8,6 +8,7 @@ import {
   animateChip,
   triggerBigWin,
 } from "./core.js";
+import { auth } from "./auth.js";
 
 const redNumbers = new Set([
   1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36,
@@ -453,9 +454,12 @@ export class RouletteGame {
             triggerBigWin();
           }
           showCenterToast(`Win! +$${Math.round(winnings)}`, "win");
+          const net = Math.round(winnings + winningStake - totalBet);
+          auth.recordResult({ game: "roulette", bet: totalBet, net, result: "win" });
         } else {
           playSfx("lose");
           showCenterToast("No win.", "danger");
+          auth.recordResult({ game: "roulette", bet: totalBet, net: -totalBet, result: "loss" });
         }
 
         if (!autoToggle?.checked) {

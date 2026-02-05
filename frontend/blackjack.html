@@ -14,7 +14,10 @@
     BANK: <span id="balance">$0</span>
     <span id="balanceDelta" class="balance-delta" aria-live="polite"></span>
   </div>
-  <button id="resetBank" class="btn ghost">Reset Bank</button>
+  <div class="account-controls">
+    <button id="accountLink" class="btn ghost hidden">Account</button>
+    <button id="signInBtn" class="btn ghost">Sign In</button>
+  </div>
 </header>
 
     <main class="layout">
@@ -71,6 +74,29 @@
   For entertainment purposes only. Gamble responsibly with your imaginary chips.
 </footer>
 
+    <div id="authBackdrop" class="modal-backdrop hidden"></div>
+    <div id="authModal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-content">
+        <h3 id="authTitle">Sign In</h3>
+        <div id="authMessage" class="modal-message"></div>
+        <form id="authForm">
+          <input id="authUsername" type="text" placeholder="Username" autocomplete="username" />
+          <div class="password-field">
+            <input
+              id="authPassword"
+              type="password"
+              placeholder="Password"
+              autocomplete="current-password"
+            />
+            <button type="button" id="authTogglePassword" class="btn ghost small">Show</button>
+          </div>
+          <button type="submit" class="btn">Continue</button>
+          <button type="button" id="authToggle" class="btn ghost">Create account</button>
+        </form>
+      </div>
+    </div>
+
+    <script src="js/config.js"></script>
     <script type="module" src="js/page-blackjack.js"></script>
   </body>
 </html>

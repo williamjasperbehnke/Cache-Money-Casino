@@ -8,6 +8,7 @@ import {
   triggerSmallWin,
   withBet,
 } from "./core.js";
+import { auth } from "./auth.js";
 
 const SLOT_SYMBOLS = ["🍒", "🍋", "🔔", "⭐", "💎", "🍇", "🍀", "💥", "🍉", "🪙"];
 const DEFAULT_BET = 5;
@@ -184,6 +185,7 @@ export class SlotsGame {
       winLight?.classList.remove("active");
       triggerBigWin(false);
       this.clearHighlights();
+      auth.recordResult({ game: "slots", bet, net: -bet, result: "loss" });
       onAutoSpin();
       return;
     }
@@ -191,6 +193,7 @@ export class SlotsGame {
     if (outcome.hasTwoKind && outcome.twoSymbol === "💥") {
       playSfx("lose");
       showCenterToast("Bang! House takes it.", "danger");
+      auth.recordResult({ game: "slots", bet, net: -bet, result: "loss" });
       onAutoSpin();
       return;
     }
@@ -209,12 +212,14 @@ export class SlotsGame {
       showCenterToast(`You win ${payMultiplier}x!`, "win");
       winLight?.classList.add("active");
       this.highlightPayout(outcome.key);
+      auth.recordResult({ game: "slots", bet, net: bet * payMultiplier, result: "win" });
       onAutoSpin();
       return;
     }
 
     playSfx("lose");
     showCenterToast("No win. Spin again!", "danger");
+    auth.recordResult({ game: "slots", bet, net: -bet, result: "loss" });
     onAutoSpin();
   }
 

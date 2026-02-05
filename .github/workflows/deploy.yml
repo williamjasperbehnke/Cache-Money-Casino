@@ -14,6 +14,8 @@ jobs:
     outputs:
       bucket: ${{ steps.bucket.outputs.name }}
       dist: ${{ steps.dist.outputs.id }}
+      api: ${{ steps.api.outputs.url }}
+      api_instance: ${{ steps.api_instance.outputs.id }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -51,6 +53,14 @@ jobs:
         id: dist
         working-directory: infra/terraform
         run: echo "id=$(terraform output -raw cloudfront_distribution_id)" >> $GITHUB_OUTPUT
+      - name: Get API load balancer
+        id: api
+        working-directory: infra/terraform
+        run: echo "url=$(terraform output -raw api_alb_dns_name)" >> $GITHUB_OUTPUT
+      - name: Get API instance id
+        id: api_instance
+        working-directory: infra/terraform
+        run: echo "id=$(terraform output -raw api_instance_id)" >> $GITHUB_OUTPUT
 
   deploy:
     runs-on: ubuntu-latest
@@ -67,12 +77,26 @@ jobs:
 
       - name: Sync site to S3
         run: |
-          aws s3 sync . "s3://${{ needs.terraform.outputs.bucket }}" \
-            --exclude ".git/*" \
-            --exclude "infra/*" \
-            --exclude "*.tfstate*" \
-            --exclude "node_modules/*" \
-            --delete
+          echo "window.API_BASE=\"http://${{ needs.terraform.outputs.api }}\";" > frontend/js/config.js
+          rm -rf frontend/shared
+          cp -R shared frontend/shared
+          aws s3 sync frontend "s3://${{ needs.terraform.outputs.bucket }}" --delete
+
+      - name: Package API server
+        run: |
+          zip -r server.zip backend shared
+
+      - name: Upload API artifact
+        run: |
+          aws s3 cp server.zip "s3://${{ needs.terraform.outputs.bucket }}/api/server.zip"
+
+      - name: Restart API instance
+        run: |
+          aws ssm send-command \
+            --instance-ids "${{ needs.terraform.outputs.api_instance }}" \
+            --document-name "AWS-RunShellScript" \
+            --parameters commands="sudo systemctl restart casino-api" \
+            --comment "Restart casino API"
 
       - name: Invalidate CloudFront cache
         run: |

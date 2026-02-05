@@ -15,6 +15,7 @@ import {
   makeChipStack,
   bindBetChips,
 } from "./core.js";
+import { auth } from "./auth.js";
 
 const MAX_BET = 100;
 const AUTO_DEAL_DELAY = 200;
@@ -182,6 +183,7 @@ export class BlackjackGame {
           text: multiple ? `${labelPrefix}busts.` : "You bust.",
           tone: "danger",
         });
+        auth.recordResult({ game: "blackjack", bet, net: -bet, result: "loss" });
       } else if (dealerTotal > 21 || playerTotal > dealerTotal) {
         payout(bet * 2);
         playSfx("win");
@@ -189,6 +191,7 @@ export class BlackjackGame {
           text: multiple ? `${labelPrefix}wins!` : "You win!",
           tone: "win",
         });
+        auth.recordResult({ game: "blackjack", bet, net: bet, result: "win" });
       } else if (dealerTotal === playerTotal) {
         payout(bet);
         playSfx("win");
@@ -196,12 +199,14 @@ export class BlackjackGame {
           text: multiple ? `${labelPrefix}pushes.` : "Push.",
           tone: "win",
         });
+        auth.recordResult({ game: "blackjack", bet, net: 0, result: "push" });
       } else {
         playSfx("lose");
         outcomeQueue.push({
           text: multiple ? `${labelPrefix}loses.` : "You lose.",
           tone: "danger",
         });
+        auth.recordResult({ game: "blackjack", bet, net: -bet, result: "loss" });
       }
     });
 

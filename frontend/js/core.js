@@ -1,17 +1,16 @@
 const balanceEl = document.getElementById("balance");
 const balanceDeltaEl = document.getElementById("balanceDelta");
 const centerToastEl = document.getElementById("centerToast");
-const resetBankBtn = document.getElementById("resetBank");
 
-const STORAGE_KEY = "casino-balance";
-const DEFAULT_BALANCE = 1000;
+import { DEFAULT_BALANCE, BALANCE_STORAGE_KEY } from "../shared/constants.js";
+
 const SUITS = ["♠", "♥", "♦", "♣"];
 const RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
 const CHIP_DENOMS = [1000, 500, 100, 50, 25, 10, 5, 1];
 
 export const state = {
-  balance: Number(localStorage.getItem(STORAGE_KEY)) || DEFAULT_BALANCE,
-  lastBalance: Number(localStorage.getItem(STORAGE_KEY)) || DEFAULT_BALANCE,
+  balance: Number(localStorage.getItem(BALANCE_STORAGE_KEY)) || DEFAULT_BALANCE,
+  lastBalance: Number(localStorage.getItem(BALANCE_STORAGE_KEY)) || DEFAULT_BALANCE,
   poker: {
     bet: 0,
     betAmount: 0,
@@ -65,6 +64,7 @@ export const state = {
   },
   holdem: {
     pot: 0,
+    playerPaid: 0,
     playerBet: 0,
     dealerBet: 0,
     currentBet: 0,
@@ -104,7 +104,7 @@ class BalanceManager {
       setTimeout(() => this.deltaNode.classList.remove("show"), 1200);
     }
     this.state.lastBalance = this.state.balance;
-    localStorage.setItem(STORAGE_KEY, String(this.state.balance));
+    localStorage.setItem(BALANCE_STORAGE_KEY, String(this.state.balance));
   }
 
   reset(stateRef, onReset) {
@@ -117,7 +117,6 @@ class BalanceManager {
   init(stateRef, onReset) {
     if (stateRef) this.state = stateRef;
     this.update();
-    resetBankBtn?.addEventListener("click", () => this.reset(this.state, onReset));
   }
 }
 
@@ -303,16 +302,27 @@ class ChipRenderer {
   }
 }
 
+import { auth } from "./auth.js";
+
 const balanceManager = new BalanceManager(state, balanceEl, balanceDeltaEl);
 const audioManager = new AudioManager();
 const toastManager = new ToastManager(centerToastEl);
 
 export function updateBalance() {
   balanceManager.update(state);
+  auth.queueBalanceUpdate();
 }
 
 export function initCore(onReset) {
   balanceManager.init(state, onReset);
+  auth.init({
+    onBalanceUpdate: (balance) => {
+      if (!Number.isFinite(balance)) return;
+      state.balance = balance;
+      updateBalance();
+    },
+    getBalance: () => state.balance,
+  });
 }
 
 export function formatCard(card) {

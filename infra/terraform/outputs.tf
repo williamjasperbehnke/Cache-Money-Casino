@@ -17,3 +17,13 @@ output "custom_domain" {
   value       = var.domain_name
   description = "Custom domain (if configured)."
 }
+
+output "api_alb_dns_name" {
+  value       = module.api.alb_dns_name
+  description = "ALB DNS name for the API service."
+}
+
+output "api_instance_id" {
+  value       = module.api.instance_id
+  description = "EC2 instance id for the API service."
+}

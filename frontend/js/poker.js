@@ -14,6 +14,7 @@ import {
   updateBetTotal,
   bindBetChips,
 } from "./core.js";
+import { auth } from "./auth.js";
 
 const BET_PHASES = new Set(["bet1", "bet2", "bet3"]);
 const DISCARD_PHASES = new Set(["discard1", "discard2"]);
@@ -332,6 +333,12 @@ export class PokerGame {
         "win",
         4500
       );
+      auth.recordResult({
+        game: "poker",
+        bet: state.poker.playerPaid,
+        net: state.poker.pot - state.poker.playerPaid,
+        result: "win",
+      });
     } else if (result < 0) {
       PokerGame.highlightHand("pokerPlayer", state.poker.player, playerEval, "lose");
       PokerGame.highlightHand("pokerDealer", state.poker.dealer, dealerEval, "win");
@@ -341,12 +348,24 @@ export class PokerGame {
         "danger",
         4500
       );
+      auth.recordResult({
+        game: "poker",
+        bet: state.poker.playerPaid,
+        net: -state.poker.playerPaid,
+        result: "loss",
+      });
     } else {
       PokerGame.highlightHand("pokerPlayer", state.poker.player, playerEval, "win");
       PokerGame.highlightHand("pokerDealer", state.poker.dealer, dealerEval, "win");
       payout(state.poker.playerPaid);
       playSfx("win");
       showCenterToast(`Push! Both had ${playerEval.label}.`, "win", 4500);
+      auth.recordResult({
+        game: "poker",
+        bet: state.poker.playerPaid,
+        net: 0,
+        result: "push",
+      });
     }
     this.endRound(clearTableBtn, foldBtn);
   }
@@ -632,6 +651,12 @@ export class PokerGame {
           payout(state.poker.pot);
           playSfx("win");
           showCenterToast("Dealer folds. You win!", "win", 4500);
+          auth.recordResult({
+            game: "poker",
+            bet: state.poker.playerPaid,
+            net: state.poker.pot - state.poker.playerPaid,
+            result: "win",
+          });
           this.endRound(clearTableBtn, foldBtn);
           return;
         }

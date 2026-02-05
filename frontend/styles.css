@@ -79,6 +79,85 @@ body::before {
   box-shadow: inset 0 0 8px rgba(34, 211, 238, 0.2);
 }
 
+.account-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.auth-user {
+  font-size: 9px;
+  color: var(--muted);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 23, 0.7);
+  z-index: 20;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 30;
+}
+
+.modal-content {
+  background: var(--panel);
+  border: 2px solid var(--panel-bright);
+  padding: 20px;
+  border-radius: 12px;
+  width: min(360px, 90vw);
+  max-width: 90vw;
+  box-shadow: 0 12px 0 rgba(15, 23, 42, 0.7);
+}
+
+.modal-content h3 {
+  margin-top: 0;
+  font-size: 14px;
+  color: var(--neon);
+}
+
+.modal-content form {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+}
+
+.password-field {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.password-field .btn.small {
+  padding: 6px 10px;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.modal-content input {
+  background: #0f172a;
+  border: 2px solid rgba(148, 163, 184, 0.4);
+  color: var(--text);
+  padding: 8px;
+  font-family: inherit;
+  font-size: 16px;
+  width: 100%;
+  min-width: 0;
+}
+
+.modal-message {
+  min-height: 16px;
+  color: #f87171;
+  font-size: 9px;
+  margin-bottom: 6px;
+}
+
 .balance-delta {
   margin-left: 8px;
   font-size: 11px;
@@ -1334,6 +1413,23 @@ h3 {
   .payout-card strong {
     font-size: 12px;
   }
+
+  .account-list div {
+    font-size: 6px;
+  }
+
+  .account-controls .btn {
+    padding: 4px 8px;
+    font-size: 8px;
+  }
+
+  .password-field input[type="password"] {
+    letter-spacing: 4px;
+  }
+
+  .password-field input::placeholder {
+    letter-spacing: normal;
+  }
 }
 
 .payout-card {
@@ -1456,6 +1552,149 @@ h3 {
   border: 2px solid rgba(148, 163, 184, 0.2);
   border-radius: 8px;
   padding: 10px;
+}
+
+.account-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+  align-items: stretch;
+  align-content: start;
+}
+
+.account-summary-top {
+  grid-template-columns: 1fr;
+}
+
+.account-summary-bottom {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.account-wide {
+  width: 100%;
+}
+
+.account-card {
+  border: 2px solid rgba(148, 163, 184, 0.28);
+  background: linear-gradient(160deg, rgba(15, 23, 42, 0.78), rgba(2, 6, 23, 0.85));
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow:
+    inset 0 0 12px rgba(59, 130, 246, 0.08),
+    0 8px 0 rgba(15, 23, 42, 0.6);
+  position: relative;
+  min-height: 0;
+}
+
+.account-card h3 {
+  margin-top: 0;
+  font-size: 11px;
+  color: #7dd3fc;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 0 0 6px rgba(34, 211, 238, 0.3);
+}
+
+.account-value {
+  font-size: 18px;
+  color: var(--neon);
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+
+.profile-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.profile-row .account-value {
+  margin-bottom: 4px;
+}
+
+.profile-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 8px;
+  align-items: center;
+}
+
+.account-stat {
+  font-size: 10px;
+  color: var(--text);
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.account-stat span {
+  color: var(--neon-2);
+}
+
+.account-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  align-items: stretch;
+}
+
+#account .account-summary .account-card,
+#account #gameStats .account-card {
+  height: 120px;
+}
+
+#account .account-summary .account-card,
+#account #gameStats .account-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+#account #gameStats .account-card h3 {
+  margin-top: 0;
+}
+
+.account-list {
+  display: grid;
+  gap: 6px;
+  font-size: 10px;
+}
+
+.account-section-gap {
+  margin-bottom: 20px;
+}
+
+
+.account-controls .btn,
+.account-controls .auth-user {
+  border-radius: 999px;
+}
+
+.account-controls .btn {
+  padding: 6px 10px;
+}
+
+.account-controls .btn.ghost {
+  border-color: rgba(125, 211, 252, 0.5);
+  box-shadow: inset 0 0 10px rgba(125, 211, 252, 0.15);
+}
+
+.account-controls .auth-user {
+  padding: 4px 10px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.7);
+  color: #e2e8f0;
+}
+
+.account-list div {
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.6);
+  color: #e2e8f0;
 }
 
 .footer {

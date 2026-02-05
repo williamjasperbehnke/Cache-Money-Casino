@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cache Money Casino - Account</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="centerToast" class="center-toast-stack" aria-live="polite"></div>
+    <header class="topbar">
+      <div class="logo">CACHE MONEY CASINO</div>
+      <div class="balance" aria-live="polite">
+        BANK: <span id="balance">$0</span>
+        <span id="balanceDelta" class="balance-delta" aria-live="polite"></span>
+      </div>
+      <div class="account-controls">
+        <button id="accountLink" class="btn ghost hidden">Account</button>
+        <button id="signInBtn" class="btn ghost">Sign In</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <nav class="arcade-tabs" role="navigation">
+        <a class="tab" href="poker.html">5-Card Poker</a>
+        <a class="tab" href="holdem.html">Texas Hold'em</a>
+        <a class="tab" href="blackjack.html">Blackjack</a>
+        <a class="tab" href="roulette.html">Roulette</a>
+        <a class="tab" href="slots.html">Slots</a>
+      </nav>
+
+      <section class="panel" id="account">
+        <h2>Account</h2>
+        <div class="account-summary account-summary-top">
+          <div class="account-card account-wide">
+            <h3>Profile</h3>
+            <div class="profile-row">
+              <div>
+                <div id="accountName" class="account-value">Guest</div>
+                <div id="accountBalance" class="account-value">$0</div>
+              </div>
+              <div class="profile-actions">
+                <button id="freeCreditsBtn" class="btn ghost hidden">Free Credits</button>
+                <button id="signOutBtn" class="btn ghost hidden">Sign Out</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="account-summary account-summary-bottom">
+          <div class="account-card">
+            <h3>Totals</h3>
+            <div class="account-stat">Total Bets: <span id="statTotalBets">0</span></div>
+            <div class="account-stat">Wins: <span id="statWins">0</span></div>
+            <div class="account-stat">Losses: <span id="statLosses">0</span></div>
+            <div class="account-stat">Net Profit: <span id="statNet">0</span></div>
+          </div>
+          <div class="account-card">
+            <h3>Favorite Game</h3>
+            <div id="statFavorite" class="account-value">—</div>
+            <div class="account-stat">Best Win Rate: <span id="statWinRate">—</span></div>
+          </div>
+        </div>
+        <div class="account-card account-section-gap">
+          <h3>Per Game</h3>
+          <div id="gameStats" class="account-grid"></div>
+        </div>
+        <div class="account-card">
+          <h3>Recent Results</h3>
+          <div id="recentResults" class="account-list"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      For entertainment purposes only. Gamble responsibly with your imaginary chips.
+    </footer>
+
+    <div id="authBackdrop" class="modal-backdrop hidden"></div>
+    <div id="authModal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-content">
+        <h3 id="authTitle">Sign In</h3>
+        <div id="authMessage" class="modal-message"></div>
+        <form id="authForm">
+          <input id="authUsername" type="text" placeholder="Username" autocomplete="username" />
+          <div class="password-field">
+            <input
+              id="authPassword"
+              type="password"
+              placeholder="Password"
+              autocomplete="current-password"
+            />
+            <button type="button" id="authTogglePassword" class="btn ghost small">Show</button>
+          </div>
+          <button type="submit" class="btn">Continue</button>
+          <button type="button" id="authToggle" class="btn ghost">Create account</button>
+        </form>
+      </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script type="module" src="js/account.js"></script>
+  </body>
+</html>
