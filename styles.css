@@ -1323,6 +1323,10 @@ h3 {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
+  .reel-window span {
+    transform: translateY(10px);
+  }
+
   .payout-card span {
     font-size: 14px;
   }
@@ -1410,7 +1414,7 @@ h3 {
 .reel-window span {
   display: block;
   text-decoration: none;
-  padding-bottom: 2px;
+  padding-bottom: 4px;
   height: 100%;
   line-height: 1;
   display: grid;

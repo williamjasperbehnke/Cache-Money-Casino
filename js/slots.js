@@ -66,20 +66,22 @@ export class SlotsGame {
   buildReelStrip(reel) {
     const measured = Math.round(reel.getBoundingClientRect().height) || reel.clientHeight || 96;
     const height = measured > 10 ? measured : 96;
+    const isMobile = window.matchMedia("(max-width: 520px)").matches;
+    const extraGap = isMobile ? 16 : 0;
+    const symbolHeight = height + extraGap;
     const windowEl = document.createElement("div");
     windowEl.className = "reel-window";
     const symbolCount = SLOT_SYMBOLS.length;
     const maxCycles = 4;
     const total = symbolCount * (maxCycles + 1);
-    windowEl.style.height = `${height * total}px`;
+    windowEl.style.height = `${symbolHeight * total}px`;
     windowEl.dataset.symbolCount = String(symbolCount);
     windowEl.dataset.stripTotal = String(total);
-    windowEl.dataset.symbolHeight = String(height);
+    windowEl.dataset.symbolHeight = String(symbolHeight);
     for (let i = 0; i < total; i += 1) {
       const span = document.createElement("span");
       span.textContent = SLOT_SYMBOLS[i % symbolCount];
-      span.style.setProperty("--symbol-offset", "2px");
-      span.style.height = `${height}px`;
+      span.style.height = `${symbolHeight}px`;
       windowEl.appendChild(span);
     }
     reel.textContent = "";
