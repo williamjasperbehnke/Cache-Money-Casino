@@ -447,3 +447,65 @@ export function updateBetTotal(amount, totalId) {
 export function animateChip(fromEl, toEl) {
   ChipRenderer.animate(fromEl, toEl);
 }
+
+export function bindBetChips({
+  chips,
+  canBet,
+  getBalance,
+  getToCall = () => 0,
+  getBetAmount,
+  setBetAmount,
+  onUpdate,
+  onHit,
+  onClosed,
+}) {
+  if (!chips) return;
+  const list = Array.from(chips);
+  const canPlace = () => {
+    if (canBet()) return true;
+    if (onClosed) onClosed();
+    return false;
+  };
+  const commit = (next) => {
+    setBetAmount(next);
+    if (onUpdate) onUpdate();
+    if (onHit) onHit();
+  };
+  const clampToBalance = (next) => {
+    const toCall = getToCall();
+    const cap = Math.max(0, getBalance() - toCall);
+    return Math.min(cap, Math.max(0, next));
+  };
+
+  list.forEach((chip) => {
+    if (chip.classList.contains("all-in")) {
+      chip.addEventListener("click", () => {
+        if (!canPlace()) return;
+        const toCall = getToCall();
+        const cap = Math.max(0, getBalance() - toCall);
+        const next = Math.max(1, cap);
+        commit(next);
+      });
+      chip.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        if (!canPlace()) return;
+        commit(0);
+      });
+      return;
+    }
+
+    const amount = Number(chip.dataset.amount) || 0;
+    chip.addEventListener("click", () => {
+      if (!canPlace()) return;
+      const next = clampToBalance(getBetAmount() + amount);
+      commit(next);
+    });
+
+    chip.addEventListener("contextmenu", (event) => {
+      event.preventDefault();
+      if (!canPlace()) return;
+      const next = clampToBalance(getBetAmount() - amount);
+      commit(next);
+    });
+  });
+}

@@ -13,6 +13,7 @@ import {
   draw,
   handTotal,
   makeChipStack,
+  bindBetChips,
 } from "./core.js";
 
 const MAX_BET = 100;
@@ -268,15 +269,22 @@ export class BlackjackGame {
   }
 
   bindEvents() {
-    const { dealBtn, hitBtn, standBtn, doubleBtn, splitBtn, clearBtn, maxBtn, chips } = this.ui;
+    const { dealBtn, hitBtn, standBtn, doubleBtn, splitBtn, clearBtn, maxBtn } = this.ui;
 
-    chips?.forEach((chip) => {
-      const amount = Number(chip.dataset.amount) || 0;
-      chip.addEventListener("click", () => this.addBet(amount));
-      chip.addEventListener("contextmenu", (event) => {
-        event.preventDefault();
-        this.removeBet(amount);
-      });
+    bindBetChips({
+      chips: this.ui.chips,
+      canBet: () => !state.blackjack.inRound,
+      getBalance: () => Math.min(state.balance, MAX_BET),
+      getBetAmount: () => state.blackjack.betAmount,
+      setBetAmount: (amount) => {
+        if (amount === state.blackjack.betAmount && amount === MAX_BET) {
+          showCenterToast("Max bet is $100.", "danger");
+        }
+        state.blackjack.betAmount = amount;
+      },
+      onUpdate: () => this.updateTotal(),
+      onHit: () => playSfx("hit"),
+      onClosed: () => showCenterToast("Round running.", "danger"),
     });
 
     clearBtn?.addEventListener("click", () => {

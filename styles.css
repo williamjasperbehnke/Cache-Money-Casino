@@ -1050,7 +1050,7 @@ h3 {
 .slot-machine {
   position: relative;
   max-width: 520px;
-  margin: 0 auto 10px;
+  margin: 0 auto 24px;
   padding: 20px 18px 26px;
   border: 6px solid #1d4ed8;
   border-radius: 30px;
@@ -1320,7 +1320,7 @@ h3 {
 
 @media (max-width: 520px) {
   .payout-grid {
-    grid-template-columns: repeat(2, 100px);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .payout-card span {
@@ -1411,7 +1411,6 @@ h3 {
   display: block;
   text-decoration: none;
   padding-bottom: 2px;
-  transform: translateY(var(--symbol-offset, 4px));
   height: 100%;
   line-height: 1;
   display: grid;
@@ -1657,6 +1656,42 @@ body.small-win .topbar {
   }
 }
 
+@keyframes screen-shake-mobile {
+  0% {
+    transform: translate(0, 0) scale(0.69);
+  }
+  25% {
+    transform: translate(-4px, 2px) scale(0.69);
+  }
+  50% {
+    transform: translate(4px, -2px) scale(0.69);
+  }
+  75% {
+    transform: translate(-3px, -1px) scale(0.69);
+  }
+  100% {
+    transform: translate(0, 0) scale(0.69);
+  }
+}
+
+@keyframes screen-shake-small-mobile {
+  0% {
+    transform: translate(0, 0) scale(0.69);
+  }
+  25% {
+    transform: translate(2px, -2px) scale(0.69);
+  }
+  50% {
+    transform: translate(-2px, 2px) scale(0.69);
+  }
+  75% {
+    transform: translate(2px, 0) scale(0.69);
+  }
+  100% {
+    transform: translate(0, 0) scale(0.69);
+  }
+}
+
 @media (max-width: 700px) {
   .topbar {
     flex-direction: column;
@@ -1673,6 +1708,327 @@ body.small-win .topbar {
     font-size: 12px;
   }
 }
+
+@media (max-width: 480px) {
+  body.big-win .layout {
+    animation: screen-shake-mobile 0.35s ease;
+  }
+
+  body.small-win .layout {
+    animation: screen-shake-small-mobile 0.28s ease;
+  }
+
+  .topbar {
+    display: grid;
+    position: static;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "logo logo"
+      "balance reset";
+    align-items: center;
+    gap: 12px 10px;
+  }
+
+  .logo {
+    grid-area: logo;
+    text-align: center;
+    font-size: 11px;
+    letter-spacing: 0.4px;
+  }
+
+  .balance {
+    grid-area: balance;
+    font-size: 9px;
+    padding: 3px 6px;
+  }
+
+  .topbar #resetBank {
+    grid-area: reset;
+    padding: 4px 8px;
+    font-size: 9px;
+  }
+
+  .layout {
+    transform: scale(0.69);
+    transform-origin: top left;
+    max-width: 100%;
+  }
+
+  .panel {
+    width: 150%;
+  }
+
+  .arcade-tabs {
+    width: 150%;
+  }
+
+  .topbar {
+    width: 100%;
+  }
+
+  #holdemBettingPanel {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #holdemBettingPanel .chip-stack {
+    order: 2;
+    justify-content: center;
+    margin-top: -16px;
+    margin-bottom: 8px;
+  }
+
+  #holdemBettingPanel .chips {
+    order: 1;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  #pokerBettingPanel {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  #pokerBettingPanel .chip-stack {
+    order: 2;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+
+  #pokerBettingPanel .chips {
+    order: 1;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 0;
+  }
+
+  #blackjack .table {
+    display: flex;
+    flex-direction: column;
+  }
+
+  #blackjack .table > div:first-child {
+    order: 1;
+  }
+
+  #blackjack .table > div:last-child {
+    order: 2;
+  }
+
+  #holdem .table {
+    display: flex;
+    flex-direction: column;
+  }
+
+  #holdem .table > div:first-child {
+    order: 1;
+  }
+
+  #holdem .table > div:last-child {
+    order: 2;
+  }
+
+  #holdem #holdemCommunity {
+    margin-bottom: 12px;
+  }
+
+  #holdem .table > div:first-child {
+    margin-bottom: -12px;
+  }
+
+  #holdemBetRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  #holdemBetRow .poker-actions-inline {
+    display: flex;
+    flex: 0 0 100%;
+    width: 100%;
+    order: 4;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  #holdemBetLabel {
+    order: 1;
+    flex: 0 0 auto;
+  }
+
+  #holdemDeal {
+    order: 3;
+    flex: 0 0 100%;
+    margin-left: 0;
+  }
+
+  #holdemBetTotal {
+    order: 2;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  #holdemClearTable {
+    order: 5;
+    flex: 0 0 100%;
+    margin-top: -8px;
+  }
+
+  #holdemRaise {
+    order: 1;
+    flex: 1 1 36%;
+  }
+
+  #holdemClearBet {
+    order: 1;
+    flex: 1 1 30%;
+  }
+
+  #holdemFold {
+    order: 1;
+    flex: 1 1 30%;
+  }
+
+  #pokerBetRow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+  }
+
+  #pokerBetRow .poker-actions-inline {
+    display: flex;
+    flex: 0 0 100%;
+    width: 100%;
+    order: 4;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  #pokerBetLabel {
+    order: 1;
+    flex: 0 0 auto;
+  }
+
+  #pokerDeal {
+    order: 3;
+    flex: 0 0 100%;
+    margin-left: 0;
+  }
+
+  #pokerBetTotal {
+    order: 2;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  #pokerClearTable {
+    order: 5;
+    flex: 0 0 100%;
+    margin-top: -8px;
+  }
+
+  #pokerDraw,
+  #pokerClearBet,
+  #pokerCallRaise,
+  #pokerFold {
+    order: 1;
+    flex: 1 1 30%;
+  }
+
+  #blackjack .bet-row {
+    align-items: center;
+    gap: 8px;
+  }
+
+  #blackjack .bet-row > label:not(.auto-toggle) {
+    display: inline-block;
+  }
+
+  #blackjack #bjBetTotal {
+    order: 1;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  #blackjack #bjBetTotal::before {
+    content: "";
+    margin-right: 0;
+  }
+
+  #blackjack .bj-auto {
+    order: 2;
+    flex: 0 0 auto;
+    margin-left: auto;
+    justify-content: flex-end;
+  }
+
+  #blackjack .bj-play-actions {
+    order: 3;
+    flex: 1 1 100%;
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    margin-left: 0;
+  }
+
+  #blackjack .bj-play-actions .btn:first-child {
+    margin-left: 0;
+  }
+
+  #blackjack .bj-play-actions .btn {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  #blackjack #bjDeal,
+  #blackjack #bjClear,
+  #blackjack #bjMax {
+    order: 4;
+    flex: 1 1 30%;
+    margin-top: -8px;
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  #roulette .bet-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      "label total auto"
+      "spin clear chaos";
+    gap: 10px;
+    align-items: center;
+  }
+
+  #roulette .bet-row label:not(.roulette-auto) {
+    grid-area: label;
+  }
+
+  #roulette #rouletteBet {
+    grid-area: total;
+  }
+
+  #roulette .roulette-auto {
+    grid-area: auto;
+    margin-left: 0;
+    justify-self: end;
+  }
+
+  #roulette #rouletteSpin {
+    grid-area: spin;
+  }
+
+  #roulette #rouletteClear {
+    grid-area: clear;
+  }
+
+  #roulette #rouletteChaos {
+    grid-area: chaos;
+  }
+}
+
 .poker-betting-panel {
   display: flex;
   align-items: center;

@@ -12,15 +12,12 @@ import {
   draw,
   makeChipStack,
   updateBetTotal,
+  bindBetChips,
 } from "./core.js";
 
 const BETTING_PHASES = new Set(["preflop", "flop", "turn", "river"]);
 
 export class HoldemGame {
-  static byId(id) {
-    return document.getElementById(id);
-  }
-
   static evaluateHand(cards) {
     const values = cards.map((card) => card.value()).sort((a, b) => a - b);
     const counts = {};
@@ -144,22 +141,23 @@ export class HoldemGame {
 
   cacheElements() {
     this.ui = {
-      dealBtn: HoldemGame.byId("holdemDeal"),
-      raiseBtn: HoldemGame.byId("holdemRaise"),
-      foldBtn: HoldemGame.byId("holdemFold"),
-      clearBtn: HoldemGame.byId("holdemClearTable"),
-      betTotal: HoldemGame.byId("holdemBetTotal"),
-      betLabel: HoldemGame.byId("holdemBetLabel"),
-      potStack: HoldemGame.byId("holdemPotStack"),
+      dealBtn: document.getElementById("holdemDeal"),
+      raiseBtn: document.getElementById("holdemRaise"),
+      clearBetBtn: document.getElementById("holdemClearBet"),
+      foldBtn: document.getElementById("holdemFold"),
+      clearBtn: document.getElementById("holdemClearTable"),
+      betTotal: document.getElementById("holdemBetTotal"),
+      betLabel: document.getElementById("holdemBetLabel"),
+      potStack: document.getElementById("holdemPotStack"),
       chips: document.querySelectorAll("#holdem .chip"),
-      community: HoldemGame.byId("holdemCommunity"),
-      player: HoldemGame.byId("holdemPlayer"),
-      dealer: HoldemGame.byId("holdemDealer"),
-      playerResult: HoldemGame.byId("holdemPlayerResult"),
-      dealerResult: HoldemGame.byId("holdemDealerResult"),
-      bettingPanel: HoldemGame.byId("holdemBettingPanel"),
-      playerBlindTag: HoldemGame.byId("holdemPlayerBlindTag"),
-      dealerBlindTag: HoldemGame.byId("holdemDealerBlindTag"),
+      community: document.getElementById("holdemCommunity"),
+      player: document.getElementById("holdemPlayer"),
+      dealer: document.getElementById("holdemDealer"),
+      playerResult: document.getElementById("holdemPlayerResult"),
+      dealerResult: document.getElementById("holdemDealerResult"),
+      bettingPanel: document.getElementById("holdemBettingPanel"),
+      playerBlindTag: document.getElementById("holdemPlayerBlindTag"),
+      dealerBlindTag: document.getElementById("holdemDealerBlindTag"),
     };
   }
 
@@ -232,6 +230,10 @@ export class HoldemGame {
       "hidden",
       !inBetting || state.holdem.awaitingClear || skipping
     );
+    this.ui.clearBetBtn?.classList.toggle(
+      "hidden",
+      !inBetting || state.holdem.awaitingClear || skipping
+    );
     this.ui.clearBtn?.classList.toggle("hidden", !state.holdem.awaitingClear);
 
     if (this.ui.bettingPanel) {
@@ -281,7 +283,7 @@ export class HoldemGame {
     const desiredDealerBlind = dealerButton ? blindSmall : blindBig;
     const available = state.balance;
     const playerBlind = Math.min(desiredPlayerBlind, available);
-    const dealerBlind = Math.min(Math.max(desiredDealerBlind, playerBlind), available);
+    const dealerBlind = Math.min(desiredDealerBlind, available);
     if (playerBlind <= 0) {
       showCenterToast("Not enough credits.", "danger");
       return false;
@@ -302,6 +304,7 @@ export class HoldemGame {
       showCenterToast("Round already running.", "danger");
       return;
     }
+    playSfx("deal");
     state.holdem.inRound = true;
     const nextDealerButton = !state.holdem.dealerButton;
     if (!this.postBlinds(nextDealerButton)) {
@@ -357,6 +360,9 @@ export class HoldemGame {
       this.finishShowdown();
     } else {
       if (!silent) {
+        if (["flop", "turn", "river"].includes(state.holdem.phase)) {
+          playSfx("deal");
+        }
         const labels = {
           flop: "Flop dealt.",
           turn: "Turn card.",
@@ -626,46 +632,36 @@ export class HoldemGame {
   }
 
   bindChips() {
-    this.ui.chips?.forEach((chip) => {
-      if (chip.classList.contains("all-in")) {
-        chip.addEventListener("click", () => {
-          if (!BETTING_PHASES.has(state.holdem.phase)) {
-            showCenterToast("Betting is closed.", "danger");
-            return;
-          }
-          const toCall = this.toCallAmount();
-          state.holdem.betAmount = Math.max(1, state.balance - toCall);
-          this.updateButtons();
-        });
-        return;
-      }
-      const amount = Number(chip.dataset.amount) || 0;
-      chip.addEventListener("click", () => {
-        if (!BETTING_PHASES.has(state.holdem.phase)) {
-          showCenterToast("Betting is closed.", "danger");
-          return;
-        }
-        const toCall = this.toCallAmount();
-        const cap = Math.max(0, state.balance - toCall);
-        state.holdem.betAmount = Math.min(cap, state.holdem.betAmount + amount);
-        this.updateButtons();
-        playSfx("hit");
-      });
-      chip.addEventListener("contextmenu", (event) => {
-        event.preventDefault();
-        if (!BETTING_PHASES.has(state.holdem.phase)) {
-          showCenterToast("Betting is closed.", "danger");
-          return;
-        }
-        state.holdem.betAmount = Math.max(0, state.holdem.betAmount - amount);
-        this.updateButtons();
-      });
+    bindBetChips({
+      chips: this.ui.chips,
+      canBet: () =>
+        BETTING_PHASES.has(state.holdem.phase) &&
+        state.holdem.inRound &&
+        !state.holdem.awaitingClear &&
+        !state.holdem.skipBetting,
+      getBalance: () => state.balance,
+      getToCall: () => this.toCallAmount(),
+      getBetAmount: () => state.holdem.betAmount,
+      setBetAmount: (amount) => {
+        state.holdem.betAmount = amount;
+      },
+      onUpdate: () => this.updateButtons(),
+      onHit: () => playSfx("hit"),
+      onClosed: () => showCenterToast("Betting is closed.", "danger"),
     });
   }
 
   bindEvents() {
     this.ui.dealBtn?.addEventListener("click", () => this.startHand());
     this.ui.raiseBtn?.addEventListener("click", () => this.playerAction());
+    this.ui.clearBetBtn?.addEventListener("click", () => {
+      if (!BETTING_PHASES.has(state.holdem.phase)) {
+        showCenterToast("Betting is closed.", "danger");
+        return;
+      }
+      state.holdem.betAmount = 0;
+      this.updateButtons();
+    });
     this.ui.foldBtn?.addEventListener("click", () => this.playerFold());
     this.ui.clearBtn?.addEventListener("click", () => this.resetRound());
     this.bindChips();

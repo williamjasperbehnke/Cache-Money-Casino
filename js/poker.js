@@ -12,6 +12,7 @@ import {
   draw,
   makeChipStack,
   updateBetTotal,
+  bindBetChips,
 } from "./core.js";
 
 const BET_PHASES = new Set(["bet1", "bet2", "bet3"]);
@@ -218,6 +219,16 @@ export class PokerGame {
     this.handleCardClick = this.handleCardClick.bind(this);
   }
 
+  schedulePhaseToast(phase, delay, message, tone, duration) {
+    const fire = () => {
+      if (!state.poker.inRound) return;
+      if (state.poker.phase !== phase) return;
+      showCenterToast(message, tone, duration);
+    };
+    if (delay) setTimeout(fire, delay);
+    else fire();
+  }
+
   betPhaseActive() {
     return BET_PHASES.has(state.poker.phase);
   }
@@ -249,6 +260,7 @@ export class PokerGame {
     const drawBtn = document.getElementById("pokerDraw");
     const callRaiseBtn = document.getElementById("pokerCallRaise");
     const foldBtn = document.getElementById("pokerFold");
+    const clearBetBtn = document.getElementById("pokerClearBet");
     const clearTableBtn = document.getElementById("pokerClearTable");
     const isBetting = this.betPhaseActive() || state.poker.awaitingRaise;
     const isDiscard = this.discardPhaseActive();
@@ -281,6 +293,11 @@ export class PokerGame {
     }
     if (callRaiseBtn) callRaiseBtn.classList.toggle("hidden", !state.poker.awaitingRaise);
     if (foldBtn) foldBtn.classList.toggle("hidden", !state.poker.inRound);
+    if (clearBetBtn)
+      clearBetBtn.classList.toggle(
+        "hidden",
+        !this.betPhaseActive() || state.poker.awaitingRaise
+      );
 
     this.updateDiscardLabel(drawBtn);
   }
@@ -342,18 +359,35 @@ export class PokerGame {
     const drawButton = document.getElementById("pokerDraw");
     drawButton?.classList.add("hidden");
 
-    const showToast = () => {
-      showCenterToast("No credits left. Skipping betting.", "danger", 2200);
-    };
-
-    if (delayToast) setTimeout(showToast, delayToast);
-    else showToast();
-
-    const nextPhase = state.poker.phase === "bet1" ? "discard1" : "discard2";
+    const nextPhase =
+      state.poker.phase === "bet1"
+        ? "discard1"
+        : state.poker.phase === "bet2"
+          ? "discard2"
+          : "reveal";
     state.poker.phase = nextPhase;
     this.updateUiForPhase();
+    const skipDuration = 2200;
+    this.schedulePhaseToast(
+      nextPhase,
+      delayToast,
+      "No credits left. Skipping betting.",
+      "danger",
+      skipDuration
+    );
+    if (nextPhase === "reveal") {
+      setTimeout(() => {
+        if (!state.poker.inRound) return;
+        if (state.poker.phase !== "reveal") return;
+        revealDealer("pokerDealer");
+        renderCards("pokerDealer", state.poker.dealer);
+        this.finalizeShowdown(clearTableBtn, foldBtn);
+      }, (delayToast || 0) + skipDuration);
+      return true;
+    }
     if (nextPhase.startsWith("discard")) {
-      showCenterToast("Click cards to discard.", "win", 2200);
+      const discardDelay = (delayToast || 0) + skipDuration;
+      this.schedulePhaseToast(nextPhase, discardDelay, "Click cards to discard.", "win", 2200);
     }
     if (state.poker.phase === "discard2") {
       state.poker.drawRound = 1;
@@ -437,6 +471,7 @@ export class PokerGame {
   init() {
     const dealBtn = document.getElementById("pokerDeal");
     const drawBtn = document.getElementById("pokerDraw");
+    const clearBetBtn = document.getElementById("pokerClearBet");
     const clearTableBtn = document.getElementById("pokerClearTable");
     const callRaiseBtn = document.getElementById("pokerCallRaise");
     const foldBtn = document.getElementById("pokerFold");
@@ -464,56 +499,30 @@ export class PokerGame {
       if (betLabel) betLabel.textContent = state.poker.inRound ? "Total Pot" : "Blind";
     };
 
-    const addPokerBet = (amount) => {
-      if (state.poker.awaitingRaise) return;
-      if (!this.betPhaseActive()) {
+    bindBetChips({
+      chips: pokerChips,
+      canBet: () => this.betPhaseActive() && !state.poker.awaitingRaise,
+      getBalance: () => state.balance,
+      getBetAmount: () => state.poker.betAmount,
+      setBetAmount: (amount) => {
+        state.poker.betAmount = amount;
+      },
+      onUpdate: () => {
+        updatePokerTotal();
+        this.updateUiForPhase();
+      },
+      onHit: () => playSfx("hit"),
+      onClosed: () => showCenterToast("Betting is closed.", "danger"),
+    });
+
+    clearBetBtn?.addEventListener("click", () => {
+      if (!this.betPhaseActive() || state.poker.awaitingRaise) {
         showCenterToast("Betting is closed.", "danger");
         return;
       }
-      if (state.poker.betAmount + amount > state.balance) {
-        showCenterToast("Not enough credits.", "danger");
-        return;
-      }
-      state.poker.betAmount += amount;
+      state.poker.betAmount = 0;
       updatePokerTotal();
       this.updateUiForPhase();
-    };
-
-    const removePokerBet = (amount) => {
-      if (state.poker.awaitingRaise) return;
-      if (!this.betPhaseActive()) {
-        showCenterToast("Betting is closed.", "danger");
-        return;
-      }
-      state.poker.betAmount = Math.max(0, state.poker.betAmount - amount);
-      updatePokerTotal();
-      this.updateUiForPhase();
-    };
-
-    pokerChips.forEach((chip) => {
-      if (chip.classList.contains("mini-chip")) {
-        chip.addEventListener("click", () => {
-          if (state.poker.inRound) {
-            if (this.betPhaseActive()) {
-              state.poker.betAmount = Math.max(1, state.balance);
-              updatePokerTotal();
-              this.updateUiForPhase();
-            } else {
-              showCenterToast("Betting is closed.", "danger");
-            }
-            return;
-          }
-          state.poker.blind = Math.max(1, state.balance);
-          updatePokerTotal();
-        });
-        return;
-      }
-      const amount = Number(chip.dataset.amount) || 0;
-      chip.addEventListener("click", () => addPokerBet(amount));
-      chip.addEventListener("contextmenu", (event) => {
-        event.preventDefault();
-        removePokerBet(amount);
-      });
     });
 
     dealBtn?.addEventListener("click", () => {
@@ -629,6 +638,24 @@ export class PokerGame {
         if (action === "raise") {
           const cap = Math.max(0, state.balance);
           const raiseAmount = Math.min(cap, Math.max(5, Math.round(state.poker.pot * raisePct)));
+          if (raiseAmount <= 0) {
+            state.poker.pot += bet;
+            updatePokerTotal();
+            state.poker.nextPhase = "";
+            this.setPhase(nextPhase, drawBtn);
+            if (nextPhase.startsWith("discard")) {
+              showCenterToast("Click cards to discard.", "win", 2200);
+            }
+            if (this.skipBettingIfBroke(drawBtn, clearTableBtn, foldBtn)) return;
+            if (nextPhase.startsWith("discard")) {
+              state.poker.canDiscard = true;
+              state.poker.discards = new Set();
+              this.renderDiscards();
+              updatePokerTotal();
+              this.updateUiForPhase();
+            }
+            return;
+          }
           state.poker.pendingCall = raiseAmount;
           state.poker.awaitingRaise = true;
           state.poker.betRaise = raiseAmount;

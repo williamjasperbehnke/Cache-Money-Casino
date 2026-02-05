@@ -64,7 +64,8 @@ export class SlotsGame {
   }
 
   buildReelStrip(reel) {
-    const height = reel.clientHeight || 96;
+    const measured = Math.round(reel.getBoundingClientRect().height) || reel.clientHeight || 96;
+    const height = measured > 10 ? measured : 96;
     const windowEl = document.createElement("div");
     windowEl.className = "reel-window";
     const symbolCount = SLOT_SYMBOLS.length;
@@ -299,6 +300,14 @@ export class SlotsGame {
         this.buildReelStrip(reel);
       }
     });
+    const syncReels = () => {
+      this.reels.forEach((reel) => {
+        this.resetReelStripIfNeeded(reel);
+      });
+    };
+    requestAnimationFrame(syncReels);
+    setTimeout(syncReels, 120);
+    setTimeout(syncReels, 300);
     this.bindEvents();
   }
 
