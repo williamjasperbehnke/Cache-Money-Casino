@@ -110,5 +110,5 @@ module "api" {
   users_table_name   = aws_dynamodb_table.users.name
   users_table_arn    = aws_dynamodb_table.users.arn
   jwt_secret_arn     = aws_secretsmanager_secret.jwt.arn
-  cors_origin        = var.domain_name != "" ? "https://${var.domain_name}" : "*"
+  cors_origin        = var.cors_origin
 }

@@ -45,6 +45,12 @@ variable "jwt_secret_name" {
   default     = "casino-jwt-secret"
 }
 
+variable "cors_origin" {
+  type        = string
+  description = "CORS allowed origin for the API (use * for development)."
+  default     = "*"
+}
+
 variable "domain_name" {
   type        = string
   description = "Optional custom domain (leave empty to use CloudFront URL)."
