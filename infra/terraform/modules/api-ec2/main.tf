@@ -131,6 +131,7 @@ resource "aws_instance" "api" {
               aws s3 cp "s3://${var.artifact_bucket}/${var.api_artifact_key}" /opt/casino-api/server.zip
               cd /opt/casino-api
               unzip -o server.zip
+              cd /opt/casino-api/backend
               npm install --production
 
               SECRET=$(aws secretsmanager get-secret-value --secret-id "${var.jwt_secret_arn}" --query SecretString --output text)
@@ -145,8 +146,8 @@ resource "aws_instance" "api" {
               Environment=CORS_ORIGIN=${var.cors_origin}
               Environment=JWT_SECRET=$SECRET
               Environment=PORT=${var.api_port}
-              WorkingDirectory=/opt/casino-api
-              ExecStart=/usr/bin/node index.js
+              WorkingDirectory=/opt/casino-api/backend
+              ExecStart=/usr/bin/node /opt/casino-api/backend/index.js
               Restart=always
 
               [Install]
