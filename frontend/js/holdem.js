@@ -333,7 +333,11 @@ export class HoldemGame {
         }
       })
       .catch((err) => {
-        showCenterToast(err.message || "Deal failed.", "danger");
+        if ((err.message || "").toLowerCase().includes("not enough credits")) {
+          showCenterToast("Need more credits to cover the blind.", "danger");
+        } else {
+          showCenterToast(err.message || "Deal failed.", "danger");
+        }
       });
   }
 

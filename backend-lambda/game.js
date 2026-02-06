@@ -862,7 +862,6 @@ exports.handler = async (event) => {
     const advanceToShowdownIfBroke = () => {
       if (nextBalance > 0) return false;
       state.skipBetting = true;
-      messages.push({ text: "No credits left. Skipping betting.", tone: "danger", duration: 2400 });
       while (state.inRound && HOLDEM_BETTING_PHASES.has(state.phase)) {
         holdemAdvancePhase(state);
       }
@@ -1023,6 +1022,11 @@ exports.handler = async (event) => {
     }
 
     if (advanceToShowdownIfBroke()) {
+      messages.unshift({
+        text: "No credits left. Skipping betting.",
+        tone: "danger",
+        duration: 2400,
+      });
       const showdown = finishShowdown();
       const finalBalance = await persistBalance(session, user, nextBalance);
       return jsonResponse(200, { state, balance: finalBalance, messages, ...showdown }, CORS_ORIGIN);
