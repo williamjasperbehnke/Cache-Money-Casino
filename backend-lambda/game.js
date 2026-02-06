@@ -32,6 +32,135 @@ const PAYOUTS = {
   any2: { multiplier: 1.5, key: "2-any" },
 };
 
+const BJ_RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
+const BJ_SUITS = ["♠", "♥", "♦", "♣"];
+
+const buildDeck = () => {
+  const deck = [];
+  BJ_SUITS.forEach((suit) => {
+    BJ_RANKS.forEach((rank) => {
+      deck.push({ rank, suit });
+    });
+  });
+  return deck;
+};
+
+const shuffle = (deck) => {
+  const arr = deck.slice();
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+};
+
+const draw = (deck) => deck.shift();
+
+const handTotal = (hand) => {
+  let total = 0;
+  let aces = 0;
+  hand.forEach((card) => {
+    if (card.rank === "A") {
+      aces += 1;
+      total += 11;
+    } else if (["K", "Q", "J"].includes(card.rank)) {
+      total += 10;
+    } else {
+      total += Number(card.rank);
+    }
+  });
+  while (total > 21 && aces > 0) {
+    total -= 10;
+    aces -= 1;
+  }
+  return total;
+};
+
+const initBlackjackState = (bet) => {
+  const deck = shuffle(buildDeck());
+  const hands = [[draw(deck), draw(deck)]];
+  const dealer = [draw(deck), draw(deck)];
+  return {
+    deck,
+    hands,
+    dealer,
+    bets: [bet],
+    doubled: [false],
+    busted: [false],
+    activeHand: 0,
+    splitUsed: false,
+    inRound: true,
+    revealDealer: false,
+  };
+};
+
+const canSplit = (state) => {
+  if (state.splitUsed) return false;
+  const hand = state.hands[state.activeHand] || [];
+  return hand.length === 2 && hand[0].rank === hand[1].rank;
+};
+
+const advanceHand = (state) => {
+  if (state.activeHand < state.hands.length - 1) {
+    state.activeHand += 1;
+    return false;
+  }
+  return true;
+};
+
+const resolveDealer = (state) => {
+  const allBusted = state.hands.every((hand, idx) => state.busted[idx] || handTotal(hand) > 21);
+  if (!allBusted) {
+    while (handTotal(state.dealer) < 17) {
+      state.dealer.push(draw(state.deck));
+    }
+  }
+  state.revealDealer = true;
+  state.inRound = false;
+};
+
+const resolveBlackjack = (state) => {
+  resolveDealer(state);
+  const dealerTotal = handTotal(state.dealer);
+  const outcomes = [];
+  let payoutTotal = 0;
+  state.hands.forEach((hand, index) => {
+    const bet = state.bets[index];
+    const total = handTotal(hand);
+    if (state.busted[index] || total > 21) {
+      outcomes.push({ index, result: "loss", net: -bet });
+      return;
+    }
+    if (dealerTotal > 21 || total > dealerTotal) {
+      payoutTotal += bet * 2;
+      outcomes.push({ index, result: "win", net: bet });
+      return;
+    }
+    if (dealerTotal === total) {
+      payoutTotal += bet;
+      outcomes.push({ index, result: "push", net: 0 });
+      return;
+    }
+    outcomes.push({ index, result: "loss", net: -bet });
+  });
+  return { dealerTotal, outcomes, payoutTotal };
+};
+
+const applyBlackjackStats = (user, state, outcomes) => {
+  if (!user) return;
+  outcomes.forEach((outcome) => {
+    const bet = state.bets[outcome.index];
+    const net = outcome.net;
+    const result = net > 0 ? "win" : net < 0 ? "loss" : "push";
+    user.stats = updateStats(user.stats, {
+      game: "blackjack",
+      bet,
+      net,
+      result,
+    });
+  });
+};
+
 const getSession = async (token) => {
   if (!token) return null;
   const resp = await get({
@@ -311,6 +440,173 @@ exports.handler = async (event) => {
       },
       CORS_ORIGIN
     );
+  }
+
+  if (method === "POST" && path.endsWith("/games/blackjack/deal")) {
+    const { bet } = parseJson(event);
+    const wager = Number(bet);
+    if (!Number.isFinite(wager) || wager <= 0) {
+      return jsonResponse(400, { error: "Invalid bet." }, CORS_ORIGIN);
+    }
+    const { user, balance } = await resolveBalance(session);
+    if (balance < wager) {
+      return jsonResponse(400, { error: "Not enough credits." }, CORS_ORIGIN);
+    }
+    const state = initBlackjackState(wager);
+    const nextBalance = await persistBalance(session, user, balance - wager);
+    return jsonResponse(
+      200,
+      {
+        state,
+        balance: nextBalance,
+        message: null,
+      },
+      CORS_ORIGIN
+    );
+  }
+
+  if (method === "POST" && path.endsWith("/games/blackjack/hit")) {
+    const { state } = parseJson(event);
+    if (!state || !state.inRound) {
+      return jsonResponse(400, { error: "Round not running." }, CORS_ORIGIN);
+    }
+    const hand = state.hands[state.activeHand];
+    hand.push(draw(state.deck));
+    const total = handTotal(hand);
+    const messages = [];
+    if (total > 21) {
+      state.busted[state.activeHand] = true;
+      const multiple = state.hands.length > 1;
+      messages.push({
+        text: multiple ? `Hand ${state.activeHand + 1} busts.` : "You bust.",
+        tone: "danger",
+      });
+      const done = advanceHand(state);
+      if (done) {
+      const { outcomes, payoutTotal } = resolveBlackjack(state);
+      const { user, balance } = await resolveBalance(session);
+      applyBlackjackStats(user, state, outcomes);
+      const nextBalance = await persistBalance(session, user, balance + payoutTotal);
+      if (user) await putUser(user);
+      return jsonResponse(
+        200,
+        {
+          state,
+          outcomes,
+          payoutTotal,
+          messages,
+          balance: nextBalance,
+        },
+        CORS_ORIGIN
+      );
+      }
+    }
+    return jsonResponse(200, { state, messages }, CORS_ORIGIN);
+  }
+
+  if (method === "POST" && path.endsWith("/games/blackjack/stand")) {
+    const { state } = parseJson(event);
+    if (!state || !state.inRound) {
+      return jsonResponse(400, { error: "Round not running." }, CORS_ORIGIN);
+    }
+    const done = advanceHand(state);
+    if (done) {
+      const { outcomes, payoutTotal } = resolveBlackjack(state);
+      const { user, balance } = await resolveBalance(session);
+      applyBlackjackStats(user, state, outcomes);
+      const nextBalance = await persistBalance(session, user, balance + payoutTotal);
+      if (user) await putUser(user);
+      return jsonResponse(
+        200,
+        {
+          state,
+          outcomes,
+          payoutTotal,
+          messages: [],
+          balance: nextBalance,
+        },
+        CORS_ORIGIN
+      );
+    }
+    return jsonResponse(200, { state, messages: [] }, CORS_ORIGIN);
+  }
+
+  if (method === "POST" && path.endsWith("/games/blackjack/double")) {
+    const { state } = parseJson(event);
+    if (!state || !state.inRound) {
+      return jsonResponse(400, { error: "Round not running." }, CORS_ORIGIN);
+    }
+    const hand = state.hands[state.activeHand];
+    if (hand.length !== 2) {
+      return jsonResponse(400, { error: "Cannot double now." }, CORS_ORIGIN);
+    }
+    const bet = state.bets[state.activeHand];
+    const { user, balance } = await resolveBalance(session);
+    if (balance < bet) {
+      return jsonResponse(400, { error: "Not enough credits." }, CORS_ORIGIN);
+    }
+    const nextBalance = await persistBalance(session, user, balance - bet);
+    state.bets[state.activeHand] = bet * 2;
+    state.doubled[state.activeHand] = true;
+    hand.push(draw(state.deck));
+    const total = handTotal(hand);
+    const messages = [];
+    if (total > 21) {
+      state.busted[state.activeHand] = true;
+      const multiple = state.hands.length > 1;
+      messages.push({
+        text: multiple ? `Hand ${state.activeHand + 1} busts.` : "You bust.",
+        tone: "danger",
+      });
+    }
+    const done = advanceHand(state);
+    if (done) {
+      const { outcomes, payoutTotal } = resolveBlackjack(state);
+      applyBlackjackStats(user, state, outcomes);
+      const finalBalance = await persistBalance(session, user, nextBalance + payoutTotal);
+      if (user) await putUser(user);
+      return jsonResponse(
+        200,
+        {
+          state,
+          outcomes,
+          payoutTotal,
+          messages,
+          balance: finalBalance,
+        },
+        CORS_ORIGIN
+      );
+    }
+    return jsonResponse(200, { state, messages, balance: nextBalance }, CORS_ORIGIN);
+  }
+
+  if (method === "POST" && path.endsWith("/games/blackjack/split")) {
+    const { state } = parseJson(event);
+    if (!state || !state.inRound) {
+      return jsonResponse(400, { error: "Round not running." }, CORS_ORIGIN);
+    }
+    if (!canSplit(state)) {
+      return jsonResponse(400, { error: "Cannot split now." }, CORS_ORIGIN);
+    }
+    const bet = state.bets[state.activeHand];
+    const { user, balance } = await resolveBalance(session);
+    if (balance < bet) {
+      return jsonResponse(400, { error: "Not enough credits." }, CORS_ORIGIN);
+    }
+    const nextBalance = await persistBalance(session, user, balance - bet);
+    const hand = state.hands[state.activeHand];
+    const cardA = hand[0];
+    const cardB = hand[1];
+    state.hands = [
+      [cardA, draw(state.deck)],
+      [cardB, draw(state.deck)],
+    ];
+    state.bets = [bet, bet];
+    state.doubled = [false, false];
+    state.busted = [false, false];
+    state.activeHand = 0;
+    state.splitUsed = true;
+    return jsonResponse(200, { state, balance: nextBalance, messages: [] }, CORS_ORIGIN);
   }
 
   return jsonResponse(404, { error: "Not found." }, CORS_ORIGIN);

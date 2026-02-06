@@ -2,15 +2,11 @@ import {
   state,
   updateBalance,
   updateBetTotal,
-  payout,
   playSfx,
   showCenterToast,
   showCenterToasts,
   renderCards,
   revealDealer,
-  buildDeck,
-  shuffle,
-  draw,
   handTotal,
   makeChipStack,
   bindBetChips,
@@ -162,92 +158,81 @@ export class BlackjackGame {
     if (keepBet) updateBetTotal(state.blackjack.betAmount, "bjBetTotal");
   }
 
-  finishRound() {
-    const { autoBet, dealBtn } = this.ui;
-    const dealerTotal = handTotal(state.blackjack.dealer);
-    renderCards("bjDealer", state.blackjack.dealer);
-    revealDealer("bjDealer");
-    if (this.ui.dealerTotal) this.ui.dealerTotal.textContent = `Total: ${dealerTotal}`;
-
-    const outcomeQueue = [];
-    const pending = state.blackjack.pendingMessages || [];
-    state.blackjack.hands.forEach((hand, index) => {
-      if (state.blackjack.busted[index]) return;
-      const playerTotal = handTotal(hand);
-      const bet = state.blackjack.bets[index];
-      const multiple = state.blackjack.hands.length > 1;
-      const labelPrefix = multiple ? `Hand ${index + 1} ` : "";
-      if (playerTotal > 21) {
-        playSfx("lose");
-        outcomeQueue.push({
-          text: multiple ? `${labelPrefix}busts.` : "You bust.",
-          tone: "danger",
-        });
-        auth.recordResult({ game: "blackjack", bet, net: -bet, result: "loss" });
-      } else if (dealerTotal > 21 || playerTotal > dealerTotal) {
-        payout(bet * 2);
-        playSfx("win");
-        outcomeQueue.push({
-          text: multiple ? `${labelPrefix}wins!` : "You win!",
-          tone: "win",
-        });
-        auth.recordResult({ game: "blackjack", bet, net: bet, result: "win" });
-      } else if (dealerTotal === playerTotal) {
-        payout(bet);
-        playSfx("win");
-        outcomeQueue.push({
-          text: multiple ? `${labelPrefix}pushes.` : "Push.",
-          tone: "win",
-        });
-        auth.recordResult({ game: "blackjack", bet, net: 0, result: "push" });
-      } else {
-        playSfx("lose");
-        outcomeQueue.push({
-          text: multiple ? `${labelPrefix}loses.` : "You lose.",
-          tone: "danger",
-        });
-        auth.recordResult({ game: "blackjack", bet, net: -bet, result: "loss" });
-      }
-    });
-
-    const combinedMessages = [...pending, ...outcomeQueue];
-    if (combinedMessages.length > 0) showCenterToasts(combinedMessages);
-    state.blackjack.pendingMessages = [];
-
-    state.blackjack.inRound = false;
-    state.blackjack.awaitingClear = true;
-    const auto = autoBet?.checked;
-    if (!auto) {
-      state.blackjack.betAmount = 0;
-      updateBetTotal(0, "bjBetTotal");
-    } else {
-      this.updateTotal();
+  applyServerState(serverState, balance) {
+    if (!serverState) return;
+    state.blackjack.hands = serverState.hands || [];
+    state.blackjack.dealer = serverState.dealer || [];
+    state.blackjack.bets = serverState.bets || [];
+    state.blackjack.doubled = serverState.doubled || [];
+    state.blackjack.busted = serverState.busted || [];
+    state.blackjack.activeHand = serverState.activeHand || 0;
+    state.blackjack.splitUsed = Boolean(serverState.splitUsed);
+    state.blackjack.inRound = Boolean(serverState.inRound);
+    state.blackjack.revealDealer = Boolean(serverState.revealDealer);
+    state.blackjack.awaitingClear = !state.blackjack.inRound;
+    state.blackjack.deck = serverState.deck || [];
+    if (Number.isFinite(balance)) {
+      state.balance = balance;
+      updateBalance();
     }
-    this.updateControls();
-    setTimeout(() => {
-      this.resetRound(auto);
-      this.updateControls();
-      if (auto) dealBtn?.click();
-      else this.scheduleAutoBet();
-    }, ROUND_RESET_DELAY);
   }
 
-  advanceHandOrDealer() {
-    if (state.blackjack.activeHand < state.blackjack.hands.length - 1) {
-      state.blackjack.activeHand += 1;
-      this.renderHands();
-      this.updateControls();
+  renderDealer() {
+    if (!this.ui.dealerEl) return;
+    if (state.blackjack.revealDealer) {
+      renderCards("bjDealer", state.blackjack.dealer);
+      revealDealer("bjDealer");
+      if (this.ui.dealerTotal) {
+        this.ui.dealerTotal.textContent = `Total: ${handTotal(state.blackjack.dealer)}`;
+      }
       return;
     }
-    const allBusted = state.blackjack.hands.every(
-      (hand, index) => state.blackjack.busted[index] || handTotal(hand) > 21
-    );
-    if (!allBusted) {
-      while (handTotal(state.blackjack.dealer) < 17) {
-        state.blackjack.dealer.push(draw(state.blackjack.deck));
-      }
+    renderCards("bjDealer", state.blackjack.dealer, true);
+    if (this.ui.dealerTotal) this.ui.dealerTotal.textContent = "Total: ?";
+  }
+
+  handleOutcome(outcomes = [], messages = []) {
+    const combined = [...messages];
+    if (outcomes.length > 0) {
+      const multiple = outcomes.length > 1;
+      outcomes.forEach((outcome) => {
+        const labelPrefix = multiple ? `Hand ${outcome.index + 1} ` : "";
+        if (outcome.result === "win") {
+          combined.push({
+            text: multiple ? `${labelPrefix}wins!` : "You win!",
+            tone: "win",
+          });
+        } else if (outcome.result === "push") {
+          combined.push({
+            text: multiple ? `${labelPrefix}pushes.` : "Push.",
+            tone: "win",
+          });
+        } else {
+          combined.push({
+            text: multiple ? `${labelPrefix}loses.` : "You lose.",
+            tone: "danger",
+          });
+        }
+      });
+      const hasWin = outcomes.some((o) => o.result === "win");
+      const hasPush = outcomes.some((o) => o.result === "push");
+      playSfx(hasWin || hasPush ? "win" : "lose");
+    } else if (messages.length > 0) {
+      playSfx("lose");
     }
-    this.finishRound();
+    if (combined.length > 0) showCenterToasts(combined);
+  }
+
+  handleRoundEnd(autoDeal) {
+    const { dealBtn } = this.ui;
+    state.blackjack.awaitingClear = true;
+    this.updateControls();
+    setTimeout(() => {
+      this.resetRound(autoDeal);
+      this.updateControls();
+      if (autoDeal) dealBtn?.click();
+      else this.scheduleAutoBet();
+    }, ROUND_RESET_DELAY);
   }
 
   addBet(amount) {
@@ -310,7 +295,7 @@ export class BlackjackGame {
       this.updateTotal();
     });
 
-    dealBtn?.addEventListener("click", () => {
+    dealBtn?.addEventListener("click", async () => {
       if (state.blackjack.inRound) {
         showCenterToast("Round already running.", "danger");
         return;
@@ -326,102 +311,115 @@ export class BlackjackGame {
       }
       playSfx("deal");
       state.blackjack.lastBet = bet;
-      state.balance -= bet;
-      updateBalance();
-      state.blackjack.bet = bet;
-      state.blackjack.deck = shuffle(buildDeck());
-      state.blackjack.hands = [[draw(state.blackjack.deck), draw(state.blackjack.deck)]];
-      state.blackjack.bets = [bet];
-      state.blackjack.doubled = [false];
-      state.blackjack.busted = [false];
-      state.blackjack.pendingMessages = [];
-      state.blackjack.activeHand = 0;
-      state.blackjack.splitUsed = false;
-      state.blackjack.dealer = [draw(state.blackjack.deck), draw(state.blackjack.deck)];
-      state.blackjack.inRound = true;
-      state.blackjack.revealDealer = false;
-      this.renderHands();
-      renderCards("bjDealer", state.blackjack.dealer, true);
-      if (this.ui.dealerTotal) this.ui.dealerTotal.textContent = "Total: ?";
-      this.updateControls();
-      this.updateTotal();
+      try {
+        const payload = await auth.request("/api/games/blackjack/deal", {
+          method: "POST",
+          body: JSON.stringify({ bet }),
+        });
+        this.applyServerState(payload.state, payload.balance);
+        this.renderHands();
+        this.renderDealer();
+        this.updateControls();
+        this.updateTotal();
+      } catch (err) {
+        showCenterToast(err.message || "Deal failed.", "danger");
+      }
     });
 
-    hitBtn?.addEventListener("click", () => {
+    hitBtn?.addEventListener("click", async () => {
       if (!state.blackjack.inRound) return;
-      const hand = state.blackjack.hands[state.blackjack.activeHand];
-      hand.push(draw(state.blackjack.deck));
-      this.renderHands();
-      const total = handTotal(hand);
-      if (total > 21) {
-        const multiple = state.blackjack.hands.length > 1;
-        const message = multiple
-          ? `Hand ${state.blackjack.activeHand + 1} busts.`
-          : "You bust.";
-        playSfx("lose");
-        if (state.blackjack.activeHand === state.blackjack.hands.length - 1) {
-          state.blackjack.pendingMessages.push({ text: message, tone: "danger" });
-        } else {
-          showCenterToast(message, "danger");
+      try {
+        const payload = await auth.request("/api/games/blackjack/hit", {
+          method: "POST",
+          body: JSON.stringify({ state: state.blackjack }),
+        });
+        this.applyServerState(payload.state, payload.balance);
+        this.renderHands();
+        this.renderDealer();
+        this.updateControls();
+        this.updateTotal();
+        this.handleOutcome(payload.outcomes || [], payload.messages || []);
+        if (!state.blackjack.inRound) {
+          const auto = this.ui.autoBet?.checked;
+          if (!auto) {
+            state.blackjack.betAmount = 0;
+            updateBetTotal(0, "bjBetTotal");
+          }
+          this.handleRoundEnd(auto);
         }
-        state.blackjack.busted[state.blackjack.activeHand] = true;
-        this.advanceHandOrDealer();
+      } catch (err) {
+        showCenterToast(err.message || "Hit failed.", "danger");
       }
-      this.updateControls();
     });
 
-    standBtn?.addEventListener("click", () => {
+    standBtn?.addEventListener("click", async () => {
       if (!state.blackjack.inRound) return;
-      this.advanceHandOrDealer();
-      this.updateControls();
-    });
-
-    doubleBtn?.addEventListener("click", () => {
-      if (!state.blackjack.inRound) return;
-      const hand = state.blackjack.hands[state.blackjack.activeHand];
-      if (hand.length !== 2) return;
-      const bet = state.blackjack.bets[state.blackjack.activeHand];
-      if (bet > state.balance) {
-        showCenterToast("Not enough credits to double.", "danger");
-        return;
+      try {
+        const payload = await auth.request("/api/games/blackjack/stand", {
+          method: "POST",
+          body: JSON.stringify({ state: state.blackjack }),
+        });
+        this.applyServerState(payload.state, payload.balance);
+        this.renderHands();
+        this.renderDealer();
+        this.updateControls();
+        this.updateTotal();
+        this.handleOutcome(payload.outcomes || [], payload.messages || []);
+        if (!state.blackjack.inRound) {
+          const auto = this.ui.autoBet?.checked;
+          if (!auto) {
+            state.blackjack.betAmount = 0;
+            updateBetTotal(0, "bjBetTotal");
+          }
+          this.handleRoundEnd(auto);
+        }
+      } catch (err) {
+        showCenterToast(err.message || "Stand failed.", "danger");
       }
-      state.balance -= bet;
-      updateBalance();
-      state.blackjack.bets[state.blackjack.activeHand] = bet * 2;
-      state.blackjack.doubled[state.blackjack.activeHand] = true;
-      hand.push(draw(state.blackjack.deck));
-      this.renderHands();
-      this.advanceHandOrDealer();
-      this.updateControls();
-      this.updateTotal();
     });
 
-    splitBtn?.addEventListener("click", () => {
+    doubleBtn?.addEventListener("click", async () => {
+      if (!state.blackjack.inRound) return;
+      try {
+        const payload = await auth.request("/api/games/blackjack/double", {
+          method: "POST",
+          body: JSON.stringify({ state: state.blackjack }),
+        });
+        this.applyServerState(payload.state, payload.balance);
+        this.renderHands();
+        this.renderDealer();
+        this.updateControls();
+        this.updateTotal();
+        this.handleOutcome(payload.outcomes || [], payload.messages || []);
+        if (!state.blackjack.inRound) {
+          const auto = this.ui.autoBet?.checked;
+          if (!auto) {
+            state.blackjack.betAmount = 0;
+            updateBetTotal(0, "bjBetTotal");
+          }
+          this.handleRoundEnd(auto);
+        }
+      } catch (err) {
+        showCenterToast(err.message || "Double failed.", "danger");
+      }
+    });
+
+    splitBtn?.addEventListener("click", async () => {
       if (!state.blackjack.inRound || state.blackjack.splitUsed) return;
-      const hand = state.blackjack.hands[state.blackjack.activeHand];
-      if (hand.length !== 2 || hand[0].rank !== hand[1].rank) return;
-      const bet = state.blackjack.bets[state.blackjack.activeHand];
-      if (bet > state.balance) {
-        showCenterToast("Not enough credits to split.", "danger");
-        return;
+      try {
+        const payload = await auth.request("/api/games/blackjack/split", {
+          method: "POST",
+          body: JSON.stringify({ state: state.blackjack }),
+        });
+        this.applyServerState(payload.state, payload.balance);
+        this.updateTotal();
+        this.renderHands();
+        this.renderDealer();
+        this.updateControls();
+        this.handleOutcome(payload.outcomes || [], payload.messages || []);
+      } catch (err) {
+        showCenterToast(err.message || "Split failed.", "danger");
       }
-      state.balance -= bet;
-      updateBalance();
-      const cardA = hand[0];
-      const cardB = hand[1];
-      state.blackjack.hands = [
-        [cardA, draw(state.blackjack.deck)],
-        [cardB, draw(state.blackjack.deck)],
-      ];
-      state.blackjack.bets = [bet, bet];
-      state.blackjack.doubled = [false, false];
-      state.blackjack.busted = [false, false];
-      state.blackjack.pendingMessages = [];
-      state.blackjack.activeHand = 0;
-      state.blackjack.splitUsed = true;
-      this.updateTotal();
-      this.renderHands();
-      this.updateControls();
     });
   }
 

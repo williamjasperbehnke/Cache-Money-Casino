@@ -327,6 +327,36 @@ resource "aws_apigatewayv2_route" "slots_spin" {
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
+resource "aws_apigatewayv2_route" "blackjack_deal" {
+  api_id    = aws_apigatewayv2_api.rest.id
+  route_key = "POST /api/games/blackjack/deal"
+  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
+}
+
+resource "aws_apigatewayv2_route" "blackjack_hit" {
+  api_id    = aws_apigatewayv2_api.rest.id
+  route_key = "POST /api/games/blackjack/hit"
+  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
+}
+
+resource "aws_apigatewayv2_route" "blackjack_stand" {
+  api_id    = aws_apigatewayv2_api.rest.id
+  route_key = "POST /api/games/blackjack/stand"
+  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
+}
+
+resource "aws_apigatewayv2_route" "blackjack_double" {
+  api_id    = aws_apigatewayv2_api.rest.id
+  route_key = "POST /api/games/blackjack/double"
+  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
+}
+
+resource "aws_apigatewayv2_route" "blackjack_split" {
+  api_id    = aws_apigatewayv2_api.rest.id
+  route_key = "POST /api/games/blackjack/split"
+  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
+}
+
 resource "aws_lambda_permission" "auth" {
   statement_id  = "AllowInvokeAuth"
   action        = "lambda:InvokeFunction"
