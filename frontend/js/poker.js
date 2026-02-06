@@ -251,7 +251,7 @@ export class PokerGame {
     }
     if (state.poker.awaitingRaise) return;
     const betAmount = state.poker.betAmount || 0;
-    if (betAmount <= 0) {
+    if (betAmount < 0) {
       showCenterToast("Select a bet amount.", "danger");
       return;
     }
@@ -263,7 +263,15 @@ export class PokerGame {
     if (!payload) return;
     state.poker.betAmount = 0;
     this.applyServerState(payload.state, payload.balance);
-    if (payload.messages?.length) showMessagesSequential(payload.messages);
+    let messageDelay = 0;
+    if (payload.messages?.length) {
+      showMessagesSequential(payload.messages);
+      messageDelay =
+        payload.messages.reduce(
+          (total, msg) => total + (Number.isFinite(msg.duration) ? msg.duration : 1600),
+          0
+        ) + payload.messages.length * 200;
+    }
 
     if (state.poker.awaitingRaise) {
       const callRaiseBtn = document.getElementById("pokerCallRaise");
@@ -276,8 +284,15 @@ export class PokerGame {
     if (this.skipBettingIfBroke(drawBtn, clearTableBtn, foldBtn)) return;
 
     if (this.discardPhaseActive()) {
-      showCenterToast("Click cards to discard.", "win", 2200);
-      this.renderDiscards();
+      state.poker.canDiscard = true;
+      state.poker.discards = new Set();
+      const fire = () => {
+        if (!this.discardPhaseActive()) return;
+        showCenterToast("Click cards to discard.", "win", 2200);
+        this.renderDiscards();
+      };
+      if (messageDelay) setTimeout(fire, messageDelay);
+      else fire();
     }
 
     if (state.poker.phase === "reveal" && !state.poker.awaitingClear) {
