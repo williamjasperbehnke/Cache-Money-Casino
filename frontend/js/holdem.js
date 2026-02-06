@@ -3,7 +3,7 @@ import {
   updateBalance,
   playSfx,
   showCenterToast,
-  showCenterToasts,
+  showMessagesSequential,
   renderCards,
   renderHiddenCards,
   revealDealer,
@@ -136,6 +136,7 @@ export class HoldemGame {
   constructor() {
     this.ui = {};
   }
+
 
 
   cacheElements() {
@@ -511,7 +512,7 @@ export class HoldemGame {
       const revealDelay = shouldSkipMsg ? 2400 : 0;
       setTimeout(() => {
         if (messages.length) {
-          showCenterToasts(messages);
+          showMessagesSequential(messages);
         }
         if (hasShowdown) {
           this.renderShowdown(payload.showdown);

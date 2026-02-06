@@ -396,6 +396,18 @@ export function showCenterToasts(messages) {
   toastManager.showToasts(messages);
 }
 
+export function showMessagesSequential(messages = []) {
+  if (!messages.length) return;
+  let delay = 0;
+  messages.forEach((msg) => {
+    const duration = Number.isFinite(msg.duration) ? msg.duration : 1600;
+    setTimeout(() => {
+      showCenterToast(msg.text, msg.tone || "win", duration);
+    }, delay);
+    delay += duration;
+  });
+}
+
 export function renderCards(containerId, cards, hideFirst = false) {
   const container =
     typeof containerId === "string" ? document.getElementById(containerId) : containerId;
