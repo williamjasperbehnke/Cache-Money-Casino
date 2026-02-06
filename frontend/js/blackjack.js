@@ -263,8 +263,9 @@ export class BlackjackGame {
 
     bindBetChips({
       chips: this.ui.chips,
-      canBet: () => !state.blackjack.inRound,
+      canBet: () => !state.blackjack.inRound && state.balance > 0,
       getBalance: () => Math.min(state.balance, MAX_BET),
+      getToCall: () => 0,
       getBetAmount: () => state.blackjack.betAmount,
       setBetAmount: (amount) => {
         if (amount === state.blackjack.betAmount && amount === MAX_BET) {
@@ -274,7 +275,13 @@ export class BlackjackGame {
       },
       onUpdate: () => this.updateTotal(),
       onHit: () => playSfx("hit"),
-      onClosed: () => showCenterToast("Round running.", "danger"),
+      onClosed: () => {
+        if (state.blackjack.inRound) {
+          showCenterToast("Round running.", "danger");
+        } else {
+          showCenterToast("Not enough credits.", "danger");
+        }
+      },
     });
 
     clearBtn?.addEventListener("click", () => {
