@@ -1,1 +1,1 @@
-bucket_name = "cache-money-casino-wbehnke"
+bucket_name = "cache-money-casino-wbehnke-us-east-1"
