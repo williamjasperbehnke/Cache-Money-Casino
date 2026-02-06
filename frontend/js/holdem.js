@@ -3,6 +3,7 @@ import {
   updateBalance,
   playSfx,
   showCenterToast,
+  showCenterToasts,
   renderCards,
   renderHiddenCards,
   revealDealer,
@@ -327,9 +328,7 @@ export class HoldemGame {
         this.updatePotUI();
         this.updateButtons();
         if (payload.messages?.length) {
-          payload.messages.forEach((msg) =>
-            showCenterToast(msg.text, msg.tone || "win", msg.duration || 1600)
-          );
+          showCenterToasts(payload.messages);
         }
       })
       .catch((err) => {
@@ -503,9 +502,7 @@ export class HoldemGame {
       renderCards(this.ui.player, state.holdem.player);
       renderHiddenCards("holdemDealer", state.holdem.dealer.length);
       if (payload.messages?.length) {
-        payload.messages.forEach((msg) =>
-          showCenterToast(msg.text, msg.tone || "win", msg.duration || 1600)
-        );
+        showCenterToasts(payload.messages);
       }
       if (payload.showdown) {
         this.renderShowdown(payload.showdown);
@@ -526,9 +523,7 @@ export class HoldemGame {
       this.updatePotUI();
       this.updateButtons();
       if (payload.messages?.length) {
-        payload.messages.forEach((msg) =>
-          showCenterToast(msg.text, msg.tone || "danger", msg.duration || 1600)
-        );
+        showCenterToasts(payload.messages);
       }
     } catch (err) {
       showCenterToast(err.message || "Fold failed.", "danger");
