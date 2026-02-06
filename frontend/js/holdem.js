@@ -3,7 +3,6 @@ import {
   updateBalance,
   playSfx,
   showCenterToast,
-  showCenterToasts,
   renderCards,
   renderHiddenCards,
   revealDealer,
@@ -135,6 +134,18 @@ export class HoldemGame {
 
   constructor() {
     this.ui = {};
+  }
+
+  showMessagesSequential(messages = []) {
+    if (!messages.length) return;
+    let delay = 0;
+    messages.forEach((msg) => {
+      const duration = Number.isFinite(msg.duration) ? msg.duration : 1600;
+      setTimeout(() => {
+        showCenterToast(msg.text, msg.tone || "win", duration);
+      }, delay);
+      delay += duration;
+    });
   }
 
   cacheElements() {
@@ -328,7 +339,7 @@ export class HoldemGame {
         this.updatePotUI();
         this.updateButtons();
         if (payload.messages?.length) {
-          showCenterToasts(payload.messages);
+          this.showMessagesSequential(payload.messages);
         }
       })
       .catch((err) => {
@@ -502,7 +513,7 @@ export class HoldemGame {
       renderCards(this.ui.player, state.holdem.player);
       renderHiddenCards("holdemDealer", state.holdem.dealer.length);
       if (payload.messages?.length) {
-        showCenterToasts(payload.messages);
+        this.showMessagesSequential(payload.messages);
       }
       if (payload.showdown) {
         this.renderShowdown(payload.showdown);
@@ -523,7 +534,7 @@ export class HoldemGame {
       this.updatePotUI();
       this.updateButtons();
       if (payload.messages?.length) {
-        showCenterToasts(payload.messages);
+        this.showMessagesSequential(payload.messages);
       }
     } catch (err) {
       showCenterToast(err.message || "Fold failed.", "danger");
