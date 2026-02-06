@@ -103,6 +103,6 @@ module "serverless" {
   source           = "./modules/serverless"
   project_name     = var.project_name
   aws_region       = var.aws_region
-  lambda_source_dir = abspath("${path.root}/../backend-lambda")
+  lambda_source_dir = abspath("${path.root}/../../backend-lambda")
   cors_origin      = var.cors_origin
 }
