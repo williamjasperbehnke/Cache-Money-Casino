@@ -241,8 +241,9 @@ class CardUtils {
     let total = 0;
     let aces = 0;
     cards.forEach((card) => {
-      total += card.blackjackValue();
-      if (card.rank === "A") aces += 1;
+      const next = Card.from(card);
+      total += next.blackjackValue();
+      if (next.rank === "A") aces += 1;
     });
     while (total > 21 && aces > 0) {
       total -= 10;
