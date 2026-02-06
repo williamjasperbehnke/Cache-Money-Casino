@@ -391,6 +391,15 @@ export class RouletteGame {
         showCenterToast("Place a bet on the table.", "danger");
         return;
       }
+      if (!state.roulette.roundPaid) {
+        if (totalBet > state.balance) {
+          showCenterToast("Not enough credits.", "danger");
+          return;
+        }
+        state.balance -= totalBet;
+        updateBalance();
+        state.roulette.roundPaid = true;
+      }
       state.roulette.spinning = true;
       spinBtn.disabled = true;
       playSfx("spin");
@@ -401,6 +410,11 @@ export class RouletteGame {
           body: JSON.stringify({ bets: state.roulette.bets }),
         });
       } catch (err) {
+        if (state.roulette.roundPaid) {
+          state.balance += totalBet;
+          updateBalance();
+          state.roulette.roundPaid = false;
+        }
         state.roulette.spinning = false;
         spinBtn.disabled = false;
         showCenterToast(err.message || "Spin failed.", "danger");
