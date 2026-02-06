@@ -1,11 +1,12 @@
-# Terraform: AWS S3 + CloudFront Hosting
+# Terraform: AWS S3 + CloudFront Hosting + Serverless API
 
-This configuration hosts the static site on S3 behind CloudFront, with an optional custom domain (Route 53 + ACM).
+This configuration hosts the static site on S3 behind CloudFront, with an optional custom domain (Route 53 + ACM). It also provisions a serverless API (HTTP + WebSocket) for auth and game sessions.
 
 ## Structure
 - `modules/s3-site`: S3 bucket + ownership + public access block
 - `modules/cloudfront`: CloudFront distribution + OAC
 - `modules/dns`: ACM + Route 53 records (optional)
+- `modules/serverless`: API Gateway (HTTP + WebSocket) + Lambda + DynamoDB
 
 ## Quick start
 

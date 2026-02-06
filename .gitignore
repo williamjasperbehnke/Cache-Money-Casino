@@ -1,4 +1,2 @@
 .vscode/
-backend/node_modules/
 frontend/js/config.js
-frontend/shared/

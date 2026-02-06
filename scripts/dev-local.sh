@@ -3,7 +3,6 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FRONTEND_DIR="${ROOT_DIR}/frontend"
-BACKEND_DIR="${ROOT_DIR}/backend"
 API_PORT="${API_PORT:-8081}"
 WEB_PORT="${WEB_PORT:-8080}"
 TABLE_NAME="${TABLE_NAME:-casino_users}"
@@ -42,24 +41,8 @@ cat >"$FRONTEND_DIR/js/config.js" <<EOF
 window.API_BASE = "http://${LAN_IP}:${API_PORT}";
 EOF
 
-echo "Syncing shared helpers..."
-mkdir -p "$FRONTEND_DIR/shared"
-cp "$ROOT_DIR/shared/password.js" "$FRONTEND_DIR/shared/password.js"
-cp "$ROOT_DIR/shared/constants.js" "$FRONTEND_DIR/shared/constants.js"
-
-echo "Installing API dependencies..."
-cd "$BACKEND_DIR"
-npm install >/dev/null
-
-echo "Starting API on port ${API_PORT}..."
-AWS_REGION=us-east-1 \
-USERS_TABLE="${TABLE_NAME}" \
-JWT_SECRET="${JWT_SECRET}" \
-CORS_ORIGIN="http://${LAN_IP}:${WEB_PORT}" \
-PORT="${API_PORT}" \
-AWS_ENDPOINT_URL="http://localhost:8000" \
-node index.js &
-API_PID=$!
+echo "Backend removed. Use the serverless API in AWS."
+API_PID=""
 
 echo "Starting static site on port ${WEB_PORT}..."
 cd "$FRONTEND_DIR"
@@ -71,5 +54,5 @@ echo "API:  http://${LAN_IP}:${API_PORT}"
 echo "Site: http://${LAN_IP}:${WEB_PORT}"
 echo "Press Ctrl+C to stop."
 
-trap 'kill $API_PID $WEB_PID' INT TERM
-wait $API_PID $WEB_PID
+trap 'kill $WEB_PID' INT TERM
+wait $WEB_PID

@@ -18,12 +18,12 @@ output "custom_domain" {
   description = "Custom domain (if configured)."
 }
 
-output "api_alb_dns_name" {
-  value       = module.api.alb_dns_name
-  description = "ALB DNS name for the API service."
+output "rest_api_url" {
+  value       = try(module.serverless[0].rest_api_url, "")
+  description = "HTTP API Gateway endpoint (serverless)."
 }
 
-output "api_instance_id" {
-  value       = module.api.instance_id
-  description = "EC2 instance id for the API service."
+output "ws_api_url" {
+  value       = try(module.serverless[0].ws_api_url, "")
+  description = "WebSocket API Gateway endpoint (serverless)."
 }

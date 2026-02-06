@@ -1,5 +1,5 @@
-import { isStrongPassword } from "../shared/password.js";
-import { DEFAULT_BALANCE, BALANCE_STORAGE_KEY } from "../shared/constants.js";
+import { isStrongPassword } from "./password.js";
+import { DEFAULT_BALANCE, BALANCE_STORAGE_KEY } from "./constants.js";
 
 const STORAGE_TOKEN = "casino-token";
 const STORAGE_USER = "casino-user";

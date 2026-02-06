@@ -98,17 +98,11 @@ resource "random_password" "jwt" {
   special = true
 }
 
-module "api" {
-  source             = "./modules/api-ec2"
-  project_name       = var.project_name
-  aws_region         = var.aws_region
-  api_instance_type  = var.api_instance_type
-  api_port           = var.api_port
-  api_artifact_key   = var.api_artifact_key
-  artifact_bucket    = module.s3_site.bucket_id
-  artifact_bucket_arn = module.s3_site.bucket_arn
-  users_table_name   = aws_dynamodb_table.users.name
-  users_table_arn    = aws_dynamodb_table.users.arn
-  jwt_secret_arn     = aws_secretsmanager_secret.jwt.arn
-  cors_origin        = var.cors_origin != "" ? var.cors_origin : "https://${module.cloudfront.domain_name}"
+module "serverless" {
+  count            = var.enable_serverless ? 1 : 0
+  source           = "./modules/serverless"
+  project_name     = var.project_name
+  aws_region       = var.aws_region
+  lambda_source_dir = abspath("${path.root}/../backend-lambda")
+  cors_origin      = var.cors_origin
 }

@@ -2,7 +2,7 @@ const balanceEl = document.getElementById("balance");
 const balanceDeltaEl = document.getElementById("balanceDelta");
 const centerToastEl = document.getElementById("centerToast");
 
-import { DEFAULT_BALANCE, BALANCE_STORAGE_KEY } from "../shared/constants.js";
+import { DEFAULT_BALANCE, BALANCE_STORAGE_KEY } from "./constants.js";
 
 const SUITS = ["♠", "♥", "♦", "♣"];
 const RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
