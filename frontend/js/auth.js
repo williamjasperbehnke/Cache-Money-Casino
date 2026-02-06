@@ -235,7 +235,7 @@ export const auth = {
       const stored = Number(localStorage.getItem(BALANCE_STORAGE_KEY));
       const current =
         (this.getBalance && Number(this.getBalance())) ||
-        (Number.isFinite(stored) ? stored : DEFAULT_BALANCE);
+        (Number.isFinite(stored) ? stored : 0);
       const next = current + 100;
       localStorage.setItem(BALANCE_STORAGE_KEY, String(next));
       if (this.onBalanceUpdate) this.onBalanceUpdate(next);
@@ -308,7 +308,7 @@ export const auth = {
       this.initialized = true;
     }
     const stored = Number(localStorage.getItem(BALANCE_STORAGE_KEY));
-    const immediateBalance = Number.isFinite(stored) ? stored : DEFAULT_BALANCE;
+    const immediateBalance = Number.isFinite(stored) ? stored : 0;
     if (this.onBalanceUpdate) this.onBalanceUpdate(immediateBalance);
     this.updateUi();
     if (this.isAuthed()) {
