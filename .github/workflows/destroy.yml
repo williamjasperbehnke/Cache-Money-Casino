@@ -36,6 +36,14 @@ jobs:
             -backend-config="dynamodb_table=${{ vars.TF_LOCK_TABLE }}" \
             -backend-config="encrypt=true"
 
+      - name: Empty site bucket
+        run: |
+          BUCKET=$(terraform -chdir=infra/terraform output -raw s3_bucket_name 2>/dev/null || true)
+          if [ -n "$BUCKET" ]; then
+            aws s3 rm "s3://${BUCKET}" --recursive || true
+            aws s3 rb "s3://${BUCKET}" --force || true
+          fi
+
       - name: Terraform Destroy
         working-directory: infra/terraform
         run: terraform destroy -auto-approve
