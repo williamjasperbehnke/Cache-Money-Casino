@@ -1,5 +1,23 @@
-const AWS = require("aws-sdk");
+const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+const {
+  DynamoDBDocumentClient,
+  GetCommand,
+  PutCommand,
+  DeleteCommand,
+  UpdateCommand,
+} = require("@aws-sdk/lib-dynamodb");
 
-const ddb = new AWS.DynamoDB.DocumentClient();
+const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
-module.exports = { ddb };
+const get = (params) => ddb.send(new GetCommand(params));
+const put = (params) => ddb.send(new PutCommand(params));
+const del = (params) => ddb.send(new DeleteCommand(params));
+const update = (params) => ddb.send(new UpdateCommand(params));
+
+module.exports = {
+  ddb,
+  get,
+  put,
+  del,
+  update,
+};

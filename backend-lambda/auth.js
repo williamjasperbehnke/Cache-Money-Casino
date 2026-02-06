@@ -1,4 +1,4 @@
-const { ddb } = require("./lib/db");
+const { get, put } = require("./lib/db");
 const {
   jsonResponse,
   parseJson,
@@ -15,47 +15,39 @@ const { USERS_TABLE, SESSIONS_TABLE, CORS_ORIGIN = "*" } = process.env;
 const ttlFromNow = (seconds) => Math.floor(Date.now() / 1000) + seconds;
 
 const getUser = async (username) => {
-  const resp = await ddb
-    .get({
-      TableName: USERS_TABLE,
-      Key: { username },
-    })
-    .promise();
+  const resp = await get({
+    TableName: USERS_TABLE,
+    Key: { username },
+  });
   return resp.Item || null;
 };
 
 const putUser = (user) =>
-  ddb
-    .put({
-      TableName: USERS_TABLE,
-      Item: user,
-    })
-    .promise();
+  put({
+    TableName: USERS_TABLE,
+    Item: user,
+  });
 
 const putSession = (token, username) =>
-  ddb
-    .put({
-      TableName: SESSIONS_TABLE,
-      Item: {
-        token,
-        username,
-        ttl: ttlFromNow(60 * 60 * 24 * 7),
-      },
-    })
-    .promise();
+  put({
+    TableName: SESSIONS_TABLE,
+    Item: {
+      token,
+      username,
+      ttl: ttlFromNow(60 * 60 * 24 * 7),
+    },
+  });
 
 const putGuestSession = (token) =>
-  ddb
-    .put({
-      TableName: SESSIONS_TABLE,
-      Item: {
-        token,
-        username: null,
-        balance: 1000,
-        ttl: ttlFromNow(60 * 60 * 24 * 7),
-      },
-    })
-    .promise();
+  put({
+    TableName: SESSIONS_TABLE,
+    Item: {
+      token,
+      username: null,
+      balance: 1000,
+      ttl: ttlFromNow(60 * 60 * 24 * 7),
+    },
+  });
 
 exports.handler = async (event) => {
   try {

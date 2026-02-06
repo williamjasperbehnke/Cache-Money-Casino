@@ -1,5 +1,5 @@
 const crypto = require("crypto");
-const { ddb } = require("./lib/db");
+const { get, put, update } = require("./lib/db");
 const { jsonResponse, parseJson, getRoute, getAuthToken } = require("./lib/utils");
 const { updateStats } = require("./lib/stats");
 
@@ -34,41 +34,33 @@ const PAYOUTS = {
 
 const getSession = async (token) => {
   if (!token) return null;
-  const resp = await ddb
-    .get({
-      TableName: SESSIONS_TABLE,
-      Key: { token },
-    })
-    .promise();
+  const resp = await get({
+    TableName: SESSIONS_TABLE,
+    Key: { token },
+  });
   return resp.Item || null;
 };
 
 const putSession = (session) =>
-  ddb
-    .put({
-      TableName: SESSIONS_TABLE,
-      Item: session,
-    })
-    .promise();
+  put({
+    TableName: SESSIONS_TABLE,
+    Item: session,
+  });
 
 const getUser = async (username) => {
   if (!username) return null;
-  const resp = await ddb
-    .get({
-      TableName: USERS_TABLE,
-      Key: { username },
-    })
-    .promise();
+  const resp = await get({
+    TableName: USERS_TABLE,
+    Key: { username },
+  });
   return resp.Item || null;
 };
 
 const putUser = (user) =>
-  ddb
-    .put({
-      TableName: USERS_TABLE,
-      Item: user,
-    })
-    .promise();
+  put({
+    TableName: USERS_TABLE,
+    Item: user,
+  });
 
 const resolveBalance = async (session) => {
   if (session.username) {
@@ -136,18 +128,16 @@ exports.handler = async (event) => {
     const game = event.pathParameters?.game || "unknown";
     const { state } = parseJson(event);
     const sessionId = crypto.randomUUID();
-    await ddb
-      .put({
-        TableName: GAME_SESSIONS_TABLE,
-        Item: {
-          session_id: sessionId,
-          username: session.username || "guest",
-          game,
-          state: state || {},
-          created_at: new Date().toISOString(),
-        },
-      })
-      .promise();
+    await put({
+      TableName: GAME_SESSIONS_TABLE,
+      Item: {
+        session_id: sessionId,
+        username: session.username || "guest",
+        game,
+        state: state || {},
+        created_at: new Date().toISOString(),
+      },
+    });
     return jsonResponse(200, { sessionId }, CORS_ORIGIN);
   }
 

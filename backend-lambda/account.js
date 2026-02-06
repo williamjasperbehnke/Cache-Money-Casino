@@ -1,4 +1,4 @@
-const { ddb } = require("./lib/db");
+const { get, put } = require("./lib/db");
 const { jsonResponse, parseJson, getRoute, getAuthToken } = require("./lib/utils");
 const { updateStats, computeHighlights } = require("./lib/stats");
 
@@ -6,32 +6,26 @@ const { USERS_TABLE, SESSIONS_TABLE, CORS_ORIGIN = "*" } = process.env;
 
 const getSession = async (token) => {
   if (!token) return null;
-  const resp = await ddb
-    .get({
-      TableName: SESSIONS_TABLE,
-      Key: { token },
-    })
-    .promise();
+  const resp = await get({
+    TableName: SESSIONS_TABLE,
+    Key: { token },
+  });
   return resp.Item || null;
 };
 
 const getUser = async (username) => {
-  const resp = await ddb
-    .get({
-      TableName: USERS_TABLE,
-      Key: { username },
-    })
-    .promise();
+  const resp = await get({
+    TableName: USERS_TABLE,
+    Key: { username },
+  });
   return resp.Item || null;
 };
 
 const putUser = (user) =>
-  ddb
-    .put({
-      TableName: USERS_TABLE,
-      Item: user,
-    })
-    .promise();
+  put({
+    TableName: USERS_TABLE,
+    Item: user,
+  });
 
 exports.handler = async (event) => {
   const { method, path } = getRoute(event);
