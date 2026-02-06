@@ -273,17 +273,19 @@ export class RouletteGame {
       if (!amount) return;
       const key = this.getZoneKey(zone);
       const current = this.getZoneCurrent(zone, key);
-      if (current + amount > MAX_BET_PER_SLOT) {
+      const next = Math.min(MAX_BET_PER_SLOT, current + amount);
+      const delta = next - current;
+      if (delta <= 0) {
         showCenterToast("Max bet per slot is $50.", "danger");
         return;
       }
-      if (amount > state.balance) {
+      if (delta > state.balance) {
         showCenterToast("Not enough credits.", "danger");
         return;
       }
-      state.balance -= amount;
+      state.balance -= delta;
       updateBalance();
-      this.setZoneBet(zone, key, current + amount);
+      this.setZoneBet(zone, key, next);
       this.updateUI();
       state.roulette.roundPaid = true;
     });
@@ -293,17 +295,19 @@ export class RouletteGame {
       if (!this.selectedChip) return;
       const key = this.getZoneKey(zone);
       const current = this.getZoneCurrent(zone, key);
-      if (current + this.selectedChip > MAX_BET_PER_SLOT) {
+      const next = Math.min(MAX_BET_PER_SLOT, current + this.selectedChip);
+      const delta = next - current;
+      if (delta <= 0) {
         showCenterToast("Max bet per slot is $50.", "danger");
         return;
       }
-      if (this.selectedChip > state.balance) {
+      if (delta > state.balance) {
         showCenterToast("Not enough credits.", "danger");
         return;
       }
-      state.balance -= this.selectedChip;
+      state.balance -= delta;
       updateBalance();
-      this.setZoneBet(zone, key, current + this.selectedChip);
+      this.setZoneBet(zone, key, next);
       this.updateUI();
       animateChip(
         document.querySelector('.chips[data-target="rouletteBet"] .chip.active') ||
