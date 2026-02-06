@@ -402,12 +402,13 @@ export function showCenterToasts(messages) {
 export function showMessagesSequential(messages = []) {
   if (!messages.length) return;
   let delay = 0;
+  const gap = 100;
   messages.forEach((msg) => {
     const duration = Number.isFinite(msg.duration) ? msg.duration : 1600;
     setTimeout(() => {
       showCenterToast(msg.text, msg.tone || "win", duration);
     }, delay);
-    delay += duration;
+    delay += duration + gap;
   });
 }
 
