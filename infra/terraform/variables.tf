@@ -15,18 +15,6 @@ variable "bucket_name" {
   description = "S3 bucket name for the static site."
 }
 
-variable "users_table_name" {
-  type        = string
-  description = "DynamoDB table name for user accounts."
-  default     = "casino_users"
-}
-
-variable "jwt_secret_name" {
-  type        = string
-  description = "Secrets Manager secret name for JWT signing."
-  default     = "casino-jwt-secret"
-}
-
 variable "cors_origin" {
   type        = string
   description = "CORS allowed origin for the API (use * for development)."

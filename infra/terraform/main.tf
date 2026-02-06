@@ -73,31 +73,6 @@ resource "aws_s3_bucket_policy" "site" {
   policy = data.aws_iam_policy_document.site.json
 }
 
-resource "aws_dynamodb_table" "users" {
-  name         = var.users_table_name
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "username"
-
-  attribute {
-    name = "username"
-    type = "S"
-  }
-}
-
-resource "aws_secretsmanager_secret" "jwt" {
-  name = var.jwt_secret_name
-}
-
-resource "aws_secretsmanager_secret_version" "jwt" {
-  secret_id     = aws_secretsmanager_secret.jwt.id
-  secret_string = random_password.jwt.result
-}
-
-resource "random_password" "jwt" {
-  length  = 32
-  special = true
-}
-
 module "serverless" {
   count            = var.enable_serverless ? 1 : 0
   source           = "./modules/serverless"

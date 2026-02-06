@@ -1,7 +1,6 @@
 import {
   state,
   updateBalance,
-  payout,
   playSfx,
   showCenterToast,
   makeChipStack,
@@ -246,11 +245,7 @@ export class RouletteGame {
     }
   }
 
-  clearBets(refund = true) {
-    if (refund) {
-      const totalBet = this.totalBet();
-      if (totalBet > 0) payout(totalBet);
-    }
+  clearBets() {
     state.roulette.bets.numbers = {};
     state.roulette.bets.colors = {};
     state.roulette.bets.parities = {};
@@ -277,12 +272,6 @@ export class RouletteGame {
         showCenterToast("Max bet per slot is $50.", "danger");
         return;
       }
-      if (amount > state.balance) {
-        showCenterToast("Not enough credits.", "danger");
-        return;
-      }
-      state.balance -= amount;
-      updateBalance();
       this.setZoneBet(zone, key, current + amount);
       this.updateUI();
       state.roulette.roundPaid = true;
@@ -297,12 +286,6 @@ export class RouletteGame {
         showCenterToast("Max bet per slot is $50.", "danger");
         return;
       }
-      if (this.selectedChip > state.balance) {
-        showCenterToast("Not enough credits.", "danger");
-        return;
-      }
-      state.balance -= this.selectedChip;
-      updateBalance();
       this.setZoneBet(zone, key, current + this.selectedChip);
       this.updateUI();
       animateChip(
@@ -323,7 +306,6 @@ export class RouletteGame {
       if (!current) return;
       const next = Math.max(0, current - removeAmount);
       this.setZoneBet(zone, key, next);
-      payout(Math.min(removeAmount, current));
       this.updateUI();
       if (this.totalBet() <= 0) {
         state.roulette.roundPaid = false;
@@ -336,12 +318,12 @@ export class RouletteGame {
 
     clearBtn?.addEventListener("click", () => {
       if (state.roulette.spinning) return;
-      this.clearBets(true);
+      this.clearBets();
       playSfx("lose");
       showCenterToast("Bets cleared.", "danger");
     });
 
-    chaosBtn?.addEventListener("click", () => {
+    chaosBtn?.addEventListener("click", async () => {
       if (state.roulette.spinning) return;
       const chips = Array.from(
         document.querySelectorAll('.chips[data-target="rouletteBet"] .chip')
@@ -349,41 +331,28 @@ export class RouletteGame {
         .map((chip) => Number(chip.dataset.amount))
         .filter((amount) => amount > 0);
       if (chips.length === 0) return;
-      const available = Math.min(state.balance, 200);
-      if (available <= 0) {
-        showCenterToast("Not enough credits.", "danger");
-        return;
-      }
-      const spend = Math.min(available, Math.floor(Math.random() * 150) + 50);
-      let spent = 0;
-      const zones = Array.from(document.querySelectorAll(betZoneSelector));
-      while (spent < spend) {
-        const amount = chips[Math.floor(Math.random() * chips.length)];
-        if (spent + amount > spend) break;
-        const zone = zones[Math.floor(Math.random() * zones.length)];
-        if (!zone) break;
-        const target = this.getZoneKey(zone);
-        const current = this.getZoneCurrent(zone, target);
-        if (current + amount > MAX_BET_PER_SLOT) continue;
-        this.setZoneBet(zone, target, current + amount);
-        spent += amount;
-        animateChip(
-          document.querySelector('.chips[data-target="rouletteBet"] .chip.active') ||
-            zone.querySelector(".chip-stack") ||
-            zone,
-          zone.querySelector(".chip-stack") || zone
-        );
-      }
-      if (spent > 0) {
-        state.balance -= spent;
+      try {
+        const payload = await auth.request("/api/games/roulette/chaos", {
+          method: "POST",
+          body: JSON.stringify({
+            bets: state.roulette.bets,
+            chipValues: chips,
+            maxPerSlot: MAX_BET_PER_SLOT,
+          }),
+        });
+        state.roulette.bets = payload.bets;
+        state.balance = payload.balance;
         updateBalance();
         this.updateUI();
-        state.roulette.roundPaid = true;
-        playSfx("spin");
-        showCenterToast(`Luck grenade! -$${spent}`, "win");
-      } else {
-        playSfx("lose");
-        showCenterToast("Luck grenade fizzled.", "danger");
+        if (payload.spent > 0) {
+          playSfx("spin");
+          showCenterToast(`Luck grenade! -$${payload.spent}`, "win");
+        } else {
+          playSfx("lose");
+          showCenterToast("Luck grenade fizzled.", "danger");
+        }
+      } catch (err) {
+        showCenterToast(err.message || "Luck grenade failed.", "danger");
       }
     });
 
@@ -391,75 +360,46 @@ export class RouletteGame {
       this.bindZoneEvents(zone);
     });
 
-    spinBtn?.addEventListener("click", () => {
+    spinBtn?.addEventListener("click", async () => {
       if (state.roulette.spinning) {
         showCenterToast("Wheel is spinning...", "danger");
         return;
       }
       const totalBet = this.totalBet();
-      const chosenNumbers = state.roulette.bets.numbers;
-      const chosenColors = state.roulette.bets.colors;
-      const chosenParities = state.roulette.bets.parities;
       if (totalBet <= 0) {
         showCenterToast("Place a bet on the table.", "danger");
         return;
       }
-      if (!state.roulette.roundPaid) {
-        if (totalBet > state.balance) {
-          showCenterToast("Not enough credits.", "danger");
-          state.roulette.bets.numbers = {};
-          state.roulette.bets.colors = {};
-          state.roulette.bets.parities = {};
-          this.updateUI();
-          state.roulette.roundPaid = false;
-          return;
-        }
-        state.balance -= totalBet;
-        updateBalance();
-        state.roulette.roundPaid = true;
-      }
       state.roulette.spinning = true;
       spinBtn.disabled = true;
       playSfx("spin");
-      const spin = rouletteOrder[Math.floor(Math.random() * rouletteOrder.length)];
+      let payload;
+      try {
+        payload = await auth.request("/api/games/roulette/spin", {
+          method: "POST",
+          body: JSON.stringify({ bets: state.roulette.bets }),
+        });
+      } catch (err) {
+        state.roulette.spinning = false;
+        spinBtn.disabled = false;
+        showCenterToast(err.message || "Spin failed.", "danger");
+        return;
+      }
+      const spin = payload.resultNumber;
       this.spinWheel(spin);
       setTimeout(() => {
-        let winnings = 0;
-        let winningStake = 0;
-
-        const numberAmount = chosenNumbers[spin] || 0;
-        if (numberAmount) {
-          winnings += numberAmount * 35;
-          winningStake += numberAmount;
-        }
-
-        const color = redNumbers.has(Number(spin)) ? "red" : "black";
-        const colorAmount = chosenColors[color] || 0;
-        if (colorAmount) {
-          winnings += colorAmount;
-          winningStake += colorAmount;
-        }
-
-        const parity = Number(spin) % 2 === 0 ? "even" : "odd";
-        const parityAmount = chosenParities[parity] || 0;
-        if (parityAmount) {
-          winnings += parityAmount;
-          winningStake += parityAmount;
-        }
-
-        if (winnings > 0) {
-          payout(winnings + winningStake);
+        state.balance = payload.balance;
+        updateBalance();
+        const profit = payload.profit || 0;
+        if (profit > 0) {
           playSfx("win");
-          if (winnings + winningStake >= totalBet * 5) {
+          if ((payload.payout || 0) >= totalBet * 5) {
             triggerBigWin();
           }
-          showCenterToast(`Win! +$${Math.round(winnings)}`, "win");
-          const net = Math.round(winnings + winningStake - totalBet);
-          auth.recordResult({ game: "roulette", bet: totalBet, net, result: "win" });
+          showCenterToast(`Win! +$${Math.round(profit)}`, "win");
         } else {
           playSfx("lose");
           showCenterToast("No win.", "danger");
-          auth.recordResult({ game: "roulette", bet: totalBet, net: -totalBet, result: "loss" });
         }
 
         if (!autoToggle?.checked) {

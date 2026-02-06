@@ -1,12 +1,10 @@
 import {
   state,
   updateBalance,
-  payout,
   playSfx,
   showCenterToast,
   triggerBigWin,
   triggerSmallWin,
-  withBet,
 } from "./core.js";
 import { auth } from "./auth.js";
 
@@ -45,12 +43,6 @@ export class SlotsGame {
       reelsWrap: document.getElementById("slotsReels"),
     };
     this.reels = Array.from(document.querySelectorAll(".reel"));
-  }
-
-  getResultSymbols() {
-    return Array.from({ length: 3 }, () =>
-      SLOT_SYMBOLS[Math.floor(Math.random() * SLOT_SYMBOLS.length)]
-    );
   }
 
   clearHighlights() {
@@ -174,18 +166,15 @@ export class SlotsGame {
     return { hasThreeKind, hasTwoKind, tripleSymbol, twoSymbol, multiplier: 0, key: "" };
   }
 
-  applyOutcome({ bet, winLight, outcome, onAutoSpin }) {
+  applyOutcome({ bet, winLight, outcome, profit, wipeBalance, onAutoSpin }) {
     this.clearHighlights();
 
-    if (outcome.hasThreeKind && outcome.tripleSymbol === "💥") {
+    if (wipeBalance) {
       playSfx("lose");
-      state.balance = 0;
-      updateBalance();
       showCenterToast("Kaboom! Balance wiped.", "danger");
       winLight?.classList.remove("active");
       triggerBigWin(false);
       this.clearHighlights();
-      auth.recordResult({ game: "slots", bet, net: -bet, result: "loss" });
       onAutoSpin();
       return;
     }
@@ -193,14 +182,12 @@ export class SlotsGame {
     if (outcome.hasTwoKind && outcome.twoSymbol === "💥") {
       playSfx("lose");
       showCenterToast("Bang! House takes it.", "danger");
-      auth.recordResult({ game: "slots", bet, net: -bet, result: "loss" });
       onAutoSpin();
       return;
     }
 
-    if (outcome.multiplier > 0 || outcome.hasTwoKind) {
+    if (profit > 0) {
       const payMultiplier = outcome.hasTwoKind ? PAYOUTS.any2.multiplier : outcome.multiplier;
-      payout(bet * payMultiplier + bet);
       playSfx("win");
       if (outcome.hasThreeKind) {
         triggerBigWin();
@@ -212,68 +199,86 @@ export class SlotsGame {
       showCenterToast(`You win ${payMultiplier}x!`, "win");
       winLight?.classList.add("active");
       this.highlightPayout(outcome.key);
-      auth.recordResult({ game: "slots", bet, net: bet * payMultiplier, result: "win" });
       onAutoSpin();
       return;
     }
 
     playSfx("lose");
     showCenterToast("No win. Spin again!", "danger");
-    auth.recordResult({ game: "slots", bet, net: -bet, result: "loss" });
     onAutoSpin();
   }
 
-  pullLever() {
+  async pullLever() {
     if (this.spinning) {
       showCenterToast("Reels are spinning...", "danger");
       return;
     }
     const bet = this.currentBet;
-    const message = withBet(bet, () => {
-      this.spinning = true;
-      if (this.ui.spinBtn) this.ui.spinBtn.disabled = true;
-      playSfx("spin");
-      if (this.ui.lever) {
-        this.ui.lever.classList.add("pull");
-        setTimeout(() => this.ui.lever.classList.remove("pull"), REEL_STOP_DELAY);
-      }
-      const reelsEl = this.ui.reelsWrap;
-      reelsEl?.classList.remove("spin");
-      void reelsEl?.offsetWidth;
-      reelsEl?.classList.add("spin");
-
-      const result = this.getResultSymbols();
-      let maxDuration = 0;
-      this.reels.forEach((reel, index) => {
-        const duration = this.spinReel(reel, result[index], index);
-        maxDuration = Math.max(maxDuration, duration);
+    if (!Number.isFinite(bet) || bet <= 0) {
+      showCenterToast("Enter a valid bet.", "danger");
+      return;
+    }
+    this.spinning = true;
+    if (this.ui.spinBtn) this.ui.spinBtn.disabled = true;
+    playSfx("spin");
+    if (this.ui.lever) {
+      this.ui.lever.classList.add("pull");
+      setTimeout(() => this.ui.lever.classList.remove("pull"), REEL_STOP_DELAY);
+    }
+    let payload;
+    try {
+      payload = await auth.request("/api/games/slots/spin", {
+        method: "POST",
+        body: JSON.stringify({ bet }),
       });
+    } catch (err) {
+      this.spinning = false;
+      if (this.ui.spinBtn) this.ui.spinBtn.disabled = false;
+      showCenterToast(err.message || "Spin failed.", "danger");
+      return;
+    }
 
-      setTimeout(() => {
-        this.ui.winLight?.classList.remove("active");
-        this.clearHighlights();
-        const outcome = this.evaluateSpin(result);
+    state.balance = payload.balance;
+    updateBalance();
 
-        setTimeout(() => {
-          const onAutoSpin = () => {
-            this.spinning = false;
-            if (this.ui.spinBtn) this.ui.spinBtn.disabled = false;
-            if (this.ui.autoToggle?.checked) {
-              setTimeout(() => {
-                if (!this.spinning && this.ui.autoToggle.checked) {
-                  this.pullLever();
-                }
-              }, AUTO_SPIN_DELAY);
-            }
-          };
-          this.applyOutcome({ bet, winLight: this.ui.winLight, outcome, onAutoSpin });
-        }, RESULT_DELAY);
-      }, maxDuration + 240);
+    const reelsEl = this.ui.reelsWrap;
+    reelsEl?.classList.remove("spin");
+    void reelsEl?.offsetWidth;
+    reelsEl?.classList.add("spin");
+
+    const result = payload.symbols || [];
+    let maxDuration = 0;
+    this.reels.forEach((reel, index) => {
+      const duration = this.spinReel(reel, result[index], index);
+      maxDuration = Math.max(maxDuration, duration);
     });
 
-    if (message) {
-      showCenterToast(message, "danger");
-    }
+    setTimeout(() => {
+      this.ui.winLight?.classList.remove("active");
+      this.clearHighlights();
+
+      setTimeout(() => {
+        const onAutoSpin = () => {
+          this.spinning = false;
+          if (this.ui.spinBtn) this.ui.spinBtn.disabled = false;
+          if (this.ui.autoToggle?.checked) {
+            setTimeout(() => {
+              if (!this.spinning && this.ui.autoToggle.checked) {
+                this.pullLever();
+              }
+            }, AUTO_SPIN_DELAY);
+          }
+        };
+        this.applyOutcome({
+          bet,
+          winLight: this.ui.winLight,
+          outcome: payload.outcome,
+          profit: payload.profit,
+          wipeBalance: payload.wipeBalance,
+          onAutoSpin,
+        });
+      }, RESULT_DELAY);
+    }, maxDuration + 240);
   }
 
   bindEvents() {

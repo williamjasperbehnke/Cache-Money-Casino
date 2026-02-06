@@ -2,6 +2,7 @@ import { isStrongPassword } from "./password.js";
 import { DEFAULT_BALANCE, BALANCE_STORAGE_KEY } from "./constants.js";
 
 const STORAGE_TOKEN = "casino-token";
+const STORAGE_GUEST_TOKEN = "casino-guest-token";
 const STORAGE_USER = "casino-user";
 const STORAGE_API = "casino-api-base";
 
@@ -12,14 +13,14 @@ const getApiBase = () => {
   return base ? base.replace(/\/+$/, "") : "";
 };
 
-const request = async (path, options = {}) => {
+const request = async (path, options = {}, tokenOverride = "") => {
   const base = getApiBase();
   const url = base ? `${base}${path}` : path;
   const headers = {
     "Content-Type": "application/json",
     ...(options.headers || {}),
   };
-  const token = auth.token;
+  const token = tokenOverride || auth.apiToken || auth.token;
   if (token) headers.Authorization = `Bearer ${token}`;
   const res = await fetch(url, { ...options, headers });
   if (!res.ok) {
@@ -36,6 +37,8 @@ const updateBankUi = (balance) => {
 
 export const auth = {
   token: localStorage.getItem(STORAGE_TOKEN) || "",
+  guestToken: localStorage.getItem(STORAGE_GUEST_TOKEN) || "",
+  apiToken: localStorage.getItem(STORAGE_TOKEN) || localStorage.getItem(STORAGE_GUEST_TOKEN) || "",
   user: localStorage.getItem(STORAGE_USER) || "",
   balanceSync: null,
   onBalanceUpdate: null,
@@ -49,12 +52,20 @@ export const auth = {
 
   setSession(token, user) {
     this.token = token || "";
+    this.apiToken = this.token || this.guestToken || "";
     this.user = user || "";
     if (token) localStorage.setItem(STORAGE_TOKEN, token);
     else localStorage.removeItem(STORAGE_TOKEN);
     if (user) localStorage.setItem(STORAGE_USER, user);
     else localStorage.removeItem(STORAGE_USER);
     this.updateUi();
+  },
+
+  setGuestToken(token) {
+    this.guestToken = token || "";
+    if (token) localStorage.setItem(STORAGE_GUEST_TOKEN, token);
+    else localStorage.removeItem(STORAGE_GUEST_TOKEN);
+    if (!this.token) this.apiToken = this.guestToken || "";
   },
 
   async login(username, password) {
@@ -83,12 +94,24 @@ export const auth = {
 
   async logout() {
     this.setSession("", "");
+    this.apiToken = this.guestToken || "";
     localStorage.setItem(BALANCE_STORAGE_KEY, String(DEFAULT_BALANCE));
     if (this.onBalanceUpdate) this.onBalanceUpdate(DEFAULT_BALANCE);
     updateBankUi(DEFAULT_BALANCE);
     if (window.location.pathname.endsWith("account.html")) {
       window.location.reload();
     }
+    await this.ensureGuestSession();
+  },
+
+  async ensureGuestSession() {
+    if (this.isAuthed()) return;
+    if (this.guestToken) return;
+    const payload = await request("/api/auth/guest", { method: "POST" });
+    this.setGuestToken(payload.token);
+    localStorage.setItem(BALANCE_STORAGE_KEY, String(payload.user.balance));
+    if (this.onBalanceUpdate) this.onBalanceUpdate(payload.user.balance);
+    updateBankUi(payload.user.balance);
   },
 
   async fetchMe() {
@@ -127,6 +150,10 @@ export const auth = {
       method: "POST",
       body: JSON.stringify({ game, bet, net, result }),
     });
+  },
+
+  request(path, options = {}) {
+    return request(path, options, this.apiToken);
   },
 
   cacheUi() {
@@ -274,6 +301,12 @@ export const auth = {
         await this.fetchMe();
       } catch (err) {
         this.setSession("", "");
+      }
+    } else {
+      try {
+        await this.ensureGuestSession();
+      } catch (err) {
+        // ignore
       }
     }
   },

@@ -44,6 +44,19 @@ const putSession = (token, username) =>
     })
     .promise();
 
+const putGuestSession = (token) =>
+  ddb
+    .put({
+      TableName: SESSIONS_TABLE,
+      Item: {
+        token,
+        username: null,
+        balance: 1000,
+        ttl: ttlFromNow(60 * 60 * 24 * 7),
+      },
+    })
+    .promise();
+
 exports.handler = async (event) => {
   const { method, path } = getRoute(event);
   if (method === "OPTIONS") return jsonResponse(204, {}, CORS_ORIGIN);
@@ -96,6 +109,16 @@ exports.handler = async (event) => {
     return jsonResponse(
       200,
       { token, user: { username, balance: user.balance, stats: user.stats } },
+      CORS_ORIGIN
+    );
+  }
+
+  if ((path.endsWith("/api/auth/guest") || path.endsWith("/auth/guest")) && method === "POST") {
+    const token = createToken();
+    await putGuestSession(token);
+    return jsonResponse(
+      200,
+      { token, user: { username: "guest", balance: 1000 } },
       CORS_ORIGIN
     );
   }

@@ -273,6 +273,12 @@ resource "aws_apigatewayv2_route" "auth_login" {
   target    = "integrations/${aws_apigatewayv2_integration.auth.id}"
 }
 
+resource "aws_apigatewayv2_route" "auth_guest" {
+  api_id    = aws_apigatewayv2_api.rest.id
+  route_key = "POST /api/auth/guest"
+  target    = "integrations/${aws_apigatewayv2_integration.auth.id}"
+}
+
 resource "aws_apigatewayv2_route" "me" {
   api_id    = aws_apigatewayv2_api.rest.id
   route_key = "GET /api/me"
@@ -294,6 +300,24 @@ resource "aws_apigatewayv2_route" "stats" {
 resource "aws_apigatewayv2_route" "game_session" {
   api_id    = aws_apigatewayv2_api.rest.id
   route_key = "POST /api/games/{game}/session"
+  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
+}
+
+resource "aws_apigatewayv2_route" "roulette_spin" {
+  api_id    = aws_apigatewayv2_api.rest.id
+  route_key = "POST /api/games/roulette/spin"
+  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
+}
+
+resource "aws_apigatewayv2_route" "roulette_chaos" {
+  api_id    = aws_apigatewayv2_api.rest.id
+  route_key = "POST /api/games/roulette/chaos"
+  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
+}
+
+resource "aws_apigatewayv2_route" "slots_spin" {
+  api_id    = aws_apigatewayv2_api.rest.id
+  route_key = "POST /api/games/slots/spin"
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
