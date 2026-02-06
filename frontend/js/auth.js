@@ -117,7 +117,15 @@ export const auth = {
 
   async ensureGuestSession() {
     if (this.isAuthed()) return;
-    if (this.guestToken) return;
+    if (this.guestToken) {
+      try {
+        await request("/api/me", {}, this.guestToken);
+        this.apiToken = this.guestToken;
+        return;
+      } catch (err) {
+        this.setGuestToken("");
+      }
+    }
     const payload = await request("/api/auth/guest", { method: "POST" });
     this.setGuestToken(payload.token);
     localStorage.setItem(BALANCE_STORAGE_KEY, String(payload.user.balance));

@@ -357,6 +357,24 @@ resource "aws_apigatewayv2_route" "blackjack_split" {
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
+resource "aws_apigatewayv2_route" "holdem_deal" {
+  api_id    = aws_apigatewayv2_api.rest.id
+  route_key = "POST /api/games/holdem/deal"
+  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
+}
+
+resource "aws_apigatewayv2_route" "holdem_action" {
+  api_id    = aws_apigatewayv2_api.rest.id
+  route_key = "POST /api/games/holdem/action"
+  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
+}
+
+resource "aws_apigatewayv2_route" "holdem_fold" {
+  api_id    = aws_apigatewayv2_api.rest.id
+  route_key = "POST /api/games/holdem/fold"
+  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
+}
+
 resource "aws_lambda_permission" "auth" {
   statement_id  = "AllowInvokeAuth"
   action        = "lambda:InvokeFunction"

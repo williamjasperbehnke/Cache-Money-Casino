@@ -1,15 +1,11 @@
 import {
   state,
   updateBalance,
-  payout,
   playSfx,
   showCenterToast,
   renderCards,
   renderHiddenCards,
   revealDealer,
-  buildDeck,
-  shuffle,
-  draw,
   makeChipStack,
   updateBetTotal,
   bindBetChips,
@@ -175,6 +171,15 @@ export class HoldemGame {
     renderCards(this.ui.community, cards);
   }
 
+  applyServerState(nextState, balance) {
+    if (!nextState) return;
+    Object.assign(state.holdem, nextState);
+    if (Number.isFinite(balance)) {
+      state.balance = balance;
+      updateBalance();
+    }
+  }
+
   updatePotUI() {
     if (state.holdem.inRound || state.holdem.awaitingClear) {
       const total = state.holdem.pot;
@@ -270,6 +275,7 @@ export class HoldemGame {
     state.holdem.awaitingClear = false;
     state.holdem.inRound = false;
     state.holdem.skipBetting = false;
+    state.holdem.dealerRaised = false;
     if (this.ui.playerResult) this.ui.playerResult.textContent = "";
     if (this.ui.dealerResult) this.ui.dealerResult.textContent = "";
     renderCards(this.ui.player, []);
@@ -308,36 +314,27 @@ export class HoldemGame {
       return;
     }
     playSfx("deal");
-    state.holdem.inRound = true;
-    const nextDealerButton = !state.holdem.dealerButton;
-    if (!this.postBlinds(nextDealerButton)) {
-      state.holdem.inRound = false;
-      this.updatePotUI();
-      this.updateButtons();
-      return;
-    }
-    state.holdem.dealerButton = nextDealerButton;
-
-    state.holdem.deck = shuffle(buildDeck());
-    state.holdem.player = [draw(state.holdem.deck), draw(state.holdem.deck)];
-    state.holdem.dealer = [draw(state.holdem.deck), draw(state.holdem.deck)];
-    state.holdem.community = [
-      draw(state.holdem.deck),
-      draw(state.holdem.deck),
-      draw(state.holdem.deck),
-      draw(state.holdem.deck),
-      draw(state.holdem.deck),
-    ];
-    state.holdem.phase = "preflop";
-    state.holdem.awaitingClear = false;
-    state.holdem.betAmount = 0;
-    state.holdem.awaitingRaise = false;
-
-    renderCards(this.ui.player, state.holdem.player);
-    renderHiddenCards("holdemDealer", state.holdem.dealer.length);
-    this.updateCommunity();
-    this.updateButtons();
-    this.skipBettingIfBroke();
+    auth
+      .request("/api/games/holdem/deal", {
+        method: "POST",
+        body: JSON.stringify({ state: state.holdem }),
+      })
+      .then((payload) => {
+        this.applyServerState(payload.state, payload.balance);
+        renderCards(this.ui.player, state.holdem.player);
+        renderHiddenCards("holdemDealer", state.holdem.dealer.length);
+        this.updateCommunity();
+        this.updatePotUI();
+        this.updateButtons();
+        if (payload.messages?.length) {
+          payload.messages.forEach((msg) =>
+            showCenterToast(msg.text, msg.tone || "win", msg.duration || 1600)
+          );
+        }
+      })
+      .catch((err) => {
+        showCenterToast(err.message || "Deal failed.", "danger");
+      });
   }
 
   resetBettingRound() {
@@ -488,154 +485,65 @@ export class HoldemGame {
     this.advancePhase();
   }
 
-  playerCall() {
+  async playerAction() {
     if (!state.holdem.inRound || !BETTING_PHASES.has(state.holdem.phase)) return;
-    const toCall = this.toCallAmount();
-    if (toCall > 0) {
-      const amount = Math.min(toCall, state.balance);
-      if (amount <= 0) {
-        showCenterToast("Not enough credits to call.", "danger");
-        return;
-      }
-      state.balance -= amount;
-      updateBalance();
-      state.holdem.pot += amount;
-      state.holdem.playerPaid += amount;
-      state.holdem.playerBet += amount;
-      if (amount === toCall) {
-        state.holdem.playerBet = state.holdem.currentBet;
-      }
+    try {
+      const payload = await auth.request("/api/games/holdem/action", {
+        method: "POST",
+        body: JSON.stringify({ state: state.holdem, betAmount: state.holdem.betAmount }),
+      });
+      this.applyServerState(payload.state, payload.balance);
+      this.updateCommunity();
       this.updatePotUI();
-      if (amount < toCall) {
-        showCenterToast("All-in call.", "win", 1600);
+      this.updateButtons();
+      renderCards(this.ui.player, state.holdem.player);
+      renderHiddenCards("holdemDealer", state.holdem.dealer.length);
+      if (payload.messages?.length) {
+        payload.messages.forEach((msg) =>
+          showCenterToast(msg.text, msg.tone || "win", msg.duration || 1600)
+        );
       }
+      if (payload.showdown) {
+        this.renderShowdown(payload.showdown);
+      }
+    } catch (err) {
+      showCenterToast(err.message || "Action failed.", "danger");
     }
-
-    if (state.holdem.awaitingRaise) {
-      state.holdem.awaitingRaise = false;
-      this.advancePhase();
-      return;
-    }
-
-    if (toCall > 0 && state.balance === 0) {
-      this.advancePhase();
-      return;
-    }
-
-    this.dealerActs();
   }
 
-  playerRaise() {
-    if (!state.holdem.inRound || !BETTING_PHASES.has(state.holdem.phase)) return;
-    const raiseBy = state.holdem.betAmount;
-    if (!raiseBy || raiseBy <= 0) {
-      showCenterToast("Select a raise amount.", "danger");
-      return;
-    }
-    const toCall = this.toCallAmount();
-    const totalNeeded = toCall + raiseBy;
-    if (totalNeeded > state.balance) {
-      showCenterToast("Not enough credits to raise.", "danger");
-      return;
-    }
-    state.balance -= totalNeeded;
-    updateBalance();
-    state.holdem.pot += totalNeeded;
-    state.holdem.playerPaid += totalNeeded;
-    state.holdem.playerBet += totalNeeded;
-    state.holdem.currentBet = state.holdem.playerBet;
-    state.holdem.awaitingRaise = false;
-    this.updatePotUI();
-    this.updateButtons();
-    this.dealerActs();
-  }
-
-  playerAction() {
-    if (!state.holdem.inRound || !BETTING_PHASES.has(state.holdem.phase)) return;
-    const toCall = this.toCallAmount();
-    if (toCall > 0 && state.holdem.betAmount > 0) {
-      this.playerRaise();
-      return;
-    }
-    if (toCall > 0) {
-      this.playerCall();
-      return;
-    }
-    if (state.holdem.betAmount > 0) {
-      this.playerRaise();
-      return;
-    }
-    this.playerCall();
-  }
-
-  playerFold() {
+  async playerFold() {
     if (!state.holdem.inRound) return;
-    showCenterToast("You folded. Dealer wins.", "danger", 2000);
-    auth.recordResult({
-      game: "holdem",
-      bet: state.holdem.playerPaid,
-      net: -state.holdem.playerPaid,
-      result: "loss",
-    });
-    this.endHand();
+    try {
+      const payload = await auth.request("/api/games/holdem/fold", {
+        method: "POST",
+        body: JSON.stringify({ state: state.holdem }),
+      });
+      this.applyServerState(payload.state, payload.balance);
+      this.updatePotUI();
+      this.updateButtons();
+      if (payload.messages?.length) {
+        payload.messages.forEach((msg) =>
+          showCenterToast(msg.text, msg.tone || "danger", msg.duration || 1600)
+        );
+      }
+    } catch (err) {
+      showCenterToast(err.message || "Fold failed.", "danger");
+    }
   }
 
-  endHand() {
-    state.holdem.awaitingClear = true;
-    state.holdem.inRound = false;
-    state.holdem.phase = "showdown";
-    this.updateButtons();
-  }
-
-  finishShowdown() {
+  renderShowdown(showdown) {
     revealDealer("holdemDealer");
     renderCards("holdemDealer", state.holdem.dealer);
-
-    const playerCombined = [...state.holdem.player, ...state.holdem.community];
-    const dealerCombined = [...state.holdem.dealer, ...state.holdem.community];
-    const playerBest = HoldemGame.bestHand(playerCombined);
-    const dealerBest = HoldemGame.bestHand(dealerCombined);
-    const result = HoldemGame.compareHands(playerBest.eval, dealerBest.eval);
-
-    if (this.ui.playerResult) this.ui.playerResult.textContent = `Player: ${playerBest.eval.label}`;
-    if (this.ui.dealerResult) this.ui.dealerResult.textContent = `Dealer: ${dealerBest.eval.label}`;
-
-    this.applyHighlights(playerBest.indexes, dealerBest.indexes, result);
-
-    if (result > 0) {
-      payout(state.holdem.pot);
-      playSfx("win");
-      showCenterToast(`You win with ${playerBest.eval.label}!`, "win", 2400);
-      auth.recordResult({
-        game: "holdem",
-        bet: state.holdem.playerPaid,
-        net: state.holdem.pot - state.holdem.playerPaid,
-        result: "win",
-      });
-    } else if (result < 0) {
-      playSfx("lose");
-      showCenterToast(`Dealer wins with ${dealerBest.eval.label}.`, "danger", 2400);
-      auth.recordResult({
-        game: "holdem",
-        bet: state.holdem.playerPaid,
-        net: -state.holdem.playerPaid,
-        result: "loss",
-      });
-    } else {
-      payout(state.holdem.pot / 2);
-      playSfx("win");
-      showCenterToast("Push. Pot split.", "win", 2000);
-      auth.recordResult({
-        game: "holdem",
-        bet: state.holdem.playerPaid,
-        net: 0,
-        result: "push",
-      });
+    if (this.ui.playerResult) {
+      this.ui.playerResult.textContent = `Player: ${showdown.playerLabel}`;
     }
-
-    state.holdem.awaitingClear = true;
-    state.holdem.inRound = false;
-    this.updateButtons();
+    if (this.ui.dealerResult) {
+      this.ui.dealerResult.textContent = `Dealer: ${showdown.dealerLabel}`;
+    }
+    this.applyHighlights(showdown.playerIndexes, showdown.dealerIndexes, showdown.result);
+    const hasWin = showdown.result > 0;
+    const hasPush = showdown.result === 0;
+    playSfx(hasWin || hasPush ? "win" : "lose");
   }
 
   applyHighlights(playerIndexes, dealerIndexes, result) {
