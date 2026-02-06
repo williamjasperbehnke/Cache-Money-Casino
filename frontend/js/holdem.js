@@ -505,11 +505,10 @@ export class HoldemGame {
       renderHiddenCards("holdemDealer", state.holdem.dealer.length);
       const hasShowdown = Boolean(payload.showdown);
       const messages = payload.messages || [];
-      const shouldSkipMsg = state.balance <= 0 && state.holdem.skipBetting;
-      if (shouldSkipMsg) {
+      if (state.holdem.skipBetting) {
         showCenterToast("No credits left. Skipping betting.", "danger", 2400);
       }
-      const revealDelay = shouldSkipMsg ? 2400 : 0;
+      const revealDelay = state.holdem.skipBetting ? 2400 : 0;
       setTimeout(() => {
         if (messages.length) {
           showMessagesSequential(messages);
