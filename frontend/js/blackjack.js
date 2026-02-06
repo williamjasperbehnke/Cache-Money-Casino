@@ -380,6 +380,13 @@ export class BlackjackGame {
 
     doubleBtn?.addEventListener("click", async () => {
       if (!state.blackjack.inRound) return;
+      const currentBet = state.blackjack.bets[state.blackjack.activeHand] || 0;
+      if (currentBet > state.balance) {
+        showCenterToast("Not enough credits to double.", "danger");
+        return;
+      }
+      state.balance -= currentBet;
+      updateBalance();
       try {
         const payload = await auth.request("/api/games/blackjack/double", {
           method: "POST",
@@ -400,6 +407,8 @@ export class BlackjackGame {
           this.handleRoundEnd(auto);
         }
       } catch (err) {
+        state.balance += currentBet;
+        updateBalance();
         showCenterToast(err.message || "Double failed.", "danger");
       }
     });

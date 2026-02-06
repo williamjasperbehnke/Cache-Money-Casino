@@ -119,12 +119,15 @@ const resolveDealer = (state) => {
   state.inRound = false;
 };
 
-const resolveBlackjack = (state) => {
+const resolveBlackjack = (state, { omitBusted = false } = {}) => {
   resolveDealer(state);
   const dealerTotal = handTotal(state.dealer);
   const outcomes = [];
   let payoutTotal = 0;
   state.hands.forEach((hand, index) => {
+    if (omitBusted && (state.busted[index] || handTotal(hand) > 21)) {
+      return;
+    }
     const bet = state.bets[index];
     const total = handTotal(hand);
     if (state.busted[index] || total > 21) {
@@ -483,7 +486,7 @@ exports.handler = async (event) => {
       });
       const done = advanceHand(state);
       if (done) {
-      const { outcomes, payoutTotal } = resolveBlackjack(state);
+      const { outcomes, payoutTotal } = resolveBlackjack(state, { omitBusted: true });
       const { user, balance } = await resolveBalance(session);
       applyBlackjackStats(user, state, outcomes);
       const nextBalance = await persistBalance(session, user, balance + payoutTotal);
@@ -511,7 +514,7 @@ exports.handler = async (event) => {
     }
     const done = advanceHand(state);
     if (done) {
-      const { outcomes, payoutTotal } = resolveBlackjack(state);
+      const { outcomes, payoutTotal } = resolveBlackjack(state, { omitBusted: true });
       const { user, balance } = await resolveBalance(session);
       applyBlackjackStats(user, state, outcomes);
       const nextBalance = await persistBalance(session, user, balance + payoutTotal);
@@ -561,7 +564,7 @@ exports.handler = async (event) => {
     }
     const done = advanceHand(state);
     if (done) {
-      const { outcomes, payoutTotal } = resolveBlackjack(state);
+      const { outcomes, payoutTotal } = resolveBlackjack(state, { omitBusted: true });
       applyBlackjackStats(user, state, outcomes);
       const finalBalance = await persistBalance(session, user, nextBalance + payoutTotal);
       if (user) await putUser(user);
