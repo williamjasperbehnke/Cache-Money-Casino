@@ -308,6 +308,7 @@ import { auth } from "./auth.js";
 const balanceManager = new BalanceManager(state, balanceEl, balanceDeltaEl);
 const audioManager = new AudioManager();
 const toastManager = new ToastManager(centerToastEl);
+let balanceSynced = false;
 
 export function updateBalance() {
   balanceManager.update(state);
@@ -320,6 +321,10 @@ export function initCore(onReset) {
     onBalanceUpdate: (balance) => {
       if (!Number.isFinite(balance)) return;
       state.balance = balance;
+      if (!balanceSynced) {
+        state.lastBalance = balance;
+        balanceSynced = true;
+      }
       updateBalance();
     },
     getBalance: () => state.balance,

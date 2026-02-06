@@ -512,11 +512,19 @@ export class HoldemGame {
       this.updateButtons();
       renderCards(this.ui.player, state.holdem.player);
       renderHiddenCards("holdemDealer", state.holdem.dealer.length);
-      if (payload.messages?.length) {
-        this.showMessagesSequential(payload.messages);
+      const hasShowdown = Boolean(payload.showdown);
+      const messages = payload.messages || [];
+      if (messages.length) {
+        this.showMessagesSequential(messages);
       }
-      if (payload.showdown) {
-        this.renderShowdown(payload.showdown);
+      if (hasShowdown) {
+        const totalDelay = messages.reduce(
+          (sum, msg) => sum + (Number.isFinite(msg.duration) ? msg.duration : 1600),
+          0
+        );
+        setTimeout(() => {
+          this.renderShowdown(payload.showdown);
+        }, totalDelay);
       }
     } catch (err) {
       showCenterToast(err.message || "Action failed.", "danger");
