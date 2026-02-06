@@ -865,7 +865,6 @@ exports.handler = async (event) => {
       while (state.inRound && HOLDEM_BETTING_PHASES.has(state.phase)) {
         holdemAdvancePhase(state);
       }
-      messages.push({ text: "No credits left. Skipping betting.", tone: "danger", duration: 2400 });
       return true;
     };
 

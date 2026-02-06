@@ -3,6 +3,7 @@ import {
   updateBalance,
   playSfx,
   showCenterToast,
+  showCenterToasts,
   renderCards,
   renderHiddenCards,
   revealDealer,
@@ -136,17 +137,6 @@ export class HoldemGame {
     this.ui = {};
   }
 
-  showMessagesSequential(messages = []) {
-    if (!messages.length) return;
-    let delay = 0;
-    messages.forEach((msg) => {
-      const duration = Number.isFinite(msg.duration) ? msg.duration : 1600;
-      setTimeout(() => {
-        showCenterToast(msg.text, msg.tone || "win", duration);
-      }, delay);
-      delay += duration;
-    });
-  }
 
   cacheElements() {
     this.ui = {
@@ -514,18 +504,19 @@ export class HoldemGame {
       renderHiddenCards("holdemDealer", state.holdem.dealer.length);
       const hasShowdown = Boolean(payload.showdown);
       const messages = payload.messages || [];
-      if (messages.length) {
-        this.showMessagesSequential(messages);
+      const shouldSkipMsg = state.balance <= 0 && state.holdem.skipBetting;
+      if (shouldSkipMsg) {
+        showCenterToast("No credits left. Skipping betting.", "danger", 2400);
       }
-      if (hasShowdown) {
-        const totalDelay = messages.reduce(
-          (sum, msg) => sum + (Number.isFinite(msg.duration) ? msg.duration : 1600),
-          0
-        );
-        setTimeout(() => {
+      const revealDelay = shouldSkipMsg ? 2400 : 0;
+      setTimeout(() => {
+        if (messages.length) {
+          showCenterToasts(messages);
+        }
+        if (hasShowdown) {
           this.renderShowdown(payload.showdown);
-        }, totalDelay);
-      }
+        }
+      }, revealDelay);
     } catch (err) {
       showCenterToast(err.message || "Action failed.", "danger");
     }
