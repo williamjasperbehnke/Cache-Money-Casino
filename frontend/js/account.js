@@ -79,17 +79,23 @@ const renderStats = (stats) => {
   }
 };
 
+const wireBalanceUpdates = () => {
+  const balanceEl = document.getElementById("accountBalance");
+  const prev = auth.onBalanceUpdate;
+  auth.onBalanceUpdate = (balance) => {
+    if (prev) prev(balance);
+    if (balanceEl) balanceEl.textContent = `$${balance}`;
+  };
+};
+
 const initAccount = async () => {
-  await auth.init({
-    onBalanceUpdate: (balance) => {
-      const balanceEl = document.getElementById("accountBalance");
-      if (balanceEl) balanceEl.textContent = `$${balance}`;
-    },
-    getBalance: () => 0,
-  });
+  const section = document.getElementById("account");
+  if (section) section.classList.add("loading");
+  wireBalanceUpdates();
 
   if (!auth.isAuthed()) {
     renderStats({ totals: {}, games: {}, recent: [] });
+    if (section) section.classList.remove("loading");
     return;
   }
 
@@ -100,8 +106,10 @@ const initAccount = async () => {
     if (nameEl) nameEl.textContent = me.username;
     if (balanceEl) balanceEl.textContent = `$${me.balance}`;
     renderStats(me.stats || {});
+    if (section) section.classList.remove("loading");
   } catch (err) {
     renderStats({ totals: {}, games: {}, recent: [] });
+    if (section) section.classList.remove("loading");
   }
 };
 

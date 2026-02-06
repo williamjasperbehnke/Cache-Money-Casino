@@ -1587,6 +1587,37 @@ h3 {
   min-height: 0;
 }
 
+#account.loading .account-card > * {
+  visibility: hidden;
+}
+
+#account.loading .account-card {
+  position: relative;
+  overflow: hidden;
+}
+
+#account.loading .account-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    rgba(30, 41, 59, 0.15) 0%,
+    rgba(148, 163, 184, 0.35) 45%,
+    rgba(30, 41, 59, 0.15) 100%
+  );
+  animation: shimmer 1.2s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
 .account-card h3 {
   margin-top: 0;
   font-size: 11px;
