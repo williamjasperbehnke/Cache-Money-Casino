@@ -307,6 +307,9 @@ export const auth = {
       this.bindEvents();
       this.initialized = true;
     }
+    const stored = Number(localStorage.getItem(BALANCE_STORAGE_KEY));
+    const immediateBalance = Number.isFinite(stored) ? stored : DEFAULT_BALANCE;
+    if (this.onBalanceUpdate) this.onBalanceUpdate(immediateBalance);
     this.updateUi();
     if (this.isAuthed()) {
       try {
