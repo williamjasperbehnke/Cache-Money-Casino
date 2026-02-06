@@ -129,6 +129,7 @@ resource "aws_lambda_function" "auth" {
   handler       = "auth.handler"
   runtime       = "nodejs18.x"
   filename      = data.archive_file.bundle.output_path
+  source_code_hash = data.archive_file.bundle.output_base64sha256
   timeout       = 10
 
   environment {
@@ -146,6 +147,7 @@ resource "aws_lambda_function" "account" {
   handler       = "account.handler"
   runtime       = "nodejs18.x"
   filename      = data.archive_file.bundle.output_path
+  source_code_hash = data.archive_file.bundle.output_base64sha256
   timeout       = 10
 
   environment {
@@ -163,6 +165,7 @@ resource "aws_lambda_function" "game" {
   handler       = "game.handler"
   runtime       = "nodejs18.x"
   filename      = data.archive_file.bundle.output_path
+  source_code_hash = data.archive_file.bundle.output_base64sha256
   timeout       = 10
 
   environment {
@@ -181,6 +184,7 @@ resource "aws_lambda_function" "ws_connect" {
   handler       = "ws_connect.handler"
   runtime       = "nodejs18.x"
   filename      = data.archive_file.bundle.output_path
+  source_code_hash = data.archive_file.bundle.output_base64sha256
   timeout       = 10
 
   environment {
@@ -198,6 +202,7 @@ resource "aws_lambda_function" "ws_disconnect" {
   handler       = "ws_disconnect.handler"
   runtime       = "nodejs18.x"
   filename      = data.archive_file.bundle.output_path
+  source_code_hash = data.archive_file.bundle.output_base64sha256
   timeout       = 10
 
   environment {
@@ -214,6 +219,7 @@ resource "aws_lambda_function" "ws_message" {
   handler       = "ws_message.handler"
   runtime       = "nodejs18.x"
   filename      = data.archive_file.bundle.output_path
+  source_code_hash = data.archive_file.bundle.output_base64sha256
   timeout       = 10
 
   environment {
