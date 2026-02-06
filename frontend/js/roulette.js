@@ -350,6 +350,11 @@ export class RouletteGame {
         .map((chip) => Number(chip.dataset.amount))
         .filter((amount) => amount > 0);
       if (chips.length === 0) return;
+      const available = Math.min(state.balance, 200);
+      if (available <= 0) {
+        showCenterToast("Not enough credits.", "danger");
+        return;
+      }
       try {
         const payload = await auth.request("/api/games/roulette/chaos", {
           method: "POST",
@@ -395,6 +400,11 @@ export class RouletteGame {
       if (!state.roulette.roundPaid) {
         if (totalBet > state.balance) {
           showCenterToast("Not enough credits.", "danger");
+          state.roulette.bets.numbers = {};
+          state.roulette.bets.colors = {};
+          state.roulette.bets.parities = {};
+          state.roulette.roundPaid = false;
+          this.updateUI();
           return;
         }
         state.balance -= totalBet;
