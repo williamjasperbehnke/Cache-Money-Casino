@@ -363,6 +363,7 @@ export class RouletteGame {
         if (payload.spent > 0) {
           state.balance = Math.max(0, state.balance - payload.spent);
           updateBalance();
+          state.roulette.roundPaid = true;
         }
         this.updateUI();
         if (payload.spent > 0) {
