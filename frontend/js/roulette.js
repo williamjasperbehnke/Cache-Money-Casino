@@ -409,8 +409,10 @@ export class RouletteGame {
       const spin = payload.resultNumber;
       this.spinWheel(spin);
       setTimeout(() => {
-        state.balance = payload.balance;
-        updateBalance();
+        if (payload.payout && payload.payout > 0) {
+          state.balance += payload.payout;
+          updateBalance();
+        }
         const profit = payload.profit || 0;
         if (profit > 0) {
           playSfx("win");
