@@ -454,7 +454,7 @@ exports.handler = async (event) => {
   }
 
   if (method === "POST" && path.endsWith("/games/roulette/spin")) {
-    const { bets } = parseJson(event);
+    const { bets, paid } = parseJson(event);
     const numbers = bets?.numbers || {};
     const colors = bets?.colors || {};
     const parities = bets?.parities || {};
@@ -463,7 +463,7 @@ exports.handler = async (event) => {
       return jsonResponse(400, { error: "No bets placed." }, CORS_ORIGIN);
     }
     const { user, balance } = await resolveBalance(session);
-    if (balance < totalBet) {
+    if (!paid && balance < totalBet) {
       return jsonResponse(400, { error: "Not enough credits." }, CORS_ORIGIN);
     }
     const resultNumber = rouletteOrder[Math.floor(Math.random() * rouletteOrder.length)];
@@ -488,7 +488,7 @@ exports.handler = async (event) => {
       profit += parityAmount;
     }
 
-    let nextBalance = balance - totalBet + payout;
+    let nextBalance = (paid ? balance : balance - totalBet) + payout;
     nextBalance = await persistBalance(session, user, nextBalance);
     if (user) {
       user.stats = updateStats(user.stats, {

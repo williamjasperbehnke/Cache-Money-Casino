@@ -418,7 +418,7 @@ export class RouletteGame {
       try {
         payload = await auth.request("/api/games/roulette/spin", {
           method: "POST",
-          body: JSON.stringify({ bets: state.roulette.bets }),
+          body: JSON.stringify({ bets: state.roulette.bets, paid: state.roulette.roundPaid }),
         });
       } catch (err) {
         if (state.roulette.roundPaid) {
