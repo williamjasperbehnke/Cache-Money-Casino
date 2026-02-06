@@ -184,7 +184,7 @@ const holdemAdvancePhase = (state) => {
 };
 
 const holdemPreflopStrength = (hand) => {
-  const values = hand.map((card) => card.value()).sort((a, b) => b - a);
+  const values = hand.map((card) => holdemCardValue(card)).sort((a, b) => b - a);
   const isPair = values[0] === values[1];
   const suited = hand[0].suit === hand[1].suit;
   const gap = Math.abs(values[0] - values[1]);
