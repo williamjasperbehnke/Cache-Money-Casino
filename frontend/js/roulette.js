@@ -246,6 +246,11 @@ export class RouletteGame {
   }
 
   clearBets() {
+    const totalBet = this.totalBet();
+    if (totalBet > 0) {
+      state.balance += totalBet;
+      updateBalance();
+    }
     state.roulette.bets.numbers = {};
     state.roulette.bets.colors = {};
     state.roulette.bets.parities = {};
@@ -272,6 +277,12 @@ export class RouletteGame {
         showCenterToast("Max bet per slot is $50.", "danger");
         return;
       }
+      if (amount > state.balance) {
+        showCenterToast("Not enough credits.", "danger");
+        return;
+      }
+      state.balance -= amount;
+      updateBalance();
       this.setZoneBet(zone, key, current + amount);
       this.updateUI();
       state.roulette.roundPaid = true;
@@ -286,6 +297,12 @@ export class RouletteGame {
         showCenterToast("Max bet per slot is $50.", "danger");
         return;
       }
+      if (this.selectedChip > state.balance) {
+        showCenterToast("Not enough credits.", "danger");
+        return;
+      }
+      state.balance -= this.selectedChip;
+      updateBalance();
       this.setZoneBet(zone, key, current + this.selectedChip);
       this.updateUI();
       animateChip(
@@ -306,6 +323,8 @@ export class RouletteGame {
       if (!current) return;
       const next = Math.max(0, current - removeAmount);
       this.setZoneBet(zone, key, next);
+      state.balance += Math.min(removeAmount, current);
+      updateBalance();
       this.updateUI();
       if (this.totalBet() <= 0) {
         state.roulette.roundPaid = false;
@@ -341,8 +360,10 @@ export class RouletteGame {
           }),
         });
         state.roulette.bets = payload.bets;
-        state.balance = payload.balance;
-        updateBalance();
+        if (payload.spent > 0) {
+          state.balance = Math.max(0, state.balance - payload.spent);
+          updateBalance();
+        }
         this.updateUI();
         if (payload.spent > 0) {
           playSfx("spin");

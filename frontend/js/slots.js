@@ -226,6 +226,7 @@ export class SlotsGame {
       setTimeout(() => this.ui.lever.classList.remove("pull"), REEL_STOP_DELAY);
     }
     let payload;
+    const balanceBefore = state.balance;
     try {
       payload = await auth.request("/api/games/slots/spin", {
         method: "POST",
@@ -238,7 +239,8 @@ export class SlotsGame {
       return;
     }
 
-    state.balance = payload.balance;
+    // Show bet deducted immediately, then apply final balance after outcome.
+    state.balance = Math.max(0, balanceBefore - bet);
     updateBalance();
 
     const reelsEl = this.ui.reelsWrap;
@@ -277,6 +279,8 @@ export class SlotsGame {
           wipeBalance: payload.wipeBalance,
           onAutoSpin,
         });
+        state.balance = payload.balance;
+        updateBalance();
       }, RESULT_DELAY);
     }, maxDuration + 240);
   }

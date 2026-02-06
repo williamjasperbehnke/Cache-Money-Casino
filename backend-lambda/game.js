@@ -210,7 +210,7 @@ exports.handler = async (event) => {
     if (chipValues.length === 0) {
       return jsonResponse(400, { error: "No chip values." }, CORS_ORIGIN);
     }
-    const { user, balance } = await resolveBalance(session);
+    const { balance } = await resolveBalance(session);
     const available = Math.min(balance, 200);
     if (available <= 0) {
       return jsonResponse(400, { error: "Not enough credits." }, CORS_ORIGIN);
@@ -244,13 +244,12 @@ exports.handler = async (event) => {
       spent += amount;
     }
 
-    const nextBalance = await persistBalance(session, user, balance - spent);
     return jsonResponse(
       200,
       {
         bets: nextBets,
         spent,
-        balance: nextBalance,
+        balance,
       },
       CORS_ORIGIN
     );
