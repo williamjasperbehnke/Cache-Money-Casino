@@ -1314,7 +1314,7 @@ exports.handler = async (event) => {
     const { user, balance } = await resolveBalance(session);
     let nextBalance = balance;
     const messages = [];
-    if (betAmount <= 0) {
+    if (betAmount < 0) {
       return jsonResponse(400, { error: "Select a bet amount." }, CORS_ORIGIN);
     }
     if (betAmount > nextBalance) {

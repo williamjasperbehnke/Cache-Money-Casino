@@ -224,6 +224,10 @@ export class PokerGame {
       showCenterToast("Round already running.", "danger");
       return;
     }
+    if (state.balance < state.poker.blind) {
+      showCenterToast("Not enough credits to cover the blind.", "danger");
+      return;
+    }
     const payload = await this.requestGame("/api/games/poker/deal", {
       blind: state.poker.blind,
     });
