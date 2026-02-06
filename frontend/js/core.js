@@ -7,6 +7,7 @@ import { DEFAULT_BALANCE, BALANCE_STORAGE_KEY } from "./constants.js";
 const SUITS = ["♠", "♥", "♦", "♣"];
 const RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
 const CHIP_DENOMS = [1000, 500, 100, 50, 25, 10, 5, 1];
+const GAME_STATE_PREFIX = "casino:game:";
 
 const storedBalance = Number(localStorage.getItem(BALANCE_STORAGE_KEY));
 const initialBalance = Number.isFinite(storedBalance) ? storedBalance : DEFAULT_BALANCE;
@@ -332,6 +333,40 @@ export function initCore(onReset) {
     },
     getBalance: () => state.balance,
   });
+}
+
+export function loadGameState(key) {
+  if (!key) return null;
+  try {
+    const raw = localStorage.getItem(`${GAME_STATE_PREFIX}${key}`);
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    return null;
+  }
+}
+
+export function saveGameState(key, data) {
+  if (!key) return;
+  try {
+    localStorage.setItem(`${GAME_STATE_PREFIX}${key}`, JSON.stringify(data));
+  } catch (err) {
+    // Ignore storage failures.
+  }
+}
+
+export function initGamePersistence({ key, getState, applyState }) {
+  const saved = loadGameState(key);
+  if (saved && applyState) applyState(saved);
+  const save = () => {
+    if (!getState) return;
+    saveGameState(key, getState());
+  };
+  window.addEventListener("beforeunload", save);
+  window.addEventListener("pagehide", save);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") save();
+  });
+  return saved;
 }
 
 export function formatCard(card) {

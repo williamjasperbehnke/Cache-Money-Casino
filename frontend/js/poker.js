@@ -48,6 +48,33 @@ export class PokerGame {
     };
   }
 
+  restoreFromSaved(saved) {
+    if (!saved) return;
+    Object.assign(state.poker, saved);
+    state.poker.discards = this.normalizeDiscards(saved);
+    state.poker.player = Array.isArray(state.poker.player) ? state.poker.player : [];
+    state.poker.dealer = Array.isArray(state.poker.dealer) ? state.poker.dealer : [];
+    state.poker.inRound = Boolean(state.poker.inRound);
+    state.poker.awaitingClear = Boolean(state.poker.awaitingClear);
+    state.poker.awaitingRaise = Boolean(state.poker.awaitingRaise);
+    state.poker.canDiscard = Boolean(state.poker.canDiscard);
+    if (state.poker.inRound) {
+      renderCards("pokerPlayer", state.poker.player);
+      if (state.poker.phase === "reveal" || state.poker.awaitingClear) {
+        revealDealer("pokerDealer");
+        renderCards("pokerDealer", state.poker.dealer);
+      } else {
+        renderHiddenCards("pokerDealer", state.poker.dealer.length || 0);
+      }
+      this.renderDiscards();
+    } else {
+      renderCards("pokerPlayer", []);
+      renderCards("pokerDealer", []);
+    }
+    this.updatePokerTotal();
+    this.updateUiForPhase();
+  }
+
   applyServerState(nextState, balance) {
     if (nextState) {
       Object.assign(state.poker, nextState);
@@ -439,6 +466,12 @@ export class PokerGame {
     renderCards("pokerPlayer", []);
     renderCards("pokerDealer", []);
     this.renderDiscards();
+  }
+
+  reset() {
+    this.resetRound();
+    this.updatePokerTotal();
+    this.updateUiForPhase();
   }
 
   init() {

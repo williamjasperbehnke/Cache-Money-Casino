@@ -328,4 +328,28 @@ export class SlotsGame {
   }
 
   reset() {}
+
+  serializeState() {
+    return {
+      bet: this.currentBet,
+      auto: Boolean(this.ui.autoToggle?.checked),
+    };
+  }
+
+  restoreFromSaved(saved) {
+    if (!saved) return;
+    if (Number.isFinite(saved.bet) && saved.bet > 0) {
+      this.currentBet = saved.bet;
+    }
+    if (this.ui.autoToggle) {
+      this.ui.autoToggle.checked = Boolean(saved.auto);
+    }
+    if (this.ui.presets?.length) {
+      this.ui.presets.forEach((preset) => preset.classList.remove("active"));
+      const match = Array.from(this.ui.presets).find(
+        (preset) => Number(preset.dataset.amount) === this.currentBet
+      );
+      if (match) match.classList.add("active");
+    }
+  }
 }

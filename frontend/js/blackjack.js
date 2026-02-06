@@ -177,6 +177,29 @@ export class BlackjackGame {
     }
   }
 
+  serializeState() {
+    return { ...state.blackjack };
+  }
+
+  restoreFromSaved(saved) {
+    if (!saved) return;
+    Object.assign(state.blackjack, saved);
+    state.blackjack.hands = Array.isArray(state.blackjack.hands) ? state.blackjack.hands : [];
+    state.blackjack.dealer = Array.isArray(state.blackjack.dealer) ? state.blackjack.dealer : [];
+    state.blackjack.bets = Array.isArray(state.blackjack.bets) ? state.blackjack.bets : [];
+    state.blackjack.doubled = Array.isArray(state.blackjack.doubled)
+      ? state.blackjack.doubled
+      : [];
+    state.blackjack.busted = Array.isArray(state.blackjack.busted) ? state.blackjack.busted : [];
+    state.blackjack.inRound = Boolean(state.blackjack.inRound);
+    state.blackjack.revealDealer = Boolean(state.blackjack.revealDealer);
+    state.blackjack.awaitingClear = Boolean(state.blackjack.awaitingClear);
+    this.updateTotal();
+    this.renderHands();
+    this.renderDealer();
+    this.updateControls();
+  }
+
   renderDealer() {
     if (!this.ui.dealerEl) return;
     if (state.blackjack.revealDealer) {

@@ -488,4 +488,28 @@ export class RouletteGame {
   reset() {
     this.updateUI();
   }
+
+  serializeState() {
+    return {
+      bets: {
+        numbers: { ...state.roulette.bets.numbers },
+        colors: { ...state.roulette.bets.colors },
+        parities: { ...state.roulette.bets.parities },
+      },
+      roundPaid: Boolean(state.roulette.roundPaid),
+    };
+  }
+
+  restoreFromSaved(saved) {
+    if (!saved) return;
+    const bets = saved.bets || {};
+    state.roulette.bets = {
+      numbers: bets.numbers || {},
+      colors: bets.colors || {},
+      parities: bets.parities || {},
+    };
+    state.roulette.roundPaid = Boolean(saved.roundPaid);
+    state.roulette.spinning = false;
+    this.updateUI();
+  }
 }

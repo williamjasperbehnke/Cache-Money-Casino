@@ -183,6 +183,35 @@ export class HoldemGame {
     }
   }
 
+  serializeState() {
+    return { ...state.holdem };
+  }
+
+  restoreFromSaved(saved) {
+    if (!saved) return;
+    Object.assign(state.holdem, saved);
+    state.holdem.player = Array.isArray(state.holdem.player) ? state.holdem.player : [];
+    state.holdem.dealer = Array.isArray(state.holdem.dealer) ? state.holdem.dealer : [];
+    state.holdem.community = Array.isArray(state.holdem.community) ? state.holdem.community : [];
+    state.holdem.inRound = Boolean(state.holdem.inRound);
+    state.holdem.awaitingClear = Boolean(state.holdem.awaitingClear);
+    this.updateCommunity();
+    if (state.holdem.inRound) {
+      renderCards(this.ui.player, state.holdem.player);
+      if (state.holdem.phase === "showdown" || state.holdem.awaitingClear) {
+        revealDealer("holdemDealer");
+        renderCards("holdemDealer", state.holdem.dealer);
+      } else {
+        renderHiddenCards("holdemDealer", state.holdem.dealer.length || 0);
+      }
+    } else {
+      renderCards(this.ui.player, []);
+      renderCards("holdemDealer", []);
+    }
+    this.updatePotUI();
+    this.updateButtons();
+  }
+
   updatePotUI() {
     if (state.holdem.inRound || state.holdem.awaitingClear) {
       const total = state.holdem.pot;
@@ -316,13 +345,13 @@ export class HoldemGame {
       showCenterToast("Round already running.", "danger");
       return;
     }
-    playSfx("deal");
     auth
       .request("/api/games/holdem/deal", {
         method: "POST",
         body: JSON.stringify({ state: state.holdem }),
       })
       .then((payload) => {
+        playSfx("deal");
         this.applyServerState(payload.state, payload.balance);
         renderCards(this.ui.player, state.holdem.player);
         renderHiddenCards("holdemDealer", state.holdem.dealer.length);
