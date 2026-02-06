@@ -330,7 +330,7 @@ export class HoldemGame {
         this.updatePotUI();
         this.updateButtons();
         if (payload.messages?.length) {
-          this.showMessagesSequential(payload.messages);
+          showMessagesSequential(payload.messages);
         }
       })
       .catch((err) => {
@@ -534,7 +534,7 @@ export class HoldemGame {
       this.updatePotUI();
       this.updateButtons();
       if (payload.messages?.length) {
-        this.showMessagesSequential(payload.messages);
+        showMessagesSequential(payload.messages);
       }
     } catch (err) {
       showCenterToast(err.message || "Fold failed.", "danger");

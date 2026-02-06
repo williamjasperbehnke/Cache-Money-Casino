@@ -8,9 +8,12 @@ const SUITS = ["♠", "♥", "♦", "♣"];
 const RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
 const CHIP_DENOMS = [1000, 500, 100, 50, 25, 10, 5, 1];
 
+const storedBalance = Number(localStorage.getItem(BALANCE_STORAGE_KEY));
+const initialBalance = Number.isFinite(storedBalance) ? storedBalance : DEFAULT_BALANCE;
+
 export const state = {
-  balance: Number(localStorage.getItem(BALANCE_STORAGE_KEY)) || DEFAULT_BALANCE,
-  lastBalance: Number(localStorage.getItem(BALANCE_STORAGE_KEY)) || DEFAULT_BALANCE,
+  balance: initialBalance,
+  lastBalance: initialBalance,
   poker: {
     bet: 0,
     betAmount: 0,
