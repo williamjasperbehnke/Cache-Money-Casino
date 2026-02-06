@@ -329,6 +329,7 @@ export class HoldemGame {
         this.updateCommunity();
         this.updatePotUI();
         this.updateButtons();
+        if (this.skipBettingIfBroke()) return;
         if (payload.messages?.length) {
           showMessagesSequential(payload.messages);
         }
