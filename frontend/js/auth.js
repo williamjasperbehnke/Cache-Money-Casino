@@ -35,6 +35,17 @@ const updateBankUi = (balance) => {
   if (balanceEl) balanceEl.textContent = `$${balance}`;
 };
 
+const showBalanceDelta = (amount) => {
+  const deltaEl = document.getElementById("balanceDelta");
+  if (!deltaEl || !Number.isFinite(amount) || amount === 0) return;
+  deltaEl.textContent = amount > 0 ? `+${amount}` : `${amount}`;
+  deltaEl.classList.remove("positive", "negative", "show");
+  deltaEl.classList.add(amount > 0 ? "positive" : "negative");
+  void deltaEl.offsetWidth;
+  deltaEl.classList.add("show");
+  setTimeout(() => deltaEl.classList.remove("show"), 1200);
+};
+
 export const auth = {
   token: localStorage.getItem(STORAGE_TOKEN) || "",
   guestToken: localStorage.getItem(STORAGE_GUEST_TOKEN) || "",
@@ -229,6 +240,7 @@ export const auth = {
       localStorage.setItem(BALANCE_STORAGE_KEY, String(next));
       if (this.onBalanceUpdate) this.onBalanceUpdate(next);
       updateBankUi(next);
+      showBalanceDelta(100);
       try {
         await request("/api/balance", {
           method: "POST",
