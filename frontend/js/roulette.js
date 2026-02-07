@@ -370,35 +370,54 @@ export class RouletteGame {
         }
         return;
       }
-      try {
-        const payload = await auth.request("/api/games/roulette/chaos", {
-          method: "POST",
-          body: JSON.stringify({
-            bets: state.roulette.bets,
-            chipValues: chips,
-            maxPerSlot: MAX_BET_PER_SLOT,
-          }),
-        });
-        state.roulette.bets = payload.bets;
-        if (payload.spent > 0) {
-          state.balance = Math.max(0, state.balance - payload.spent);
-          updateBalance();
-          state.roulette.roundPaid = true;
-        }
-        this.updateUI();
-        if (payload.spent > 0) {
-          playSfx("spin");
-          showCenterToast(`Luck grenade! -$${payload.spent}`, "win");
-        } else {
-          playSfx("lose");
-          showCenterToast("Luck grenade fizzled.", "danger");
-        }
-      } catch (err) {
-        showCenterToast(err.message || "Luck grenade failed.", "danger");
-      } finally {
-        if (chaosBtn) {
-          chaosBtn.disabled = false;
-        }
+      const minSpend = Math.min(50, available);
+      const spend = Math.min(
+        available,
+        Math.floor(Math.random() * (available - minSpend + 1)) + minSpend
+      );
+      const zones = [
+        ...rouletteOrder.map((value) => ({ bucket: "numbers", key: String(value) })),
+        { bucket: "colors", key: "red" },
+        { bucket: "colors", key: "black" },
+        { bucket: "parities", key: "odd" },
+        { bucket: "parities", key: "even" },
+      ];
+
+      const nextBets = {
+        numbers: { ...(state.roulette.bets.numbers || {}) },
+        colors: { ...(state.roulette.bets.colors || {}) },
+        parities: { ...(state.roulette.bets.parities || {}) },
+      };
+      let spent = 0;
+      let guard = 0;
+      while (spent < spend && guard < 500) {
+        guard += 1;
+        const amount = chips[Math.floor(Math.random() * chips.length)];
+        if (spent + amount > spend) continue;
+        const zone = zones[Math.floor(Math.random() * zones.length)];
+        if (!zone) break;
+        const current = Number(nextBets[zone.bucket][zone.key] || 0);
+        if (current + amount > MAX_BET_PER_SLOT) continue;
+        nextBets[zone.bucket][zone.key] = current + amount;
+        spent += amount;
+      }
+
+      state.roulette.bets = nextBets;
+      if (spent > 0) {
+        state.balance = Math.max(0, state.balance - spent);
+        updateBalance();
+        state.roulette.roundPaid = true;
+      }
+      this.updateUI();
+      if (spent > 0) {
+        playSfx("spin");
+        showCenterToast(`Luck grenade! -$${spent}`, "win");
+      } else {
+        playSfx("lose");
+        showCenterToast("Luck grenade fizzled.", "danger");
+      }
+      if (chaosBtn) {
+        chaosBtn.disabled = false;
       }
     });
 
