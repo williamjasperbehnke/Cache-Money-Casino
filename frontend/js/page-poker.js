@@ -19,6 +19,11 @@ initCore(() => {
 (async () => {
   const payload = await fetchGameState("poker");
   if (!payload) return;
+  if (payload.state?.phase === "reveal") {
+    clearGameState("poker");
+    game.reset();
+    return;
+  }
   if (payload.active && payload.state) {
     game.applyServerState(payload.state, payload.balance);
     if (state.poker.inRound) {

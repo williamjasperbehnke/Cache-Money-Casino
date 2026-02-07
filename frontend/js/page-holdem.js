@@ -19,6 +19,11 @@ initCore(() => {
 (async () => {
   const payload = await fetchGameState("holdem");
   if (!payload) return;
+  if (payload.state?.phase === "reveal" || payload.state?.phase === "showdown") {
+    clearGameState("holdem");
+    game.reset();
+    return;
+  }
   if (payload.active && payload.state) {
     game.applyServerState(payload.state, payload.balance);
     game.updateCommunity();
