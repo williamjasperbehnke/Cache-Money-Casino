@@ -443,9 +443,17 @@ exports.handler = async (event) => {
       dealerButton,
       playerBlind,
       dealerBlind,
+      balance: nextBalance,
     });
+    const messages = [];
+    if (state.skipBetting) {
+      messages.push({ text: "No credits left. Skipping betting.", tone: "danger", duration: 2200 });
+      if (state.phase.startsWith("discard")) {
+        messages.push({ text: "Click cards to discard.", tone: "win", duration: 2200 });
+      }
+    }
     await saveGameState(token, session, "poker", state);
-    return respondWithState(200, "poker", { state, balance: nextBalance });
+    return respondWithState(200, "poker", { state, balance: nextBalance, messages });
   }
 
   if (method === "POST" && path.endsWith("/games/poker/bet")) {
@@ -487,6 +495,7 @@ exports.handler = async (event) => {
     return respondWithState(200, "poker", {
       state,
       dealerDiscarded: result.dealerDiscarded,
+      messages: result.messages || [],
     });
   }
 
@@ -499,7 +508,11 @@ exports.handler = async (event) => {
     }
     const nextBalance = await persistBalance(session, user, result.balance);
     await saveGameState(token, session, "poker", state);
-    return respondWithState(200, "poker", { state, balance: nextBalance });
+    return respondWithState(200, "poker", {
+      state,
+      balance: nextBalance,
+      messages: result.messages || [],
+    });
   }
 
   if (method === "POST" && path.endsWith("/games/poker/fold")) {

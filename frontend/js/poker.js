@@ -276,26 +276,17 @@ export class PokerGame {
     if (dealerDiscardEl) dealerDiscardEl.textContent = "";
     renderCards("pokerPlayer", state.poker.player);
     renderHiddenCards("pokerDealer", state.poker.dealer.length);
-    showCenterToast("Place your bet.", "win", 2200);
+    if (payload.messages?.length) {
+      showMessagesSequential(payload.messages);
+    } else {
+      showCenterToast("Place your bet.", "win", 2200);
+    }
     const playerResult = document.getElementById("pokerPlayerResult");
     const dealerResult = document.getElementById("pokerDealerResult");
     if (playerResult) playerResult.textContent = "";
     if (dealerResult) dealerResult.textContent = "";
     this.updatePokerTotal();
     this.updateUiForPhase();
-
-    if (state.balance <= 0 && this.discardPhaseActive()) {
-      const skipDuration = 2200;
-      showCenterToast("No credits left. Skipping betting.", "danger", skipDuration);
-      state.poker.canDiscard = true;
-      state.poker.discards = new Set();
-      setTimeout(() => {
-        if (!state.poker.inRound) return;
-        if (!this.discardPhaseActive()) return;
-        showCenterToast("Click cards to discard.", "win", 2200);
-        this.renderDiscards();
-      }, skipDuration);
-    }
   }
 
   async handleBet(drawBtn, clearTableBtn, foldBtn) {
@@ -334,18 +325,20 @@ export class PokerGame {
     this.updateUiForPhase();
     this.updatePokerTotal();
 
-    if (this.skipBettingIfBroke(drawBtn, clearTableBtn, foldBtn)) return;
-
     if (this.discardPhaseActive()) {
       state.poker.canDiscard = true;
       state.poker.discards = new Set();
-      const fire = () => {
-        if (!this.discardPhaseActive()) return;
-        showCenterToast("Click cards to discard.", "win", 2200);
+      if (!payload.messages?.length) {
+        const fire = () => {
+          if (!this.discardPhaseActive()) return;
+          showCenterToast("Click cards to discard.", "win", 2200);
+          this.renderDiscards();
+        };
+        if (messageDelay) setTimeout(fire, messageDelay);
+        else fire();
+      } else {
         this.renderDiscards();
-      };
-      if (messageDelay) setTimeout(fire, messageDelay);
-      else fire();
+      }
     }
 
     if (state.poker.phase === "reveal" && !state.poker.awaitingClear) {
@@ -364,13 +357,14 @@ export class PokerGame {
     state.poker.discards = new Set();
     renderCards("pokerPlayer", state.poker.player);
     this.renderDiscards();
+    if (payload.messages?.length) {
+      showMessagesSequential(payload.messages);
+    }
     if (payload.dealerDiscarded !== undefined) {
       showCenterToast(`Dealer discarded ${payload.dealerDiscarded} cards.`, "win", 2000);
     }
     this.updateUiForPhase();
     this.updatePokerTotal();
-
-    if (this.skipBettingIfBroke(drawBtn, clearTableBtn, foldBtn, 2200)) return;
 
     if (this.betPhaseActive()) {
       this.updateUiForPhase();
@@ -383,15 +377,18 @@ export class PokerGame {
     const payload = await this.requestGame("/api/games/poker/call", {});
     if (!payload) return;
     this.applyServerState(payload.state, payload.balance);
+    if (payload.messages?.length) {
+      showMessagesSequential(payload.messages);
+    }
     this.updateUiForPhase();
     this.updatePokerTotal();
 
-    if (this.skipBettingIfBroke(drawBtn, clearTableBtn, foldBtn)) return;
-
     if (this.discardPhaseActive()) {
-      showCenterToast("Click cards to discard.", "win", 2200);
       state.poker.canDiscard = true;
       state.poker.discards = new Set();
+      if (!payload.messages?.length) {
+        showCenterToast("Click cards to discard.", "win", 2200);
+      }
       this.renderDiscards();
     }
 
@@ -409,51 +406,6 @@ export class PokerGame {
     if (payload.messages?.length) showMessagesSequential(payload.messages);
     this.updateUiForPhase();
     this.updatePokerTotal();
-  }
-
-  skipBettingIfBroke(drawBtn, clearTableBtn, foldBtn, delayToast = 0) {
-    if (!state.poker.inRound) return false;
-    if (!state.poker.phase.startsWith("bet")) return false;
-    if (state.balance > 0) return false;
-
-    const drawButton = document.getElementById("pokerDraw");
-    drawButton?.classList.add("hidden");
-
-    const nextPhase =
-      state.poker.phase === "bet1"
-        ? "discard1"
-        : state.poker.phase === "bet2"
-          ? "discard2"
-          : "reveal";
-    state.poker.phase = nextPhase;
-    this.updateUiForPhase();
-    const skipDuration = 2200;
-    const fireToast = () =>
-      showCenterToast("No credits left. Skipping betting.", "danger", skipDuration);
-
-    if (delayToast) setTimeout(fireToast, delayToast);
-    else fireToast();
-
-    if (nextPhase === "reveal") {
-      setTimeout(async () => {
-        if (!state.poker.inRound) return;
-        if (state.poker.phase !== "reveal") return;
-        await this.revealFromServer();
-      }, (delayToast || 0) + skipDuration);
-      return true;
-    }
-    if (nextPhase.startsWith("discard")) {
-      const discardDelay = (delayToast || 0) + skipDuration;
-      setTimeout(() => {
-        if (!state.poker.inRound) return;
-        if (!this.discardPhaseActive()) return;
-        showCenterToast("Click cards to discard.", "win", 2200);
-        state.poker.canDiscard = true;
-        renderCards("pokerPlayer", state.poker.player);
-        this.renderDiscards();
-      }, discardDelay);
-    }
-    return true;
   }
 
   resetRound() {

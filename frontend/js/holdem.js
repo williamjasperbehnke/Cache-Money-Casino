@@ -17,128 +17,9 @@ import { auth } from "./auth.js";
 const BETTING_PHASES = new Set(["preflop", "flop", "turn", "river"]);
 
 export class HoldemGame {
-  static evaluateHand(cards) {
-    const values = cards.map((card) => card.value()).sort((a, b) => a - b);
-    const counts = {};
-    const suitsCount = {};
-    cards.forEach((card) => {
-      const value = card.value();
-      counts[value] = (counts[value] || 0) + 1;
-      suitsCount[card.suit] = (suitsCount[card.suit] || 0) + 1;
-    });
-
-    const isFlush = Object.values(suitsCount).some((count) => count === 5);
-    const isWheel = values.toString() === "2,3,4,5,14";
-    const isStraight =
-      values.every((value, index) => (index === 0 ? true : value === values[index - 1] + 1)) ||
-      isWheel;
-    const straightValues = isWheel ? [5, 4, 3, 2, 1] : [...values];
-    const sortedCounts = Object.values(counts).sort((a, b) => b - a);
-
-    const valueLabel = (value) => {
-      if (value === 14) return "Aces";
-      if (value === 13) return "Kings";
-      if (value === 12) return "Queens";
-      if (value === 11) return "Jacks";
-      return `${value}s`;
-    };
-
-    const byCount = Object.entries(counts)
-      .map(([value, count]) => ({ value: Number(value), count }))
-      .sort((a, b) => b.count - a.count || b.value - a.value);
-
-    if (isStraight && isFlush) return { rank: 8, label: "Straight Flush", values: straightValues };
-    if (sortedCounts[0] === 4) {
-      const quad = byCount.find((entry) => entry.count === 4)?.value;
-      return { rank: 7, label: `Four of a Kind (${valueLabel(quad)})`, values };
-    }
-    if (sortedCounts[0] === 3 && sortedCounts[1] === 2) {
-      const trips = byCount.find((entry) => entry.count === 3)?.value;
-      const pair = byCount.find((entry) => entry.count === 2)?.value;
-      return {
-        rank: 6,
-        label: `Full House (${valueLabel(trips)} over ${valueLabel(pair)})`,
-        values,
-      };
-    }
-    if (isFlush) return { rank: 5, label: "Flush", values };
-    if (isStraight) return { rank: 4, label: "Straight", values: straightValues };
-    if (sortedCounts[0] === 3) {
-      const trips = byCount.find((entry) => entry.count === 3)?.value;
-      return { rank: 3, label: `Three of a Kind (${valueLabel(trips)})`, values };
-    }
-    if (sortedCounts[0] === 2 && sortedCounts[1] === 2) {
-      const pairs = byCount.filter((entry) => entry.count === 2).map((entry) => entry.value);
-      return {
-        rank: 2,
-        label: `Two Pair (${valueLabel(pairs[0])} & ${valueLabel(pairs[1])})`,
-        values,
-      };
-    }
-    if (sortedCounts[0] === 2) {
-      const pair = byCount.find((entry) => entry.count === 2)?.value;
-      return { rank: 1, label: `Pair of ${valueLabel(pair)}`, values };
-    }
-    return { rank: 0, label: "High Card", values };
-  }
-
-  static compareHands(player, dealer) {
-    if (player.rank !== dealer.rank) {
-      return player.rank > dealer.rank ? 1 : -1;
-    }
-    const dVals = [...dealer.values].sort((a, b) => b - a);
-    const pVals = [...player.values].sort((a, b) => b - a);
-    for (let i = 0; i < pVals.length; i += 1) {
-      if (pVals[i] !== dVals[i]) {
-        return pVals[i] > dVals[i] ? 1 : -1;
-      }
-    }
-    return 0;
-  }
-
-  static combinations(arrLength, size) {
-    const results = [];
-    const combo = [];
-    const dfs = (start, depth) => {
-      if (depth === size) {
-        results.push([...combo]);
-        return;
-      }
-      for (let i = start; i <= arrLength - (size - depth); i += 1) {
-        combo.push(i);
-        dfs(i + 1, depth + 1);
-        combo.pop();
-      }
-    };
-    dfs(0, 0);
-    return results;
-  }
-
-  static bestHand(cards) {
-    const combos = HoldemGame.combinations(cards.length, 5);
-    let bestEval = null;
-    let bestCombo = combos[0];
-    combos.forEach((indexes) => {
-      const hand = indexes.map((idx) => cards[idx]);
-      const evalHand = HoldemGame.evaluateHand(hand);
-      if (!bestEval) {
-        bestEval = evalHand;
-        bestCombo = indexes;
-        return;
-      }
-      if (HoldemGame.compareHands(evalHand, bestEval) > 0) {
-        bestEval = evalHand;
-        bestCombo = indexes;
-      }
-    });
-    return { eval: bestEval, indexes: bestCombo };
-  }
-
   constructor() {
     this.ui = {};
   }
-
-
 
   cacheElements() {
     this.ui = {
@@ -363,7 +244,6 @@ export class HoldemGame {
       this.updateCommunity();
       this.updatePotUI();
       this.updateButtons();
-      if (this.skipBettingIfBroke()) return;
       if (payload.messages?.length) {
         showMessagesSequential(payload.messages);
       }
@@ -376,154 +256,6 @@ export class HoldemGame {
     } finally {
       unlock();
     }
-  }
-
-  resetBettingRound() {
-    state.holdem.playerBet = 0;
-    state.holdem.dealerBet = 0;
-    state.holdem.currentBet = 0;
-    state.holdem.betAmount = 0;
-    state.holdem.awaitingRaise = false;
-  }
-
-  advancePhase(skipCheck = false, silent = false) {
-    if (state.holdem.phase === "preflop") state.holdem.phase = "flop";
-    else if (state.holdem.phase === "flop") state.holdem.phase = "turn";
-    else if (state.holdem.phase === "turn") state.holdem.phase = "river";
-    else if (state.holdem.phase === "river") state.holdem.phase = "showdown";
-
-    this.resetBettingRound();
-    this.updateCommunity();
-    this.updateButtons();
-    if (!skipCheck && this.skipBettingIfBroke()) return;
-
-    if (state.holdem.phase === "showdown") {
-      this.finishShowdown();
-    } else {
-      if (!silent) {
-        if (["flop", "turn", "river"].includes(state.holdem.phase)) {
-          playSfx("deal");
-        }
-        const labels = {
-          flop: "Flop dealt.",
-          turn: "Turn card.",
-          river: "River card.",
-          preflop: "Pre-flop betting.",
-        };
-        showCenterToast(labels[state.holdem.phase] || "Next round.", "win", 1400);
-      }
-    }
-  }
-
-  skipBettingIfBroke() {
-    if (!state.holdem.inRound) return false;
-    if (!BETTING_PHASES.has(state.holdem.phase)) return false;
-    if (state.balance > 0) return false;
-    state.holdem.skipBetting = true;
-    showCenterToast("No credits left. Skipping betting.", "danger", 2400);
-    this.updateButtons();
-    setTimeout(() => {
-      while (state.holdem.inRound && BETTING_PHASES.has(state.holdem.phase)) {
-        this.advancePhase(true, true);
-      }
-    }, 2200);
-    return true;
-  }
-
-  preflopStrength(hand) {
-    const values = hand.map((card) => card.value()).sort((a, b) => b - a);
-    const isPair = values[0] === values[1];
-    const suited = hand[0].suit === hand[1].suit;
-    const gap = Math.abs(values[0] - values[1]);
-    if (isPair && values[0] >= 11) return 5;
-    if (isPair) return 4;
-    if (values[0] >= 13 && suited) return 4;
-    if (values[0] >= 13) return 3;
-    if (suited && gap <= 2) return 3;
-    if (values[0] >= 11) return 2;
-    return 1;
-  }
-
-  dealerStrength() {
-    const visibleCommunity = state.holdem.community.slice(0, this.phaseCommunityCount());
-    if (visibleCommunity.length < 3) {
-      return this.preflopStrength(state.holdem.dealer);
-    }
-    const combined = [...state.holdem.dealer, ...visibleCommunity];
-    const best = HoldemGame.bestHand(combined);
-    return best.eval.rank;
-  }
-
-  dealerRaiseAmount(strength) {
-    const base = Math.max(10, Math.round(state.holdem.pot * (0.35 + strength * 0.1)));
-    return Math.min(base, Math.max(5, state.balance));
-  }
-
-  dealerActs() {
-    const dealerToCall = Math.max(0, state.holdem.currentBet - state.holdem.dealerBet);
-    const strength = this.dealerStrength();
-
-    if (dealerToCall === 0) {
-      if (strength >= 2 && Math.random() > 0.15) {
-        const raiseBy = this.dealerRaiseAmount(strength);
-        const maxRaiseTo = state.holdem.playerBet + state.balance;
-        const raiseTo = Math.min(state.holdem.currentBet + raiseBy, maxRaiseTo);
-        if (raiseTo > state.holdem.currentBet) {
-          const add = raiseTo - state.holdem.dealerBet;
-          state.holdem.dealerBet = raiseTo;
-          state.holdem.currentBet = raiseTo;
-          state.holdem.pot += add;
-          state.holdem.dealerRaised = true;
-          state.holdem.betAmount = 0;
-          this.updatePotUI();
-          state.holdem.awaitingRaise = true;
-          showCenterToast(`Dealer bets $${raiseTo}.`, "danger", 2000);
-          this.updateButtons();
-          return;
-        }
-      }
-      showCenterToast("Dealer checks.", "win", 1200);
-      this.advancePhase();
-      return;
-    }
-
-    if (strength <= 1 && Math.random() > 0.85) {
-      showCenterToast("Dealer folds. You win!", "win", 2000);
-      payout(state.holdem.pot);
-      auth.recordResult({
-        game: "holdem",
-        bet: state.holdem.playerPaid,
-        net: state.holdem.pot - state.holdem.playerPaid,
-        result: "win",
-      });
-      this.endHand();
-      return;
-    }
-
-    if (strength >= 3 && Math.random() > 0.2) {
-      const raiseBy = this.dealerRaiseAmount(strength);
-      const maxRaiseTo = state.holdem.playerBet + state.balance;
-      const raiseTo = Math.min(state.holdem.currentBet + raiseBy, maxRaiseTo);
-      if (raiseTo > state.holdem.currentBet) {
-        const add = raiseTo - state.holdem.dealerBet;
-        state.holdem.dealerBet = raiseTo;
-        state.holdem.currentBet = raiseTo;
-        state.holdem.pot += add;
-        state.holdem.dealerRaised = true;
-        state.holdem.betAmount = 0;
-        this.updatePotUI();
-        state.holdem.awaitingRaise = true;
-        showCenterToast(`Dealer raises to $${raiseTo}.`, "danger", 2000);
-        this.updateButtons();
-        return;
-      }
-    }
-
-    state.holdem.pot += dealerToCall;
-    state.holdem.dealerBet = state.holdem.currentBet;
-    this.updatePotUI();
-    showCenterToast("Dealer calls.", "win", 1200);
-    this.advancePhase();
   }
 
   async playerAction() {
@@ -543,18 +275,12 @@ export class HoldemGame {
       renderHiddenCards("holdemDealer", state.holdem.dealer.length);
       const hasShowdown = Boolean(payload.showdown);
       const messages = payload.messages || [];
-      if (state.holdem.skipBetting) {
-        showCenterToast("No credits left. Skipping betting.", "danger", 2400);
+      if (messages.length) {
+        showMessagesSequential(messages);
       }
-      const revealDelay = state.holdem.skipBetting ? 2400 : 0;
-      setTimeout(() => {
-        if (messages.length) {
-          showMessagesSequential(messages);
-        }
-        if (hasShowdown) {
-          this.renderShowdown(payload.showdown);
-        }
-      }, revealDelay);
+      if (hasShowdown) {
+        this.renderShowdown(payload.showdown);
+      }
     } catch (err) {
       showCenterToast(err.message || "Action failed.", "danger");
     } finally {

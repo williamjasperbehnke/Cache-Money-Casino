@@ -54,9 +54,14 @@ const buildChaosZones = () => [
 ];
 
 const computeChaosBudget = (remainingBalance) => {
-  const available = Math.min(remainingBalance, 200);
+  const available = Math.max(0, remainingBalance);
   if (available <= 0) return { available: 0, spend: 0 };
-  const spend = Math.min(available, Math.floor(Math.random() * 150) + 50);
+  const minSpend = Math.min(50, available);
+  const maxSpend = available;
+  const spend = Math.min(
+    available,
+    Math.floor(Math.random() * (maxSpend - minSpend + 1)) + minSpend
+  );
   return { available, spend };
 };
 
