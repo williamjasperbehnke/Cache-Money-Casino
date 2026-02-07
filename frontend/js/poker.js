@@ -285,6 +285,8 @@ export class PokerGame {
     renderHiddenCards("pokerDealer", state.poker.dealer.length);
     if (payload.messages?.length) {
       this.showPhaseMessages(payload.messages);
+    } else if (this.discardPhaseActive()) {
+      this.showPhaseToast(state.poker.phase, "Click cards to discard.", "win", 2200);
     } else {
       this.showToast("Place your bet.", "win", 2200);
     }
@@ -372,6 +374,15 @@ export class PokerGame {
 
     if (this.betPhaseActive()) {
       this.updateUiForPhase();
+    } else if (this.discardPhaseActive()) {
+      state.poker.discards = new Set();
+      const fire = () => {
+        if (!this.discardPhaseActive()) return;
+        this.showPhaseToast(state.poker.phase, "Click cards to discard.", "win", 2200);
+        this.renderDiscards();
+      };
+      if (messageDelay) setTimeout(fire, messageDelay);
+      else fire();
     }
 
     if (state.poker.phase === "reveal") {
