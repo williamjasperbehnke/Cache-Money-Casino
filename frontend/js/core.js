@@ -308,8 +308,6 @@ class ChipRenderer {
   }
 }
 
-import { auth } from "./auth.js";
-
 const balanceManager = new BalanceManager(state, balanceEl, balanceDeltaEl);
 const audioManager = new AudioManager();
 const toastManager = new ToastManager(centerToastEl);
