@@ -303,13 +303,11 @@ export class SlotsGame {
           this.ui.presets.forEach((preset) => preset.classList.remove("active"));
           btn.classList.add("active");
           this.currentBet = Number(btn.dataset.amount) || this.currentBet;
-          playSfx("hit");
           return;
         }
         this.ui.presets.forEach((preset) => preset.classList.remove("active"));
         btn.classList.add("active");
         this.currentBet = Number(btn.dataset.amount) || this.currentBet;
-        playSfx("hit");
       });
     });
 
