@@ -350,7 +350,6 @@ export class RouletteGame {
       if (state.roulette.spinning) return;
       if (chaosBtn) {
         chaosBtn.disabled = true;
-        chaosBtn.classList.add("is-loading");
       }
       const chips = Array.from(
         document.querySelectorAll('.chips[data-target="rouletteBet"] .chip')
@@ -360,7 +359,6 @@ export class RouletteGame {
       if (chips.length === 0) {
         if (chaosBtn) {
           chaosBtn.disabled = false;
-          chaosBtn.classList.remove("is-loading");
         }
         return;
       }
@@ -369,7 +367,6 @@ export class RouletteGame {
         showCenterToast("Not enough credits.", "danger");
         if (chaosBtn) {
           chaosBtn.disabled = false;
-          chaosBtn.classList.remove("is-loading");
         }
         return;
       }
@@ -401,7 +398,6 @@ export class RouletteGame {
       } finally {
         if (chaosBtn) {
           chaosBtn.disabled = false;
-          chaosBtn.classList.remove("is-loading");
         }
       }
     });
@@ -417,14 +413,12 @@ export class RouletteGame {
       }
       if (spinBtn) {
         spinBtn.disabled = true;
-        spinBtn.classList.add("is-loading");
       }
       const totalBet = this.totalBet();
       if (totalBet <= 0) {
         showCenterToast("Place a bet on the table.", "danger");
         if (spinBtn) {
           spinBtn.disabled = false;
-          spinBtn.classList.remove("is-loading");
         }
         return;
       }
@@ -438,7 +432,6 @@ export class RouletteGame {
           this.updateUI();
           if (spinBtn) {
             spinBtn.disabled = false;
-            spinBtn.classList.remove("is-loading");
           }
           return;
         }
@@ -463,7 +456,6 @@ export class RouletteGame {
         state.roulette.spinning = false;
         if (spinBtn) {
           spinBtn.disabled = false;
-          spinBtn.classList.remove("is-loading");
         }
         showCenterToast(err.message || "Spin failed.", "danger");
         return;
@@ -497,7 +489,6 @@ export class RouletteGame {
         state.roulette.spinning = false;
         if (spinBtn) {
           spinBtn.disabled = false;
-          spinBtn.classList.remove("is-loading");
         }
         if (autoToggle?.checked && this.totalBet() > 0) {
           state.roulette.roundPaid = false;

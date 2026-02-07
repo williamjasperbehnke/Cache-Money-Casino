@@ -221,7 +221,6 @@ export class SlotsGame {
     this.spinning = true;
     if (this.ui.spinBtn) {
       this.ui.spinBtn.disabled = true;
-      this.ui.spinBtn.classList.add("is-loading");
     }
     this.ui.presets?.forEach((preset) => {
       preset.disabled = true;
@@ -242,7 +241,6 @@ export class SlotsGame {
       this.spinning = false;
       if (this.ui.spinBtn) {
         this.ui.spinBtn.disabled = false;
-        this.ui.spinBtn.classList.remove("is-loading");
       }
       this.ui.presets?.forEach((preset) => {
         preset.disabled = false;
@@ -281,7 +279,6 @@ export class SlotsGame {
           this.spinning = false;
           if (this.ui.spinBtn) {
             this.ui.spinBtn.disabled = false;
-            this.ui.spinBtn.classList.remove("is-loading");
           }
           this.ui.presets?.forEach((preset) => {
             preset.disabled = false;
@@ -311,8 +308,11 @@ export class SlotsGame {
   bindEvents() {
     this.ui.presets?.forEach((btn) => {
       btn.addEventListener("click", () => {
-        if (this.spinning || this.ui.autoToggle?.checked) {
-          showCenterToast("Reels are spinning...", "danger");
+        if (this.spinning) {
+          this.ui.presets.forEach((preset) => preset.classList.remove("active"));
+          btn.classList.add("active");
+          this.currentBet = Number(btn.dataset.amount) || this.currentBet;
+          playSfx("hit");
           return;
         }
         this.ui.presets.forEach((preset) => preset.classList.remove("active"));
