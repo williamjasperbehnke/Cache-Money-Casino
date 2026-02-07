@@ -159,6 +159,11 @@ const applyHoldemAction = (state, betAmount, balance, rng = Math.random) => {
 
   const advanceToShowdownIfBroke = () => {
     if (nextBalance > 0) return false;
+    messages.push({
+      text: "No credits left. Skipping betting.",
+      tone: "danger",
+      duration: 2200,
+    });
     while (state.inRound && BETTING_PHASES.has(state.phase)) {
       holdemAdvancePhase(state);
     }

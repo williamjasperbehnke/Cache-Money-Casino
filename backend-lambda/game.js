@@ -463,12 +463,12 @@ exports.handler = async (event) => {
     const body = parseJson(event);
     const discards = Array.isArray(body.discards) ? body.discards : [];
     const state = await getGameState(token, "poker");
-    const result = applyPokerDraw(state, discards);
+    const { user, balance } = await resolveBalance(session);
+    const result = applyPokerDraw(state, discards, balance);
     if (result?.error) {
       return jsonResponse(400, { error: result.error }, CORS_ORIGIN);
     }
     if (result?.reveal) {
-      const { user, balance } = await resolveBalance(session);
       if (user) {
         user.stats = updateStats(user.stats, {
           game: "poker",
@@ -479,7 +479,7 @@ exports.handler = async (event) => {
         });
         await putUser(user);
       }
-      const nextBalance = await persistBalance(session, user, balance + result.reveal.net);
+      const nextBalance = await persistBalance(session, user, result.reveal.balance);
       await saveGameState(token, session, "poker", result.reveal.state);
       return respondWithState(200, "poker", {
         state: result.reveal.state,
@@ -490,12 +490,14 @@ exports.handler = async (event) => {
         dealerLabel: result.reveal.dealerLabel,
         playerIndexes: result.reveal.playerIndexes,
         dealerIndexes: result.reveal.dealerIndexes,
+        messages: result.messages || [],
       });
     }
     await saveGameState(token, session, "poker", state);
     return respondWithState(200, "poker", {
       state,
       dealerDiscarded: result.dealerDiscarded,
+      messages: result.messages || [],
     });
   }
 
