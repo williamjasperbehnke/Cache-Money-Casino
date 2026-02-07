@@ -295,7 +295,7 @@ const applyPokerBet = (state, betAmount, balance, rng = Math.random) => {
 
 const applyPokerDraw = (state, discards) => {
   if (!state || !state.inRound) return { error: "Round not running." };
-  if (skipBetting) {
+  if (state.skipBetting) {
     if (state.phase == "bet1") state.phase == "discard1";
     else if (state.phase == "bet2") state.phase == "discard2";
   }
