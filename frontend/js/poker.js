@@ -365,13 +365,6 @@ export class PokerGame {
     this.renderDiscards();
     const queued = [];
     if (payload.messages?.length) queued.push(...payload.messages);
-    if (payload.dealerDiscarded !== undefined) {
-      queued.push({
-        text: `Dealer discarded ${payload.dealerDiscarded} cards.`,
-        tone: "win",
-        duration: 2000,
-      });
-    }
     this.updateUiForPhase();
     this.updatePokerTotal();
 

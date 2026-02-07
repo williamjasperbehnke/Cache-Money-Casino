@@ -492,12 +492,14 @@ exports.handler = async (event) => {
         dealerLabel: result.reveal.dealerLabel,
         playerIndexes: result.reveal.playerIndexes,
         dealerIndexes: result.reveal.dealerIndexes,
+        messages: result.messages || [],
       });
     }
     await saveGameState(token, session, "poker", state);
     return respondWithState(200, "poker", {
       state,
       dealerDiscarded: result.dealerDiscarded,
+      messages: result.messages || [],
     });
   }
 

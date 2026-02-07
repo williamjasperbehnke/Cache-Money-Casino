@@ -248,9 +248,26 @@ const applyPokerDraw = (state, discards, balance) => {
       state: result.state,
       dealerDiscarded: dealerDraw.discarded,
       reveal: result,
+      messages: [
+        {
+          text: `Dealer discarded ${dealerDraw.discarded} cards.`,
+          tone: "win",
+          duration: 2000,
+        },
+      ],
     };
   }
-  return { state, dealerDiscarded: dealerDraw.discarded };
+  return {
+    state,
+    dealerDiscarded: dealerDraw.discarded,
+    messages: [
+      {
+        text: `Dealer discarded ${dealerDraw.discarded} cards.`,
+        tone: "win",
+        duration: 2000,
+      },
+    ],
+  };
 };
 
 const applyPokerCall = (state, balance) => {

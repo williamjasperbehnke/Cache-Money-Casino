@@ -311,7 +311,7 @@ const applyHoldemAction = (state, betAmount, balance, rng = Math.random) => {
     return { state, balance: nextBalance, messages, ...showdown };
   }
 
-  if (state.awaitingRaise) {
+  if (state.awaitingRaise && nextBalance > 0) {
     return { state, balance: nextBalance, messages };
   }
 
