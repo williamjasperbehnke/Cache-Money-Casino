@@ -273,16 +273,17 @@ export class RouletteGame {
       if (!amount) return;
       const key = this.getZoneKey(zone);
       const current = this.getZoneCurrent(zone, key);
-      const next = Math.min(MAX_BET_PER_SLOT, current + amount);
-      const delta = next - current;
-      if (delta <= 0) {
+      const available = MAX_BET_PER_SLOT - current;
+      if (available <= 0) {
         showCenterToast("Max bet per slot is $50.", "danger");
         return;
       }
-      if (delta > state.balance) {
+      if (state.balance <= 0) {
         showCenterToast("Not enough credits.", "danger");
         return;
       }
+      const delta = Math.min(amount, state.balance, available);
+      const next = current + delta;
       state.balance -= delta;
       updateBalance();
       this.setZoneBet(zone, key, next);
@@ -295,16 +296,17 @@ export class RouletteGame {
       if (!this.selectedChip) return;
       const key = this.getZoneKey(zone);
       const current = this.getZoneCurrent(zone, key);
-      const next = Math.min(MAX_BET_PER_SLOT, current + this.selectedChip);
-      const delta = next - current;
-      if (delta <= 0) {
+      const available = MAX_BET_PER_SLOT - current;
+      if (available <= 0) {
         showCenterToast("Max bet per slot is $50.", "danger");
         return;
       }
-      if (delta > state.balance) {
+      if (state.balance <= 0) {
         showCenterToast("Not enough credits.", "danger");
         return;
       }
+      const delta = Math.min(this.selectedChip, state.balance, available);
+      const next = current + delta;
       state.balance -= delta;
       updateBalance();
       this.setZoneBet(zone, key, next);
