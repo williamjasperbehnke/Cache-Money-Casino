@@ -33,15 +33,6 @@ export class SlotsGame {
     this.reels = [];
   }
 
-  toastGuard() {
-    const spinning = state.slots.spinning;
-    return () => state.slots.spinning === spinning;
-  }
-
-  showToast(message, tone, duration) {
-    showCenterToast(message, tone, duration, this.toastGuard());
-  }
-
   cacheElements() {
     this.ui = {
       spinBtn: document.getElementById("slotsSpin"),
@@ -180,7 +171,7 @@ export class SlotsGame {
 
     if (wipeBalance) {
       playSfx("lose");
-      this.showToast("Kaboom! Balance wiped.", "danger");
+      showCenterToast("Kaboom! Balance wiped.", "danger");
       winLight?.classList.remove("active");
       triggerBigWin(false);
       this.clearHighlights();
@@ -190,7 +181,7 @@ export class SlotsGame {
 
     if (outcome.hasTwoKind && outcome.twoSymbol === "💥") {
       playSfx("lose");
-      this.showToast("Bang! House takes it.", "danger");
+      showCenterToast("Bang! House takes it.", "danger");
       onAutoSpin();
       return;
     }
@@ -205,7 +196,7 @@ export class SlotsGame {
       } else if (outcome.multiplier >= 10) {
         triggerBigWin();
       }
-      this.showToast(`You win ${payMultiplier}x!`, "win");
+      showCenterToast(`You win ${payMultiplier}x!`, "win");
       winLight?.classList.add("active");
       this.highlightPayout(outcome.key);
       onAutoSpin();
@@ -213,18 +204,18 @@ export class SlotsGame {
     }
 
     playSfx("lose");
-    this.showToast("No win. Spin again!", "danger");
+    showCenterToast("No win. Spin again!", "danger");
     onAutoSpin();
   }
 
   async pullLever() {
     if (this.spinning) {
-      this.showToast("Reels are spinning...", "danger");
+      showCenterToast("Reels are spinning...", "danger");
       return;
     }
     const bet = this.currentBet;
     if (!Number.isFinite(bet) || bet <= 0) {
-      this.showToast("Enter a valid bet.", "danger");
+      showCenterToast("Enter a valid bet.", "danger");
       return;
     }
     this.spinning = true;
@@ -238,7 +229,7 @@ export class SlotsGame {
     }
     const balanceBefore = state.balance;
     if (balanceBefore < bet) {
-      this.showToast("Not enough credits to spin.", "danger");
+      showCenterToast("Not enough credits to spin.", "danger");
       return;
     }
     let payload;
@@ -252,7 +243,7 @@ export class SlotsGame {
       if (this.ui.spinBtn) {
         this.ui.spinBtn.disabled = false;
       }
-      this.showToast(err.message || "Spin failed.", "danger");
+      showCenterToast(err.message || "Spin failed.", "danger");
       return;
     }
 

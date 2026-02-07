@@ -30,20 +30,6 @@ export class RouletteGame {
     this.ui = {};
   }
 
-  toastGuard() {
-    const snapshot = {
-      spinning: state.roulette.spinning,
-      roundPaid: state.roulette.roundPaid,
-    };
-    return () =>
-      state.roulette.spinning === snapshot.spinning &&
-      state.roulette.roundPaid === snapshot.roundPaid;
-  }
-
-  showToast(message, tone, duration) {
-    showCenterToast(message, tone, duration, this.toastGuard());
-  }
-
   cacheElements() {
     this.ui = {
       spinBtn: document.getElementById("rouletteSpin"),
@@ -290,11 +276,11 @@ export class RouletteGame {
       const next = Math.min(MAX_BET_PER_SLOT, current + amount);
       const delta = next - current;
       if (delta <= 0) {
-        this.showToast("Max bet per slot is $50.", "danger");
+        showCenterToast("Max bet per slot is $50.", "danger");
         return;
       }
       if (delta > state.balance) {
-        this.showToast("Not enough credits.", "danger");
+        showCenterToast("Not enough credits.", "danger");
         return;
       }
       state.balance -= delta;
@@ -312,11 +298,11 @@ export class RouletteGame {
       const next = Math.min(MAX_BET_PER_SLOT, current + this.selectedChip);
       const delta = next - current;
       if (delta <= 0) {
-        this.showToast("Max bet per slot is $50.", "danger");
+        showCenterToast("Max bet per slot is $50.", "danger");
         return;
       }
       if (delta > state.balance) {
-        this.showToast("Not enough credits.", "danger");
+        showCenterToast("Not enough credits.", "danger");
         return;
       }
       state.balance -= delta;
@@ -357,7 +343,7 @@ export class RouletteGame {
       if (state.roulette.spinning) return;
       this.clearBets();
       playSfx("lose");
-      this.showToast("Bets cleared.", "danger");
+      showCenterToast("Bets cleared.", "danger");
     });
 
     chaosBtn?.addEventListener("click", async () => {
@@ -378,7 +364,7 @@ export class RouletteGame {
       }
       const available = Math.min(state.balance, 200);
       if (available <= 0) {
-        this.showToast("Not enough credits.", "danger");
+        showCenterToast("Not enough credits.", "danger");
         if (chaosBtn) {
           chaosBtn.disabled = false;
         }
@@ -425,10 +411,10 @@ export class RouletteGame {
       this.updateUI();
       if (spent > 0) {
         playSfx("spin");
-        this.showToast(`Luck grenade! -$${spent}`, "win");
+        showCenterToast(`Luck grenade! -$${spent}`, "win");
       } else {
         playSfx("lose");
-        this.showToast("Luck grenade fizzled.", "danger");
+        showCenterToast("Luck grenade fizzled.", "danger");
       }
       if (chaosBtn) {
         chaosBtn.disabled = false;
@@ -441,7 +427,7 @@ export class RouletteGame {
 
     spinBtn?.addEventListener("click", async () => {
       if (state.roulette.spinning) {
-        this.showToast("Wheel is spinning...", "danger");
+        showCenterToast("Wheel is spinning...", "danger");
         return;
       }
       if (spinBtn) {
@@ -449,7 +435,7 @@ export class RouletteGame {
       }
       const totalBet = this.totalBet();
       if (totalBet <= 0) {
-        this.showToast("Place a bet on the table.", "danger");
+        showCenterToast("Place a bet on the table.", "danger");
         if (spinBtn) {
           spinBtn.disabled = false;
         }
@@ -457,7 +443,7 @@ export class RouletteGame {
       }
       if (!state.roulette.roundPaid) {
         if (totalBet > state.balance) {
-          this.showToast("Not enough credits.", "danger");
+          showCenterToast("Not enough credits.", "danger");
           state.roulette.bets.numbers = {};
           state.roulette.bets.colors = {};
           state.roulette.bets.parities = {};
@@ -490,7 +476,7 @@ export class RouletteGame {
         if (spinBtn) {
           spinBtn.disabled = false;
         }
-        this.showToast(err.message || "Spin failed.", "danger");
+        showCenterToast(err.message || "Spin failed.", "danger");
         return;
       }
       const spin = payload.resultNumber;
@@ -506,10 +492,10 @@ export class RouletteGame {
           if ((payload.payout || 0) >= totalBet * 5) {
             triggerBigWin();
           }
-          this.showToast(`Win! +$${Math.round(profit)}`, "win");
+          showCenterToast(`Win! +$${Math.round(profit)}`, "win");
         } else {
           playSfx("lose");
-          this.showToast("No win.", "danger");
+          showCenterToast("No win.", "danger");
         }
 
         if (!autoToggle?.checked) {
