@@ -41,28 +41,42 @@
             <button id="crapsTableOn" class="btn small">ON</button>
             <button id="crapsTableOff" class="btn small ghost">OFF</button>
           </div>
+          <label class="auto-toggle auto-inline">
+            <input id="crapsAuto" type="checkbox" />
+            <span class="toggle-track"></span>
+            <span class="toggle-label">Auto‑roll</span>
+          </label>
         </div>
-        <div class="craps-meta">
-          <div id="crapsPoint" class="craps-pill">Point: --</div>
-          <div id="crapsLastRoll" class="craps-pill">Last Roll: --</div>
-        </div>
-        <div class="craps-dice" aria-hidden="true">
-          <div id="crapsDie1" class="craps-die" data-face="1">
-            <span class="pip"></span><span class="pip"></span><span class="pip"></span>
-            <span class="pip"></span><span class="pip"></span><span class="pip"></span>
-            <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+        <div class="craps-top-row">
+          <div class="chips" data-target="crapsBet">
+            <button class="chip" data-amount="5">$5</button>
+            <button class="chip" data-amount="10">$10</button>
+            <button class="chip" data-amount="25">$25</button>
+            <button class="chip" data-amount="50">$50</button>
           </div>
-          <div id="crapsDie2" class="craps-die" data-face="1">
-            <span class="pip"></span><span class="pip"></span><span class="pip"></span>
-            <span class="pip"></span><span class="pip"></span><span class="pip"></span>
-            <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+          <div class="craps-meta">
+            <div class="craps-point-strip" id="crapsPointStrip">
+              <span data-point="4">4</span>
+              <span data-point="5">5</span>
+              <span data-point="6">6</span>
+              <span data-point="8">8</span>
+              <span data-point="9">9</span>
+              <span data-point="10">10</span>
+            </div>
+            <div class="craps-last-roll" id="crapsLastRoll">
+              <div class="craps-mini-die" id="crapsLastDie1" data-face="1">
+                <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+                <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+                <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+              </div>
+              <div class="craps-mini-die" id="crapsLastDie2" data-face="1">
+                <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+                <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+                <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+              </div>
+              <div class="craps-last-total" id="crapsLastTotal">--</div>
+            </div>
           </div>
-        </div>
-        <div class="chips" data-target="crapsBet">
-          <button class="chip" data-amount="5">$5</button>
-          <button class="chip" data-amount="10">$10</button>
-          <button class="chip" data-amount="25">$25</button>
-          <button class="chip" data-amount="50">$50</button>
         </div>
         <div class="craps-table">
           <div class="craps-rail">
@@ -70,8 +84,24 @@
             <span class="rail-divider"></span>
             <span>DON'T PASS</span>
           </div>
+          <div class="craps-tray-row" aria-hidden="true">
+            <div class="craps-tray">
+              <div class="craps-dice">
+                <div id="crapsDie1" class="craps-die" data-face="1">
+                  <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+                  <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+                  <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+                </div>
+                <div id="crapsDie2" class="craps-die" data-face="1">
+                  <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+                  <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+                  <span class="pip"></span><span class="pip"></span><span class="pip"></span>
+                </div>
+              </div>
+            </div>
+          </div>
           <div class="craps-layout">
-            <div class="craps-zone pass" data-bet="pass">
+            <div class="craps-zone pass" data-bet="pass" data-tooltip="Pass Line wins on 7/11, loses on 2/3/12, then hits the point.">
               <div class="craps-title">Pass Line</div>
               <div class="craps-odds">Pays 1:1 on 7/11</div>
               <div class="chip-stack"></div>
@@ -79,12 +109,12 @@
             <div class="craps-center">
               <div class="craps-group">
                 <div class="craps-group-label">Come</div>
-                <div class="craps-box come-box" data-bet="come">
+              <div class="craps-box come-box" data-bet="come" data-tooltip="Come bet works like Pass but starts after the come-out.">
                   <span>BET</span>
                   <div class="chip-stack"></div>
                 </div>
               </div>
-              <div class="craps-box field-box" data-bet="field">
+              <div class="craps-box field-box" data-bet="field" data-tooltip="Field wins on 2,3,4,9,10,11,12 (2/12 pay 2:1).">
                 <div class="craps-title">Field</div>
                 <div class="craps-odds">2/12 pay 2:1</div>
                 <div class="chip-stack"></div>
@@ -92,36 +122,36 @@
               <div class="craps-group">
                 <div class="craps-group-label">Hardways</div>
                 <div class="hardways">
-                  <div class="hardway" data-bet="hard-4">4<div class="chip-stack"></div></div>
-                  <div class="hardway" data-bet="hard-6">6<div class="chip-stack"></div></div>
-                  <div class="hardway" data-bet="hard-8">8<div class="chip-stack"></div></div>
-                  <div class="hardway" data-bet="hard-10">10<div class="chip-stack"></div></div>
+                  <div class="hardway" data-bet="hard-4" data-tooltip="Hard 4: win on 2+2, lose on 7 or easy 4.">4<div class="chip-stack"></div></div>
+                  <div class="hardway" data-bet="hard-6" data-tooltip="Hard 6: win on 3+3, lose on 7 or easy 6.">6<div class="chip-stack"></div></div>
+                  <div class="hardway" data-bet="hard-8" data-tooltip="Hard 8: win on 4+4, lose on 7 or easy 8.">8<div class="chip-stack"></div></div>
+                  <div class="hardway" data-bet="hard-10" data-tooltip="Hard 10: win on 5+5, lose on 7 or easy 10.">10<div class="chip-stack"></div></div>
                 </div>
               </div>
               <div class="craps-group">
                 <div class="craps-group-label">Place Bets</div>
                 <div class="place-bets">
-                  <div class="place" data-bet="place-4">4<div class="chip-stack"></div></div>
-                  <div class="place" data-bet="place-5">5<div class="chip-stack"></div></div>
-                  <div class="place" data-bet="place-6">6<div class="chip-stack"></div></div>
-                  <div class="place" data-bet="place-8">8<div class="chip-stack"></div></div>
-                  <div class="place" data-bet="place-9">9<div class="chip-stack"></div></div>
-                  <div class="place" data-bet="place-10">10<div class="chip-stack"></div></div>
+                  <div class="place" data-bet="place-4" data-tooltip="Place 4 pays 9:5.">4<div class="chip-stack"></div></div>
+                  <div class="place" data-bet="place-5" data-tooltip="Place 5 pays 7:5.">5<div class="chip-stack"></div></div>
+                  <div class="place" data-bet="place-6" data-tooltip="Place 6 pays 7:6.">6<div class="chip-stack"></div></div>
+                  <div class="place" data-bet="place-8" data-tooltip="Place 8 pays 7:6.">8<div class="chip-stack"></div></div>
+                  <div class="place" data-bet="place-9" data-tooltip="Place 9 pays 7:5.">9<div class="chip-stack"></div></div>
+                  <div class="place" data-bet="place-10" data-tooltip="Place 10 pays 9:5.">10<div class="chip-stack"></div></div>
                 </div>
               </div>
               <div class="craps-group">
                 <div class="craps-group-label">Come Points</div>
                 <div class="come-points">
-                  <div class="come-point" data-bet="come-4">4<div class="chip-stack"></div></div>
-                  <div class="come-point" data-bet="come-5">5<div class="chip-stack"></div></div>
-                  <div class="come-point" data-bet="come-6">6<div class="chip-stack"></div></div>
-                  <div class="come-point" data-bet="come-8">8<div class="chip-stack"></div></div>
-                  <div class="come-point" data-bet="come-9">9<div class="chip-stack"></div></div>
-                  <div class="come-point" data-bet="come-10">10<div class="chip-stack"></div></div>
+                  <div class="come-point" data-bet="come-4" data-tooltip="Come point 4 pays 1:1 when it hits.">4<div class="chip-stack"></div></div>
+                  <div class="come-point" data-bet="come-5" data-tooltip="Come point 5 pays 1:1 when it hits.">5<div class="chip-stack"></div></div>
+                  <div class="come-point" data-bet="come-6" data-tooltip="Come point 6 pays 1:1 when it hits.">6<div class="chip-stack"></div></div>
+                  <div class="come-point" data-bet="come-8" data-tooltip="Come point 8 pays 1:1 when it hits.">8<div class="chip-stack"></div></div>
+                  <div class="come-point" data-bet="come-9" data-tooltip="Come point 9 pays 1:1 when it hits.">9<div class="chip-stack"></div></div>
+                  <div class="come-point" data-bet="come-10" data-tooltip="Come point 10 pays 1:1 when it hits.">10<div class="chip-stack"></div></div>
                 </div>
               </div>
             </div>
-            <div class="craps-zone dont" data-bet="dont">
+            <div class="craps-zone dont" data-bet="dont" data-tooltip="Don't Pass wins on 2/3, loses on 7/11, push on 12, then avoids the point.">
               <div class="craps-title">Don't Pass</div>
               <div class="craps-odds">Pays 1:1 on 2/3</div>
               <div class="chip-stack"></div>

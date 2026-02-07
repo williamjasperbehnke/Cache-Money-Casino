@@ -76,6 +76,8 @@ export const state = {
     point: 0,
     rolling: false,
     roundPaid: false,
+    tableOn: true,
+    autoBet: false,
   },
   slots: {
     bet: 0,

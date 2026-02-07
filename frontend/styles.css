@@ -1112,29 +1112,166 @@ h3 {
   font-family: "VT323", "Press Start 2P", monospace;
 }
 
+.craps-top-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  margin: 14px 0 6px;
+}
+
+.craps-top-row .chips {
+  justify-content: flex-start;
+  margin: 0;
+}
+
 .craps-meta {
   display: flex;
   gap: 12px;
-  margin: 14px 0 6px;
+  margin: 0;
   flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
 }
 
-.craps-pill {
-  background: linear-gradient(180deg, rgba(12, 74, 110, 0.6), rgba(2, 8, 23, 0.9));
-  border: 1px solid rgba(59, 130, 246, 0.5);
-  color: #7dd3fc;
-  padding: 8px 12px;
+.craps-point-strip {
+  display: flex;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  padding: 6px 8px;
+  border-radius: 10px;
+  box-shadow: inset 0 0 10px rgba(15, 23, 42, 0.6);
+}
+
+.craps-point-strip span {
+  min-width: 28px;
+  padding: 6px 6px;
   border-radius: 8px;
-  font-size: 0.9rem;
-  letter-spacing: 0.04em;
-  box-shadow: inset 0 0 12px rgba(30, 64, 175, 0.35);
+  text-align: center;
+  font-size: 0.75rem;
+  color: rgba(226, 232, 240, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(2, 6, 23, 0.55);
+}
+
+.craps-point-strip span.active {
+  color: #f8fafc;
+  border-color: rgba(250, 204, 21, 0.7);
+  background: rgba(120, 53, 15, 0.65);
+  box-shadow: 0 0 8px rgba(250, 204, 21, 0.5);
+}
+
+.craps-last-roll {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.8);
+  box-shadow: inset 0 0 10px rgba(15, 23, 42, 0.6);
+}
+
+.craps-mini-die {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: linear-gradient(145deg, #f8fafc, #cbd5f5);
+  border: 1px solid rgba(148, 163, 184, 0.7);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 2px;
+  padding: 3px;
+  box-shadow: inset 0 0 6px rgba(15, 23, 42, 0.2), 0 3px 0 rgba(15, 23, 42, 0.6);
+}
+
+.craps-mini-die .pip {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #0f172a;
+  opacity: 0;
+  align-self: center;
+  justify-self: center;
+}
+
+.craps-mini-die[data-face="1"] .pip:nth-child(5) { opacity: 1; }
+.craps-mini-die[data-face="2"] .pip:nth-child(1),
+.craps-mini-die[data-face="2"] .pip:nth-child(9) { opacity: 1; }
+.craps-mini-die[data-face="3"] .pip:nth-child(1),
+.craps-mini-die[data-face="3"] .pip:nth-child(5),
+.craps-mini-die[data-face="3"] .pip:nth-child(9) { opacity: 1; }
+.craps-mini-die[data-face="4"] .pip:nth-child(1),
+.craps-mini-die[data-face="4"] .pip:nth-child(3),
+.craps-mini-die[data-face="4"] .pip:nth-child(7),
+.craps-mini-die[data-face="4"] .pip:nth-child(9) { opacity: 1; }
+.craps-mini-die[data-face="5"] .pip:nth-child(1),
+.craps-mini-die[data-face="5"] .pip:nth-child(3),
+.craps-mini-die[data-face="5"] .pip:nth-child(5),
+.craps-mini-die[data-face="5"] .pip:nth-child(7),
+.craps-mini-die[data-face="5"] .pip:nth-child(9) { opacity: 1; }
+.craps-mini-die[data-face="6"] .pip:nth-child(1),
+.craps-mini-die[data-face="6"] .pip:nth-child(3),
+.craps-mini-die[data-face="6"] .pip:nth-child(4),
+.craps-mini-die[data-face="6"] .pip:nth-child(6),
+.craps-mini-die[data-face="6"] .pip:nth-child(7),
+.craps-mini-die[data-face="6"] .pip:nth-child(9) { opacity: 1; }
+
+.craps-last-total {
+  min-width: 36px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.9);
+  color: #7dd3fc;
+  border: 1px solid rgba(125, 211, 252, 0.4);
+  font-size: 0.8rem;
+  text-align: center;
+  letter-spacing: 0.08em;
+}
+
+.craps-last-total.pulse {
+  animation: roll-pulse 0.5s ease;
+  box-shadow: 0 0 10px rgba(125, 211, 252, 0.7);
+}
+
+@keyframes roll-pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+.craps-pill {
+  background: linear-gradient(180deg, rgba(30, 58, 138, 0.45), rgba(8, 12, 20, 0.95));
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  color: #e2e8f0;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  box-shadow: inset 0 0 14px rgba(15, 23, 42, 0.6), 0 6px 0 rgba(15, 23, 42, 0.4);
 }
 
 .craps-dice {
   display: flex;
   gap: 12px;
   align-items: center;
-  margin: 8px 0 14px;
+  justify-content: center;
+  margin: 0;
+}
+
+.craps-tray {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 2px solid rgba(148, 163, 184, 0.35);
+  background: linear-gradient(180deg, rgba(2, 8, 23, 0.65), rgba(15, 23, 42, 0.9));
+  box-shadow: inset 0 0 16px rgba(2, 6, 23, 0.7);
+}
+
+.craps-tray-row {
+  margin-bottom: 12px;
 }
 
 .craps-die {
@@ -1202,12 +1339,9 @@ h3 {
   margin-top: 16px;
   padding: 16px;
   border-radius: 14px;
-  border: 3px solid rgba(30, 64, 175, 0.35);
-  background:
-    radial-gradient(circle at 25% 30%, rgba(30, 41, 59, 0.35), transparent 45%),
-    radial-gradient(circle at 70% 35%, rgba(15, 23, 42, 0.5), transparent 55%),
-    linear-gradient(160deg, rgba(10, 15, 26, 0.95), rgba(3, 7, 18, 0.98));
-  box-shadow: inset 0 0 28px rgba(2, 6, 23, 0.85), 0 14px 30px rgba(2, 6, 23, 0.55);
+  border: 2px solid rgba(148, 163, 184, 0.25);
+  background: rgba(15, 23, 42, 0.7);
+  box-shadow: inset 0 0 24px rgba(2, 6, 23, 0.7), 0 12px 24px rgba(2, 6, 23, 0.45);
 }
 
 .craps-rail {
@@ -1401,6 +1535,48 @@ h3 {
 .craps-zone .chip-stack {
   margin-top: 10px;
   min-height: 18px;
+}
+
+.craps-table [data-tooltip] {
+  position: relative;
+}
+
+.craps-table [data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  transform: translate(-50%, -6px);
+  background: rgba(15, 23, 42, 0.95);
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.7rem;
+  letter-spacing: 0.01em;
+  white-space: normal;
+  text-transform: none;
+  width: max-content;
+  max-width: 320px;
+  line-height: 1.2;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 2;
+}
+
+
+.craps-table [data-tooltip]:hover::after {
+  opacity: 1;
+  transform: translate(-50%, -10px);
+  animation: tooltip-fadeout 0.2s ease 1.8s forwards;
+}
+
+@keyframes tooltip-fadeout {
+  to {
+    opacity: 0;
+    transform: translate(-50%, -12px);
+  }
 }
 
 /* Slots cabinet styling */
@@ -2620,6 +2796,56 @@ body.small-win .topbar {
 
   #roulette #rouletteChaos {
     grid-area: chaos;
+  }
+
+  .craps-table [data-tooltip]::after {
+    max-width: 220px;
+  }
+
+  #craps .bet-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      "label total auto"
+      "roll clear toggle";
+    gap: 10px;
+    align-items: center;
+  }
+
+  #craps .bet-row > label:not(.auto-toggle) {
+    grid-area: label;
+  }
+
+  #craps #crapsBet {
+    grid-area: total;
+  }
+
+  #craps .auto-toggle {
+    grid-area: auto;
+    margin-left: 0;
+    justify-self: end;
+  }
+
+  #craps #crapsRoll {
+    grid-area: roll;
+  }
+
+  #craps #crapsClear {
+    grid-area: clear;
+  }
+
+  #craps .craps-toggle {
+    grid-area: toggle;
+    justify-self: end;
+  }
+
+  .craps-top-row {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+  }
+
+  .craps-meta {
+    justify-content: flex-start;
   }
 }
 
