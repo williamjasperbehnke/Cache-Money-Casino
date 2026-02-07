@@ -309,6 +309,12 @@ resource "aws_apigatewayv2_route" "game_session" {
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
+resource "aws_apigatewayv2_route" "game_state" {
+  api_id    = aws_apigatewayv2_api.rest.id
+  route_key = "GET /api/games/{game}/state"
+  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
+}
+
 resource "aws_apigatewayv2_route" "roulette_spin" {
   api_id    = aws_apigatewayv2_api.rest.id
   route_key = "POST /api/games/roulette/spin"
