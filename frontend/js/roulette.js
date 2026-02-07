@@ -6,7 +6,6 @@ import {
   makeChipStack,
   animateChip,
   triggerBigWin,
-  lockPanel,
 } from "./core.js";
 import { auth } from "./auth.js";
 
@@ -349,20 +348,29 @@ export class RouletteGame {
 
     chaosBtn?.addEventListener("click", async () => {
       if (state.roulette.spinning) return;
-      const unlock = lockPanel("roulette");
+      if (chaosBtn) {
+        chaosBtn.disabled = true;
+        chaosBtn.classList.add("is-loading");
+      }
       const chips = Array.from(
         document.querySelectorAll('.chips[data-target="rouletteBet"] .chip')
       )
         .map((chip) => Number(chip.dataset.amount))
         .filter((amount) => amount > 0);
       if (chips.length === 0) {
-        unlock();
+        if (chaosBtn) {
+          chaosBtn.disabled = false;
+          chaosBtn.classList.remove("is-loading");
+        }
         return;
       }
       const available = Math.min(state.balance, 200);
       if (available <= 0) {
         showCenterToast("Not enough credits.", "danger");
-        unlock();
+        if (chaosBtn) {
+          chaosBtn.disabled = false;
+          chaosBtn.classList.remove("is-loading");
+        }
         return;
       }
       try {
@@ -391,7 +399,10 @@ export class RouletteGame {
       } catch (err) {
         showCenterToast(err.message || "Luck grenade failed.", "danger");
       } finally {
-        unlock();
+        if (chaosBtn) {
+          chaosBtn.disabled = false;
+          chaosBtn.classList.remove("is-loading");
+        }
       }
     });
 
@@ -404,11 +415,17 @@ export class RouletteGame {
         showCenterToast("Wheel is spinning...", "danger");
         return;
       }
-      const unlock = lockPanel("roulette");
+      if (spinBtn) {
+        spinBtn.disabled = true;
+        spinBtn.classList.add("is-loading");
+      }
       const totalBet = this.totalBet();
       if (totalBet <= 0) {
         showCenterToast("Place a bet on the table.", "danger");
-        unlock();
+        if (spinBtn) {
+          spinBtn.disabled = false;
+          spinBtn.classList.remove("is-loading");
+        }
         return;
       }
       if (!state.roulette.roundPaid) {
@@ -419,7 +436,10 @@ export class RouletteGame {
           state.roulette.bets.parities = {};
           state.roulette.roundPaid = false;
           this.updateUI();
-          unlock();
+          if (spinBtn) {
+            spinBtn.disabled = false;
+            spinBtn.classList.remove("is-loading");
+          }
           return;
         }
         state.balance -= totalBet;
@@ -427,7 +447,6 @@ export class RouletteGame {
         state.roulette.roundPaid = true;
       }
       state.roulette.spinning = true;
-      spinBtn.disabled = true;
       playSfx("spin");
       let payload;
       try {
@@ -442,9 +461,11 @@ export class RouletteGame {
           state.roulette.roundPaid = false;
         }
         state.roulette.spinning = false;
-        spinBtn.disabled = false;
+        if (spinBtn) {
+          spinBtn.disabled = false;
+          spinBtn.classList.remove("is-loading");
+        }
         showCenterToast(err.message || "Spin failed.", "danger");
-        unlock();
         return;
       }
       const spin = payload.resultNumber;
@@ -474,8 +495,10 @@ export class RouletteGame {
         }
         state.roulette.roundPaid = false;
         state.roulette.spinning = false;
-        spinBtn.disabled = false;
-        unlock();
+        if (spinBtn) {
+          spinBtn.disabled = false;
+          spinBtn.classList.remove("is-loading");
+        }
         if (autoToggle?.checked && this.totalBet() > 0) {
           state.roulette.roundPaid = false;
           setTimeout(() => {

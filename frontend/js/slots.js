@@ -5,7 +5,6 @@ import {
   showCenterToast,
   triggerBigWin,
   triggerSmallWin,
-  lockPanel,
 } from "./core.js";
 import { auth } from "./auth.js";
 
@@ -220,8 +219,13 @@ export class SlotsGame {
       return;
     }
     this.spinning = true;
-    if (this.ui.spinBtn) this.ui.spinBtn.disabled = true;
-    const unlock = lockPanel("slots");
+    if (this.ui.spinBtn) {
+      this.ui.spinBtn.disabled = true;
+      this.ui.spinBtn.classList.add("is-loading");
+    }
+    this.ui.presets?.forEach((preset) => {
+      preset.disabled = true;
+    });
     playSfx("spin");
     if (this.ui.lever) {
       this.ui.lever.classList.add("pull");
@@ -236,14 +240,19 @@ export class SlotsGame {
       });
     } catch (err) {
       this.spinning = false;
-      if (this.ui.spinBtn) this.ui.spinBtn.disabled = false;
+      if (this.ui.spinBtn) {
+        this.ui.spinBtn.disabled = false;
+        this.ui.spinBtn.classList.remove("is-loading");
+      }
+      this.ui.presets?.forEach((preset) => {
+        preset.disabled = false;
+      });
       const msg = (err?.message || "").toLowerCase();
       if (msg.includes("not enough credits")) {
         showCenterToast("Not enough credits to spin.", "danger");
       } else {
         showCenterToast(err.message || "Spin failed.", "danger");
       }
-      unlock();
       return;
     }
 
@@ -270,7 +279,13 @@ export class SlotsGame {
       setTimeout(() => {
         const onAutoSpin = () => {
           this.spinning = false;
-          if (this.ui.spinBtn) this.ui.spinBtn.disabled = false;
+          if (this.ui.spinBtn) {
+            this.ui.spinBtn.disabled = false;
+            this.ui.spinBtn.classList.remove("is-loading");
+          }
+          this.ui.presets?.forEach((preset) => {
+            preset.disabled = false;
+          });
           if (this.ui.autoToggle?.checked) {
             setTimeout(() => {
               if (!this.spinning && this.ui.autoToggle.checked) {
@@ -278,7 +293,6 @@ export class SlotsGame {
               }
             }, AUTO_SPIN_DELAY);
           }
-          unlock();
         };
         this.applyOutcome({
           bet,

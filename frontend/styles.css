@@ -288,6 +288,28 @@ body::before {
   display: none !important;
 }
 
+button.is-loading,
+.btn.is-loading {
+  position: relative;
+  pointer-events: none;
+  opacity: 0.85;
+}
+
+button.is-loading::after,
+.btn.is-loading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border-radius: 50%;
+  border: 2px solid rgba(226, 232, 240, 0.4);
+  border-top-color: #7dd3fc;
+  animation: panel-spin 0.7s linear infinite;
+}
+
 h2 {
   margin-top: 0;
   font-size: 16px;
