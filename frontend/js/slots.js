@@ -222,9 +222,6 @@ export class SlotsGame {
     if (this.ui.spinBtn) {
       this.ui.spinBtn.disabled = true;
     }
-    this.ui.presets?.forEach((preset) => {
-      preset.disabled = true;
-    });
     playSfx("spin");
     if (this.ui.lever) {
       this.ui.lever.classList.add("pull");
@@ -242,9 +239,6 @@ export class SlotsGame {
       if (this.ui.spinBtn) {
         this.ui.spinBtn.disabled = false;
       }
-      this.ui.presets?.forEach((preset) => {
-        preset.disabled = false;
-      });
       const msg = (err?.message || "").toLowerCase();
       if (msg.includes("not enough credits")) {
         showCenterToast("Not enough credits to spin.", "danger");
@@ -280,9 +274,6 @@ export class SlotsGame {
           if (this.ui.spinBtn) {
             this.ui.spinBtn.disabled = false;
           }
-          this.ui.presets?.forEach((preset) => {
-            preset.disabled = false;
-          });
           if (this.ui.autoToggle?.checked) {
             setTimeout(() => {
               if (!this.spinning && this.ui.autoToggle.checked) {
