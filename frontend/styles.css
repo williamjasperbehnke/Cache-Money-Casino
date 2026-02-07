@@ -2026,6 +2026,8 @@ body.small-win .topbar {
     transform: scale(0.69);
     transform-origin: top left;
     max-width: 100%;
+    margin-bottom: -180px;
+    padding-bottom: 0;
   }
 
   .panel {
