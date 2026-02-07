@@ -273,19 +273,26 @@ const applyHoldemAction = (state, betAmount, balance, rng = Math.random) => {
     state.awaitingRaise = false;
   } else if (toCall > 0) {
     const amount = Math.min(toCall, nextBalance);
-    if (amount <= 0) return { error: "Not enough credits to call." };
-    nextBalance -= amount;
-    state.pot += amount;
-    state.playerPaid += amount;
-    state.playerBet += amount;
-    if (amount === toCall) state.playerBet = state.currentBet;
-    if (amount < toCall) {
-      messages.push({ text: "All-in call.", tone: "win", duration: 1600 });
-    }
-    if (state.awaitingRaise) {
-      state.awaitingRaise = false;
-      holdemAdvancePhase(state);
-      skipDealer = true;
+    if (amount <= 0) {
+      if (state.awaitingRaise) {
+        state.awaitingRaise = false;
+        holdemAdvancePhase(state);
+        skipDealer = true;
+      }
+    } else {
+      nextBalance -= amount;
+      state.pot += amount;
+      state.playerPaid += amount;
+      state.playerBet += amount;
+      if (amount === toCall) state.playerBet = state.currentBet;
+      if (amount < toCall) {
+        messages.push({ text: "All-in call.", tone: "win", duration: 1600 });
+      }
+      if (state.awaitingRaise) {
+        state.awaitingRaise = false;
+        holdemAdvancePhase(state);
+        skipDealer = true;
+      }
     }
   } else if (betAmount > 0) {
     if (betAmount > nextBalance) {
@@ -297,11 +304,6 @@ const applyHoldemAction = (state, betAmount, balance, rng = Math.random) => {
     state.playerBet += betAmount;
     state.currentBet = state.playerBet;
     state.awaitingRaise = false;
-  }
-
-  if (advanceToShowdownIfBroke()) {
-    const showdown = finishShowdown();
-    return { state, balance: nextBalance, messages, ...showdown };
   }
 
   if (state.phase === "showdown") {
@@ -324,6 +326,11 @@ const applyHoldemAction = (state, betAmount, balance, rng = Math.random) => {
   const dealerDecision = dealerActs();
   if (dealerDecision?.folded) {
     return { state, balance: nextBalance, messages, folded: true };
+  }
+
+  if (advanceToShowdownIfBroke()) {
+    const showdown = finishShowdown();
+    return { state, balance: nextBalance, messages, ...showdown };
   }
 
   if (state.awaitingRaise) {

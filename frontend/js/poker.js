@@ -363,17 +363,14 @@ export class PokerGame {
     state.poker.discards = new Set();
     renderCards("pokerPlayer", state.poker.player);
     this.renderDiscards();
-    let messageDelay = 0;
-    if (payload.messages?.length) {
-      this.showPhaseMessages(payload.messages);
-      messageDelay =
-        payload.messages.reduce(
-          (total, msg) => total + (Number.isFinite(msg.duration) ? msg.duration : 1600),
-          0
-        ) + payload.messages.length * 200;
-    }
+    const queued = [];
+    if (payload.messages?.length) queued.push(...payload.messages);
     if (payload.dealerDiscarded !== undefined) {
-      this.showToast(`Dealer discarded ${payload.dealerDiscarded} cards.`, "win", 2000);
+      queued.push({
+        text: `Dealer discarded ${payload.dealerDiscarded} cards.`,
+        tone: "win",
+        duration: 2000,
+      });
     }
     this.updateUiForPhase();
     this.updatePokerTotal();
@@ -382,14 +379,11 @@ export class PokerGame {
       this.updateUiForPhase();
     } else if (this.discardPhaseActive()) {
       state.poker.discards = new Set();
-      const fire = () => {
-        if (!this.discardPhaseActive()) return;
-        this.showPhaseToast(state.poker.phase, "Click cards to discard.", "win", 2200);
-        this.renderDiscards();
-      };
-      if (messageDelay) setTimeout(fire, messageDelay);
-      else fire();
+      queued.push({ text: "Click cards to discard.", tone: "win", duration: 2200 });
+      this.renderDiscards();
     }
+
+    if (queued.length) this.showPhaseMessages(queued);
 
     if (state.poker.phase === "reveal") {
       revealDealer("pokerDealer");
