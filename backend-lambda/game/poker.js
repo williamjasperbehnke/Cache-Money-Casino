@@ -272,7 +272,11 @@ const applyPokerBet = (state, betAmount, balance, rng = Math.random) => {
   state.dealerBet = state.currentBet;
   state.pot += dealerToCall;
   state.awaitingRaise = false;
-  messages.push({ text: "Dealer calls.", tone: "win", duration: 1200 });
+  messages.push({
+    text: dealerToCall > 0 ? "Dealer calls." : "Dealer checks.",
+    tone: "win",
+    duration: 1200,
+  });
 
   if (state.phase === "bet1") state.phase = "discard1";
   else if (state.phase === "bet2") state.phase = "discard2";

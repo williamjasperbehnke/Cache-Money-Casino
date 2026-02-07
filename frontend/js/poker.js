@@ -80,6 +80,9 @@ export class PokerGame {
     if (nextState) {
       Object.assign(state.poker, nextState);
       state.poker.discards = this.normalizeDiscards(nextState);
+      if (Number.isFinite(state.poker.currentBet) && Number.isFinite(state.poker.playerBet)) {
+        state.poker.pendingCall = Math.max(0, state.poker.currentBet - state.poker.playerBet);
+      }
     }
     if (Number.isFinite(balance)) {
       state.balance = balance;
@@ -151,7 +154,12 @@ export class PokerGame {
         drawBtn.textContent = `Bet $${betValue}`;
       }
     }
-    if (callRaiseBtn) callRaiseBtn.classList.toggle("hidden", !state.poker.awaitingRaise);
+    if (callRaiseBtn) {
+      callRaiseBtn.classList.toggle("hidden", !state.poker.awaitingRaise);
+      if (state.poker.awaitingRaise) {
+        callRaiseBtn.textContent = `Call $${state.poker.pendingCall}`;
+      }
+    }
     if (foldBtn) foldBtn.classList.toggle("hidden", !state.poker.inRound);
     if (clearBetBtn) {
       clearBetBtn.classList.toggle("hidden", !this.betPhaseActive() || state.poker.awaitingRaise);
