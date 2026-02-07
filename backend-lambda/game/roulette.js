@@ -45,26 +45,6 @@ const computePayout = (bets, resultNumber) => {
   return { payout, profit, win: profit > 0 };
 };
 
-const buildChaosZones = () => [
-  ...rouletteOrder.map((value) => ({ bucket: "numbers", key: String(value) })),
-  { bucket: "colors", key: "red" },
-  { bucket: "colors", key: "black" },
-  { bucket: "parities", key: "odd" },
-  { bucket: "parities", key: "even" },
-];
-
-const computeChaosBudget = (remainingBalance) => {
-  const available = Math.max(0, remainingBalance);
-  if (available <= 0) return { available: 0, spend: 0 };
-  const minSpend = Math.min(50, available);
-  const maxSpend = available;
-  const spend = Math.min(
-    available,
-    Math.floor(Math.random() * (maxSpend - minSpend + 1)) + minSpend
-  );
-  return { available, spend };
-};
-
 const applyRandomBets = ({ bets, chipValues, maxPerSlot, spend, zones, guardLimit = 500 }) => {
   const nextBets = {
     numbers: { ...(bets.numbers || {}) },
@@ -94,7 +74,5 @@ module.exports = {
   totalBet,
   spinOutcome,
   computePayout,
-  buildChaosZones,
-  computeChaosBudget,
   applyRandomBets,
 };

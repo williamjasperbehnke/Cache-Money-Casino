@@ -13,8 +13,6 @@ const {
   totalBet,
   spinOutcome,
   computePayout,
-  buildChaosZones,
-  computeChaosBudget,
   applyRandomBets,
 } = require("./game/roulette");
 const { spinSlots } = require("./game/slots");
@@ -25,7 +23,6 @@ const {
   applyPokerDraw,
   applyPokerCall,
   applyPokerFold,
-  applyPokerReveal,
 } = require("./game/poker");
 const {
   createHoldemState,
@@ -142,41 +139,6 @@ exports.handler = async (event) => {
         profit,
         balance: nextBalance,
         win,
-      },
-      CORS_ORIGIN
-    );
-  }
-
-  if (method === "POST" && path.endsWith("/games/roulette/chaos")) {
-    const body = parseJson(event);
-    const bets = normalizeBets(body.bets);
-    const chipValues = (body.chipValues || []).map(Number).filter((val) => val > 0);
-    const maxPerSlot = Number(body.maxPerSlot) || 50;
-    if (chipValues.length === 0) {
-      return jsonResponse(400, { error: "No chip values." }, CORS_ORIGIN);
-    }
-    const { balance } = await resolveBalance(session);
-    const currentTotal = totalBet(bets);
-    const remaining = Math.max(0, balance - currentTotal);
-    const { available, spend } = computeChaosBudget(remaining);
-    if (available <= 0) {
-      return jsonResponse(400, { error: "Not enough credits." }, CORS_ORIGIN);
-    }
-    const zones = buildChaosZones();
-    const { nextBets, spent } = applyRandomBets({
-      bets,
-      chipValues,
-      maxPerSlot,
-      spend,
-      zones,
-    });
-
-    return jsonResponse(
-      200,
-      {
-        bets: nextBets,
-        spent,
-        balance,
       },
       CORS_ORIGIN
     );

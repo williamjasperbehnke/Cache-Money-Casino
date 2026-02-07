@@ -239,35 +239,6 @@ Spin the wheel with a set of bets.
 }
 ```
 
-#### POST /api/games/roulette/chaos
-Generate a randomized bet spread ("Luck Grenade").
-
-**Body**
-```
-{
-  "chipValues": [5, 10, 25, 50],
-  "maxPerSlot": 50,
-  "bets": {
-    "numbers": { "0": 5, "1": 0, "2": 0 },
-    "colors": { "red": 5, "black": 0 },
-    "parities": { "odd": 0, "even": 5 }
-  }
-}
-```
-
-**Response 200**
-```
-{
-  "bets": {
-    "numbers": { "0": 10, "1": 5, "2": 0 },
-    "colors": { "red": 10, "black": 5 },
-    "parities": { "odd": 0, "even": 10 }
-  },
-  "spent": 40,
-  "balance": 925
-}
-```
-
 ### Slots
 
 #### POST /api/games/slots/spin
