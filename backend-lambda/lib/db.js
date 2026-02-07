@@ -11,7 +11,8 @@ const isLocal = process.env.LOCAL_DEV === "true";
 
 const makeKey = (key) => JSON.stringify(key || {});
 
-const localTables = new Map();
+const localTables = globalThis.__casinoLocalTables || new Map();
+globalThis.__casinoLocalTables = localTables;
 
 const getLocalTable = (name) => {
   if (!localTables.has(name)) localTables.set(name, new Map());
@@ -26,13 +27,20 @@ const localGet = async ({ TableName, Key }) => {
 
 const localPut = async ({ TableName, Item }) => {
   const table = getLocalTable(TableName);
-  const keyFields = Object.keys(Item || {}).filter((key) =>
-    ["username", "token", "connection_id", "room_id", "player_id", "session_id"].includes(key)
-  );
   const keyObj = {};
-  keyFields.forEach((key) => {
-    keyObj[key] = Item[key];
-  });
+  if (Item && Item.token) {
+    keyObj.token = Item.token;
+  } else if (Item && Item.connection_id) {
+    keyObj.connection_id = Item.connection_id;
+  } else if (Item && Item.session_id) {
+    keyObj.session_id = Item.session_id;
+  } else if (Item && Item.room_id) {
+    keyObj.room_id = Item.room_id;
+  } else if (Item && Item.player_id) {
+    keyObj.player_id = Item.player_id;
+  } else if (Item && Item.username) {
+    keyObj.username = Item.username;
+  }
   table.set(makeKey(keyObj), Item);
   return {};
 };

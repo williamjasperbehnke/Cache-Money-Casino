@@ -576,6 +576,83 @@ const persistBalance = async (session, user, balance) => {
 const sumValues = (obj) =>
   Object.values(obj || {}).reduce((acc, val) => acc + Number(val || 0), 0);
 
+const maskCard = () => ({ rank: "?", suit: "?" });
+
+const maskCards = (count) => Array.from({ length: count }, () => maskCard());
+
+const sanitizeBlackjackState = (state) => {
+  if (!state) return state;
+  const next = { ...state };
+  delete next.deck;
+  if (Array.isArray(next.dealer)) {
+    if (!next.revealDealer && next.dealer.length > 0) {
+      next.dealer = next.dealer.map((card, index) => (index === 0 ? maskCard() : card));
+    } else {
+      next.dealer = next.dealer.slice();
+    }
+  }
+  return next;
+};
+
+const sanitizePokerState = (state) => {
+  if (!state) return state;
+  const next = { ...state };
+  delete next.deck;
+  if (Array.isArray(next.dealer)) {
+    next.dealer =
+      next.phase === "reveal" ? next.dealer.slice() : maskCards(next.dealer.length);
+  }
+  return next;
+};
+
+const sanitizeHoldemState = (state) => {
+  if (!state) return state;
+  const next = { ...state };
+  delete next.deck;
+  if (Array.isArray(next.community)) {
+    const visible = holdemPhaseCommunityCount(next.phase);
+    next.community = next.community.slice(0, visible);
+  }
+  if (Array.isArray(next.dealer)) {
+    next.dealer =
+      next.phase === "showdown" ? next.dealer.slice() : maskCards(next.dealer.length);
+  }
+  return next;
+};
+
+const sanitizeState = (game, state) => {
+  if (!state) return state;
+  if (game === "blackjack") return sanitizeBlackjackState(state);
+  if (game === "poker") return sanitizePokerState(state);
+  if (game === "holdem") return sanitizeHoldemState(state);
+  return state;
+};
+
+const respondWithState = (status, game, payload) =>
+  jsonResponse(status, { ...payload, state: sanitizeState(game, payload.state) }, CORS_ORIGIN);
+
+const gameSessionId = (token, game) => `${token}:${game}`;
+
+const getGameState = async (token, game) => {
+  const resp = await get({
+    TableName: GAME_SESSIONS_TABLE,
+    Key: { session_id: gameSessionId(token, game) },
+  });
+  return resp.Item?.state || null;
+};
+
+const saveGameState = (token, session, game, state) =>
+  put({
+    TableName: GAME_SESSIONS_TABLE,
+    Item: {
+      session_id: gameSessionId(token, game),
+      username: session?.username || "guest",
+      game,
+      state,
+      updated_at: new Date().toISOString(),
+    },
+  });
+
 const evaluateSlots = (symbols) => {
   const [a, b, c] = symbols;
   const hasThreeKind = a === b && b === c;
@@ -816,20 +893,17 @@ exports.handler = async (event) => {
       return jsonResponse(400, { error: "Not enough credits." }, CORS_ORIGIN);
     }
     const state = initBlackjackState(wager);
+    await saveGameState(token, session, "blackjack", state);
     const nextBalance = await persistBalance(session, user, balance - wager);
-    return jsonResponse(
-      200,
-      {
-        state,
-        balance: nextBalance,
-        message: null,
-      },
-      CORS_ORIGIN
-    );
+    return respondWithState(200, "blackjack", {
+      state,
+      balance: nextBalance,
+      message: null,
+    });
   }
 
   if (method === "POST" && path.endsWith("/games/blackjack/hit")) {
-    const { state } = parseJson(event);
+    const state = await getGameState(token, "blackjack");
     if (!state || !state.inRound) {
       return jsonResponse(400, { error: "Round not running." }, CORS_ORIGIN);
     }
@@ -851,24 +925,22 @@ exports.handler = async (event) => {
       applyBlackjackStats(user, state, outcomes);
       const nextBalance = await persistBalance(session, user, balance + payoutTotal);
       if (user) await putUser(user);
-      return jsonResponse(
-        200,
-        {
-          state,
-          outcomes,
-          payoutTotal,
-          messages,
-          balance: nextBalance,
-        },
-        CORS_ORIGIN
-      );
+      await saveGameState(token, session, "blackjack", state);
+      return respondWithState(200, "blackjack", {
+        state,
+        outcomes,
+        payoutTotal,
+        messages,
+        balance: nextBalance,
+      });
       }
     }
-    return jsonResponse(200, { state, messages }, CORS_ORIGIN);
+    await saveGameState(token, session, "blackjack", state);
+    return respondWithState(200, "blackjack", { state, messages });
   }
 
   if (method === "POST" && path.endsWith("/games/blackjack/stand")) {
-    const { state } = parseJson(event);
+    const state = await getGameState(token, "blackjack");
     if (!state || !state.inRound) {
       return jsonResponse(400, { error: "Round not running." }, CORS_ORIGIN);
     }
@@ -879,23 +951,21 @@ exports.handler = async (event) => {
       applyBlackjackStats(user, state, outcomes);
       const nextBalance = await persistBalance(session, user, balance + payoutTotal);
       if (user) await putUser(user);
-      return jsonResponse(
-        200,
-        {
-          state,
-          outcomes,
-          payoutTotal,
-          messages: [],
-          balance: nextBalance,
-        },
-        CORS_ORIGIN
-      );
+      await saveGameState(token, session, "blackjack", state);
+      return respondWithState(200, "blackjack", {
+        state,
+        outcomes,
+        payoutTotal,
+        messages: [],
+        balance: nextBalance,
+      });
     }
-    return jsonResponse(200, { state, messages: [] }, CORS_ORIGIN);
+    await saveGameState(token, session, "blackjack", state);
+    return respondWithState(200, "blackjack", { state, messages: [] });
   }
 
   if (method === "POST" && path.endsWith("/games/blackjack/double")) {
-    const { state } = parseJson(event);
+    const state = await getGameState(token, "blackjack");
     if (!state || !state.inRound) {
       return jsonResponse(400, { error: "Round not running." }, CORS_ORIGIN);
     }
@@ -928,23 +998,21 @@ exports.handler = async (event) => {
       applyBlackjackStats(user, state, outcomes);
       const finalBalance = await persistBalance(session, user, nextBalance + payoutTotal);
       if (user) await putUser(user);
-      return jsonResponse(
-        200,
-        {
-          state,
-          outcomes,
-          payoutTotal,
-          messages,
-          balance: finalBalance,
-        },
-        CORS_ORIGIN
-      );
+      await saveGameState(token, session, "blackjack", state);
+      return respondWithState(200, "blackjack", {
+        state,
+        outcomes,
+        payoutTotal,
+        messages,
+        balance: finalBalance,
+      });
     }
-    return jsonResponse(200, { state, messages, balance: nextBalance }, CORS_ORIGIN);
+    await saveGameState(token, session, "blackjack", state);
+    return respondWithState(200, "blackjack", { state, messages, balance: nextBalance });
   }
 
   if (method === "POST" && path.endsWith("/games/blackjack/split")) {
-    const { state } = parseJson(event);
+    const state = await getGameState(token, "blackjack");
     if (!state || !state.inRound) {
       return jsonResponse(400, { error: "Round not running." }, CORS_ORIGIN);
     }
@@ -969,7 +1037,8 @@ exports.handler = async (event) => {
     state.busted = [false, false];
     state.activeHand = 0;
     state.splitUsed = true;
-    return jsonResponse(200, { state, balance: nextBalance, messages: [] }, CORS_ORIGIN);
+    await saveGameState(token, session, "blackjack", state);
+    return respondWithState(200, "blackjack", { state, balance: nextBalance, messages: [] });
   }
 
   if (method === "POST" && path.endsWith("/games/holdem/deal")) {
@@ -1011,12 +1080,17 @@ exports.handler = async (event) => {
       dealerRaised: false,
     };
     const message = `Blinds in. You: $${playerBlind}, Dealer: $${dealerBlind}.`;
-    return jsonResponse(200, { state, balance: nextBalance, messages: [{ text: message, tone: "win", duration: 1600 }] }, CORS_ORIGIN);
+    await saveGameState(token, session, "holdem", state);
+    return respondWithState(200, "holdem", {
+      state,
+      balance: nextBalance,
+      messages: [{ text: message, tone: "win", duration: 1600 }],
+    });
   }
 
   if (method === "POST" && path.endsWith("/games/holdem/action")) {
     const body = parseJson(event);
-    const state = body.state;
+    const state = await getGameState(token, "holdem");
     const betAmount = Number(body.betAmount) || 0;
     if (!state || !state.inRound) {
       return jsonResponse(400, { error: "Round not running." }, CORS_ORIGIN);
@@ -1025,6 +1099,10 @@ exports.handler = async (event) => {
     const { user, balance } = await resolveBalance(session);
     let nextBalance = balance;
     const messages = [];
+    const respond = async (payload) => {
+      await saveGameState(token, session, "holdem", payload.state);
+      return respondWithState(200, "holdem", payload);
+    };
 
     const toCall = Math.max(0, state.currentBet - state.playerBet);
     const canBet = HOLDEM_BETTING_PHASES.has(state.phase);
@@ -1204,18 +1282,18 @@ exports.handler = async (event) => {
     if (advanceToShowdownIfBroke()) {
       const showdown = finishShowdown();
       const finalBalance = await persistBalance(session, user, nextBalance);
-      return jsonResponse(200, { state, balance: finalBalance, messages, ...showdown }, CORS_ORIGIN);
+      return respond({ state, balance: finalBalance, messages, ...showdown });
     }
 
     if (state.phase === "showdown") {
       const showdown = finishShowdown();
       const finalBalance = await persistBalance(session, user, nextBalance);
-      return jsonResponse(200, { state, balance: finalBalance, messages, ...showdown }, CORS_ORIGIN);
+      return respond({ state, balance: finalBalance, messages, ...showdown });
     }
 
     if (state.awaitingRaise) {
       const finalBalance = await persistBalance(session, user, nextBalance);
-      return jsonResponse(200, { state, balance: finalBalance, messages }, CORS_ORIGIN);
+      return respond({ state, balance: finalBalance, messages });
     }
     if (skipDealer) {
       if (state.phase !== prevPhase && state.phase !== "showdown" && !state.skipBetting) {
@@ -1223,7 +1301,7 @@ exports.handler = async (event) => {
         if (label) messages.push({ text: label, tone: "win", duration: 1400 });
       }
       const finalBalance = await persistBalance(session, user, nextBalance);
-      return jsonResponse(200, { state, balance: finalBalance, messages }, CORS_ORIGIN);
+      return respond({ state, balance: finalBalance, messages });
     }
 
     const dealerResult = dealerActs();
@@ -1234,20 +1312,20 @@ exports.handler = async (event) => {
     if (state.phase === "showdown") {
       const showdown = finishShowdown();
       const finalBalance = await persistBalance(session, user, nextBalance);
-      return jsonResponse(200, { state, balance: finalBalance, messages, ...showdown }, CORS_ORIGIN);
+      return respond({ state, balance: finalBalance, messages, ...showdown });
     }
     if (dealerResult && dealerResult.folded) {
       const finalBalance = await persistBalance(session, user, nextBalance);
-      return jsonResponse(200, { state, balance: finalBalance, messages }, CORS_ORIGIN);
+      return respond({ state, balance: finalBalance, messages });
     }
 
     const finalBalance = await persistBalance(session, user, nextBalance);
-    return jsonResponse(200, { state, balance: finalBalance, messages }, CORS_ORIGIN);
+    return respond({ state, balance: finalBalance, messages });
   }
 
   if (method === "POST" && path.endsWith("/games/holdem/fold")) {
     const body = parseJson(event);
-    const state = body.state;
+    const state = await getGameState(token, "holdem");
     if (!state || !state.inRound) {
       return jsonResponse(400, { error: "Round not running." }, CORS_ORIGIN);
     }
@@ -1266,7 +1344,8 @@ exports.handler = async (event) => {
     state.inRound = false;
     state.phase = "showdown";
     const finalBalance = await persistBalance(session, user, balance);
-    return jsonResponse(200, { state, balance: finalBalance, messages }, CORS_ORIGIN);
+    await saveGameState(token, session, "holdem", state);
+    return respondWithState(200, "holdem", { state, balance: finalBalance, messages });
   }
 
   if (method === "POST" && path.endsWith("/games/poker/deal")) {
@@ -1301,12 +1380,13 @@ exports.handler = async (event) => {
       inRound: true,
       awaitingClear: false,
     };
-    return jsonResponse(200, { state, balance: nextBalance }, CORS_ORIGIN);
+    await saveGameState(token, session, "poker", state);
+    return respondWithState(200, "poker", { state, balance: nextBalance });
   }
 
   if (method === "POST" && path.endsWith("/games/poker/bet")) {
     const body = parseJson(event);
-    const state = body.state;
+    const state = await getGameState(token, "poker");
     const betAmount = Number(body.betAmount) || 0;
     if (!state || !state.inRound || !state.phase?.startsWith("bet")) {
       return jsonResponse(400, { error: "Betting is closed." }, CORS_ORIGIN);
@@ -1345,7 +1425,8 @@ exports.handler = async (event) => {
         await putUser(user);
       }
       const finalBalance = await persistBalance(session, user, nextBalance);
-      return jsonResponse(200, { state, balance: finalBalance, messages }, CORS_ORIGIN);
+      await saveGameState(token, session, "poker", state);
+      return respondWithState(200, "poker", { state, balance: finalBalance, messages });
     }
 
     if (decision.action === "raise") {
@@ -1360,7 +1441,8 @@ exports.handler = async (event) => {
         state.awaitingRaise = true;
         messages.push({ text: `Dealer raises to $${raiseAmount}.`, tone: "danger", duration: 2000 });
         const finalBalance = await persistBalance(session, user, nextBalance);
-        return jsonResponse(200, { state, balance: finalBalance, messages }, CORS_ORIGIN);
+        await saveGameState(token, session, "poker", state);
+        return respondWithState(200, "poker", { state, balance: finalBalance, messages });
       }
     }
 
@@ -1372,12 +1454,13 @@ exports.handler = async (event) => {
     else if (state.phase === "bet3") state.phase = "reveal";
     state.canDiscard = state.phase.startsWith("discard");
     const finalBalance = await persistBalance(session, user, nextBalance);
-    return jsonResponse(200, { state, balance: finalBalance, messages }, CORS_ORIGIN);
+    await saveGameState(token, session, "poker", state);
+    return respondWithState(200, "poker", { state, balance: finalBalance, messages });
   }
 
   if (method === "POST" && path.endsWith("/games/poker/draw")) {
     const body = parseJson(event);
-    const state = body.state;
+    const state = await getGameState(token, "poker");
     const discards = Array.isArray(body.discards) ? body.discards : [];
     if (!state || !state.inRound || !state.phase?.startsWith("discard")) {
       return jsonResponse(400, { error: "Discard not allowed." }, CORS_ORIGIN);
@@ -1389,12 +1472,13 @@ exports.handler = async (event) => {
     state.canDiscard = false;
     if (state.phase === "discard1") state.phase = "bet2";
     else if (state.phase === "discard2") state.phase = "bet3";
-    return jsonResponse(200, { state, dealerDiscarded: dealerDraw.discarded }, CORS_ORIGIN);
+    await saveGameState(token, session, "poker", state);
+    return respondWithState(200, "poker", { state, dealerDiscarded: dealerDraw.discarded });
   }
 
   if (method === "POST" && path.endsWith("/games/poker/call")) {
     const body = parseJson(event);
-    const state = body.state;
+    const state = await getGameState(token, "poker");
     if (!state || !state.inRound || !state.awaitingRaise) {
       return jsonResponse(400, { error: "No raise to call." }, CORS_ORIGIN);
     }
@@ -1413,12 +1497,13 @@ exports.handler = async (event) => {
     else if (state.phase === "bet3") state.phase = "reveal";
     state.canDiscard = state.phase.startsWith("discard");
     const finalBalance = await persistBalance(session, user, nextBalance);
-    return jsonResponse(200, { state, balance: finalBalance }, CORS_ORIGIN);
+    await saveGameState(token, session, "poker", state);
+    return respondWithState(200, "poker", { state, balance: finalBalance });
   }
 
   if (method === "POST" && path.endsWith("/games/poker/fold")) {
     const body = parseJson(event);
-    const state = body.state;
+    const state = await getGameState(token, "poker");
     if (!state || !state.inRound) {
       return jsonResponse(400, { error: "Round not running." }, CORS_ORIGIN);
     }
@@ -1436,12 +1521,17 @@ exports.handler = async (event) => {
       await putUser(user);
     }
     const finalBalance = await persistBalance(session, user, balance);
-    return jsonResponse(200, { state, balance: finalBalance, messages: [{ text: "You folded.", tone: "danger", duration: 2000 }] }, CORS_ORIGIN);
+    await saveGameState(token, session, "poker", state);
+    return respondWithState(200, "poker", {
+      state,
+      balance: finalBalance,
+      messages: [{ text: "You folded.", tone: "danger", duration: 2000 }],
+    });
   }
 
   if (method === "POST" && path.endsWith("/games/poker/reveal")) {
     const body = parseJson(event);
-    const state = body.state;
+    const state = await getGameState(token, "poker");
     if (!state) return jsonResponse(400, { error: "Invalid state." }, CORS_ORIGIN);
     const { user, balance } = await resolveBalance(session);
     const playerEval = pokerEvaluateHand(state.player);
@@ -1471,20 +1561,41 @@ exports.handler = async (event) => {
     state.awaitingClear = true;
     state.inRound = false;
     state.phase = "reveal";
-    return jsonResponse(
-      200,
-      {
-        state,
-        balance: nextBalance,
-        result,
-        playerLabel: playerEval.label,
-        dealerLabel: dealerEval.label,
-        playerIndexes: pokerWinningIndexes(state.player, playerEval),
-        dealerIndexes: pokerWinningIndexes(state.dealer, dealerEval),
-      },
-      CORS_ORIGIN
-    );
+    await saveGameState(token, session, "poker", state);
+    return respondWithState(200, "poker", {
+      state,
+      balance: nextBalance,
+      result,
+      playerLabel: playerEval.label,
+      dealerLabel: dealerEval.label,
+      playerIndexes: pokerWinningIndexes(state.player, playerEval),
+      dealerIndexes: pokerWinningIndexes(state.dealer, dealerEval),
+    });
   }
 
   return jsonResponse(404, { error: "Not found." }, CORS_ORIGIN);
+};
+
+exports._test = {
+  pokerEvaluateHand,
+  pokerCompareHands,
+  pokerWinningIndexes,
+  pokerDealerAction,
+  pokerDealerDraw,
+  holdemEvaluateHand,
+  holdemCompareHands,
+  holdemCombinations,
+  holdemBestHand,
+  holdemPreflopStrength,
+  holdemDealerStrength,
+  holdemDealerRaiseAmount,
+  handTotal,
+  initBlackjackState,
+  canSplit,
+  advanceHand,
+  resolveDealer,
+  resolveBlackjack,
+  applyBlackjackStats,
+  evaluateSlots,
+  sumValues,
 };

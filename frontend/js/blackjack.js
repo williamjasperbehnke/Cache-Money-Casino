@@ -202,6 +202,11 @@ export class BlackjackGame {
 
   renderDealer() {
     if (!this.ui.dealerEl) return;
+    if (!state.blackjack.inRound && state.blackjack.dealer.length === 0) {
+      renderCards("bjDealer", []);
+      if (this.ui.dealerTotal) this.ui.dealerTotal.textContent = "";
+      return;
+    }
     if (state.blackjack.revealDealer) {
       renderCards("bjDealer", state.blackjack.dealer);
       revealDealer("bjDealer");
@@ -361,7 +366,7 @@ export class BlackjackGame {
       try {
         const payload = await auth.request("/api/games/blackjack/hit", {
           method: "POST",
-          body: JSON.stringify({ state: state.blackjack }),
+          body: JSON.stringify({}),
         });
         this.applyServerState(payload.state, payload.balance);
         this.renderHands();
@@ -387,7 +392,7 @@ export class BlackjackGame {
       try {
         const payload = await auth.request("/api/games/blackjack/stand", {
           method: "POST",
-          body: JSON.stringify({ state: state.blackjack }),
+          body: JSON.stringify({}),
         });
         this.applyServerState(payload.state, payload.balance);
         this.renderHands();
@@ -420,7 +425,7 @@ export class BlackjackGame {
       try {
         const payload = await auth.request("/api/games/blackjack/double", {
           method: "POST",
-          body: JSON.stringify({ state: state.blackjack }),
+          body: JSON.stringify({}),
         });
         this.applyServerState(payload.state, payload.balance);
         this.renderHands();
@@ -448,7 +453,7 @@ export class BlackjackGame {
       try {
         const payload = await auth.request("/api/games/blackjack/split", {
           method: "POST",
-          body: JSON.stringify({ state: state.blackjack }),
+          body: JSON.stringify({}),
         });
         this.applyServerState(payload.state, payload.balance);
         this.updateTotal();

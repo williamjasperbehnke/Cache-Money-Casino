@@ -233,9 +233,7 @@ export class PokerGame {
   }
 
   async revealFromServer() {
-    const payload = await this.requestGame("/api/games/poker/reveal", {
-      state: this.serializeState(),
-    });
+    const payload = await this.requestGame("/api/games/poker/reveal", {});
     if (!payload) return;
     this.applyServerState(payload.state, payload.balance);
     revealDealer("pokerDealer");
@@ -288,7 +286,6 @@ export class PokerGame {
     }
     playSfx("hit");
     const payload = await this.requestGame("/api/games/poker/bet", {
-      state: this.serializeState(),
       betAmount,
     });
     if (!payload) return;
@@ -335,7 +332,6 @@ export class PokerGame {
     if (!state.poker.inRound) return;
     playSfx("hit");
     const payload = await this.requestGame("/api/games/poker/draw", {
-      state: this.serializeState(),
       discards: Array.from(state.poker.discards || []),
     });
     if (!payload) return;
@@ -358,9 +354,7 @@ export class PokerGame {
 
   async handleCall(drawBtn, clearTableBtn, foldBtn) {
     if (!state.poker.awaitingRaise) return;
-    const payload = await this.requestGame("/api/games/poker/call", {
-      state: this.serializeState(),
-    });
+    const payload = await this.requestGame("/api/games/poker/call", {});
     if (!payload) return;
     this.applyServerState(payload.state, payload.balance);
     this.updateUiForPhase();
@@ -383,9 +377,7 @@ export class PokerGame {
   async handleFold() {
     if (!state.poker.inRound) return;
     playSfx("lose");
-    const payload = await this.requestGame("/api/games/poker/fold", {
-      state: this.serializeState(),
-    });
+    const payload = await this.requestGame("/api/games/poker/fold", {});
     if (!payload) return;
     this.applyServerState(payload.state, payload.balance);
     if (payload.messages?.length) showMessagesSequential(payload.messages);

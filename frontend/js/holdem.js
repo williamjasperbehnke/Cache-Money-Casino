@@ -348,7 +348,11 @@ export class HoldemGame {
     auth
       .request("/api/games/holdem/deal", {
         method: "POST",
-        body: JSON.stringify({ state: state.holdem }),
+        body: JSON.stringify({ state: {
+          blindSmall: state.holdem.blindSmall,
+          blindBig: state.holdem.blindBig,
+          dealerButton: state.holdem.dealerButton,
+        } }),
       })
       .then((payload) => {
         playSfx("deal");
@@ -525,7 +529,7 @@ export class HoldemGame {
     try {
       const payload = await auth.request("/api/games/holdem/action", {
         method: "POST",
-        body: JSON.stringify({ state: state.holdem, betAmount: state.holdem.betAmount }),
+        body: JSON.stringify({ betAmount: state.holdem.betAmount }),
       });
       this.applyServerState(payload.state, payload.balance);
       this.updateCommunity();
@@ -557,7 +561,7 @@ export class HoldemGame {
     try {
       const payload = await auth.request("/api/games/holdem/fold", {
         method: "POST",
-        body: JSON.stringify({ state: state.holdem }),
+        body: JSON.stringify({}),
       });
       this.applyServerState(payload.state, payload.balance);
       this.updatePotUI();

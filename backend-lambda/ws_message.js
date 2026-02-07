@@ -22,6 +22,11 @@ const sendToConnection = async (endpoint, connectionId, payload) => {
   );
 };
 
+const sendOrLog = async (endpoint, connectionId, payload) => {
+  if (process.env.LOCAL_DEV === "true") return;
+  await sendToConnection(endpoint, connectionId, payload);
+};
+
 exports.handler = async (event) => {
   const connectionId = event.requestContext.connectionId;
   const domain = event.requestContext.domainName;
@@ -50,7 +55,7 @@ exports.handler = async (event) => {
       UpdateExpression: "set room_id = :room",
       ExpressionAttributeValues: { ":room": roomId },
     });
-    await sendToConnection(endpoint, connectionId, { type: "ROOM_JOINED", roomId });
+    await sendOrLog(endpoint, connectionId, { type: "ROOM_JOINED", roomId });
     return jsonResponse(200, { ok: true }, CORS_ORIGIN);
   }
 
@@ -67,18 +72,18 @@ exports.handler = async (event) => {
       UpdateExpression: "set room_id = :room",
       ExpressionAttributeValues: { ":room": null },
     });
-    await sendToConnection(endpoint, connectionId, { type: "ROOM_LEFT" });
+    await sendOrLog(endpoint, connectionId, { type: "ROOM_LEFT" });
     return jsonResponse(200, { ok: true }, CORS_ORIGIN);
   }
 
   if (action === "action") {
-    await sendToConnection(endpoint, connectionId, {
+    await sendOrLog(endpoint, connectionId, {
       type: "ACTION_ACK",
       payload: body.payload || {},
     });
     return jsonResponse(200, { ok: true }, CORS_ORIGIN);
   }
 
-  await sendToConnection(endpoint, connectionId, { type: "UNKNOWN_ACTION", action });
+  await sendOrLog(endpoint, connectionId, { type: "UNKNOWN_ACTION", action });
   return jsonResponse(200, { ok: true }, CORS_ORIGIN);
 };
