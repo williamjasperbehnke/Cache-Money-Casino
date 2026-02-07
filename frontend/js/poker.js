@@ -328,7 +328,7 @@ export class PokerGame {
       }
     }
 
-    if (state.poker.phase === "reveal" && !state.poker.awaitingClear) {
+    if (state.poker.phase === "reveal") {
       revealDealer("pokerDealer");
       renderCards("pokerDealer", state.poker.dealer);
       this.showResult(payload);
@@ -359,7 +359,7 @@ export class PokerGame {
       this.updateUiForPhase();
     }
 
-    if (state.poker.phase === "reveal" && !state.poker.awaitingClear) {
+    if (state.poker.phase === "reveal") {
       revealDealer("pokerDealer");
       renderCards("pokerDealer", state.poker.dealer);
       this.showResult(payload);
@@ -386,7 +386,7 @@ export class PokerGame {
       this.renderDiscards();
     }
 
-    if (state.poker.phase === "reveal" && !state.poker.awaitingClear) {
+    if (state.poker.phase === "reveal") {
       revealDealer("pokerDealer");
       renderCards("pokerDealer", state.poker.dealer);
       this.showResult(payload);
