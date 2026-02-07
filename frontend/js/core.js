@@ -163,24 +163,65 @@ class AudioManager {
 class ToastManager {
   constructor(container) {
     this.container = container;
+    this.queue = [];
+    this.active = false;
+    this.pendingTimer = null;
   }
 
-  showToasts(messages) {
+  enqueue(messages, gap = 0) {
     if (!this.container) return;
-    this.container.innerHTML = "";
-    messages.forEach((msg) => {
-      const el = document.createElement("div");
-      el.className = "center-toast-item";
-      if (msg.tone === "danger") el.classList.add("negative");
-      if (msg.tone === "win") el.classList.add("positive");
-      el.textContent = msg.text;
-      this.container.appendChild(el);
-      requestAnimationFrame(() => {
-        el.classList.add("show");
-      });
-      const duration = Number.isFinite(msg.duration) ? msg.duration : 1200;
-      setTimeout(() => el.classList.remove("show"), duration);
+    const list = Array.isArray(messages) ? messages : [messages];
+    list.forEach((msg, index) => {
+      this.queue.push({ msg, gap: index === 0 ? 0 : gap });
     });
+    this.showNext();
+  }
+
+  showNext() {
+    if (this.active || !this.container) return;
+    const next = this.queue.shift();
+    if (!next) return;
+    const { msg, gap } = next;
+    this.active = true;
+    if (this.pendingTimer) {
+      clearTimeout(this.pendingTimer);
+      this.pendingTimer = null;
+    }
+    if (gap > 0) {
+      this.pendingTimer = setTimeout(() => {
+        this.pendingTimer = null;
+        this.display(msg);
+      }, gap);
+      return;
+    }
+    this.display(msg);
+  }
+
+  display(msg) {
+    if (!this.container) {
+      this.active = false;
+      this.showNext();
+      return;
+    }
+    this.container.innerHTML = "";
+    const el = document.createElement("div");
+    el.className = "center-toast-item";
+    if (msg.tone === "danger") el.classList.add("negative");
+    if (msg.tone === "win") el.classList.add("positive");
+    el.textContent = msg.text;
+    this.container.appendChild(el);
+    requestAnimationFrame(() => {
+      el.classList.add("show");
+    });
+    const duration = Number.isFinite(msg.duration) ? msg.duration : 1200;
+    setTimeout(() => {
+      el.classList.remove("show");
+      setTimeout(() => {
+        if (this.container.contains(el)) this.container.removeChild(el);
+        this.active = false;
+        this.showNext();
+      }, 120);
+    }, duration);
   }
 }
 
@@ -449,20 +490,17 @@ export function showCenterToast(message, tone = "", duration = 1200) {
 }
 
 export function showCenterToasts(messages) {
-  toastManager.showToasts(messages);
+  toastManager.enqueue(messages);
 }
 
 export function showMessagesSequential(messages = []) {
   if (!messages.length) return;
-  let delay = 0;
-  const gap = 100;
-  messages.forEach((msg) => {
-    const duration = Number.isFinite(msg.duration) ? msg.duration : 1600;
-    setTimeout(() => {
-      showCenterToast(msg.text, msg.tone || "win", duration);
-    }, delay);
-    delay += duration + gap;
-  });
+  const normalized = messages.map((msg) => ({
+    text: msg.text,
+    tone: msg.tone || "win",
+    duration: Number.isFinite(msg.duration) ? msg.duration : 1600,
+  }));
+  toastManager.enqueue(normalized, 100);
 }
 
 export function renderCards(containerId, cards, hideFirst = false) {

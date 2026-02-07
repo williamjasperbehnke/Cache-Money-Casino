@@ -526,6 +526,7 @@ export class HoldemGame {
 
   async playerAction() {
     if (!state.holdem.inRound || !BETTING_PHASES.has(state.holdem.phase)) return;
+    playSfx("hit");
     try {
       const payload = await auth.request("/api/games/holdem/action", {
         method: "POST",
@@ -558,6 +559,7 @@ export class HoldemGame {
 
   async playerFold() {
     if (!state.holdem.inRound) return;
+    playSfx("lose");
     try {
       const payload = await auth.request("/api/games/holdem/fold", {
         method: "POST",

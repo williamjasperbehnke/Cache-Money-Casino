@@ -354,6 +354,7 @@ export class PokerGame {
 
   async handleCall(drawBtn, clearTableBtn, foldBtn) {
     if (!state.poker.awaitingRaise) return;
+    playSfx("hit");
     const payload = await this.requestGame("/api/games/poker/call", {});
     if (!payload) return;
     this.applyServerState(payload.state, payload.balance);
