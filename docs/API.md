@@ -239,6 +239,56 @@ Spin the wheel with a set of bets.
 }
 ```
 
+### Craps
+
+#### POST /api/games/craps/roll
+Roll the dice with the current set of bets.
+
+**Body**
+```
+{
+  "bets": {
+    "pass": 10,
+    "dont": 0,
+    "field": 5,
+    "come": 0,
+    "place": { "4": 0, "5": 0, "6": 6, "8": 6, "9": 0, "10": 0 },
+    "hardways": { "4": 0, "6": 5, "8": 0, "10": 0 },
+    "comePoints": { "4": 0, "5": 0, "6": 0, "8": 0, "9": 0, "10": 0 }
+  },
+  "paid": false,
+  "tableOn": true
+}
+```
+
+- `paid`: if `false`, the server deducts `wager` from balance before payout
+- `tableOn`: if `false`, table bets are turned OFF for this roll (place/hard/come points do not resolve)
+
+**Response 200**
+```
+{
+  "state": {
+    "point": 6,
+    "tableOn": true,
+    "bets": {
+      "pass": 10,
+      "dont": 0,
+      "field": 0,
+      "come": 0,
+      "place": { "4": 0, "5": 0, "6": 6, "8": 6, "9": 0, "10": 0 },
+      "hardways": { "4": 0, "6": 0, "8": 0, "10": 0 },
+      "comePoints": { "4": 0, "5": 0, "6": 0, "8": 0, "9": 0, "10": 0 }
+    },
+    "inRound": true
+  },
+  "balance": 1008,
+  "roll": 6,
+  "payout": 23,
+  "wager": 27,
+  "win": true
+}
+```
+
 ### Slots
 
 #### POST /api/games/slots/spin
