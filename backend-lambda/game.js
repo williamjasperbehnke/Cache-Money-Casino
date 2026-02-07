@@ -324,23 +324,17 @@ exports.handler = async (event) => {
     });
     const message = `Blinds in. You: $${playerBlind}, Dealer: $${dealerBlind}.`;
     if (nextBalance <= 0) {
-      const showdownResult = resolveHoldemShowdown(state, nextBalance);
+      const messages = [{ text: message, tone: "win", duration: 1600 }];
+      const showdownResult = resolveHoldemShowdown(state, nextBalance, messages);
       const finalBalance = await persistBalance(session, user, showdownResult.balance);
       await saveGameState(token, session, "holdem", showdownResult.state);
       return respondWithState(200, "holdem", {
         state: showdownResult.state,
         balance: finalBalance,
-        messages: [{ text: message, tone: "win", duration: 1600 }],
+        messages,
         showdown: showdownResult.showdown,
       });
     }
-    await saveGameState(token, session, "holdem", state);
-    return respondWithState(200, "holdem", {
-      state,
-      balance: nextBalance,
-      messages: [{ text: message, tone: "win", duration: 1600 }],
-    });
-  }
 
   if (method === "POST" && path.endsWith("/games/holdem/action")) {
     const body = parseJson(event);
