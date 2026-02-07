@@ -188,8 +188,8 @@ const advancePokerPhase = (state) => {
   if (state.phase === "bet1") state.phase = "discard1";
   else if (state.phase === "bet2") state.phase = "discard2";
   else if (state.phase === "bet3") state.phase = "reveal";
-  else if (state.phase === "discard1") state.phase = state.skipBetting ? "discard2" : "bet2";
-  else if (state.phase === "discard2") state.phase = state.skipBetting ? "reveal" : "bet3";
+  else if (state.phase === "discard1") state.phase = "bet2";
+  else if (state.phase === "discard2") state.phase = "bet3";
   return state.phase;
 };
 
@@ -198,8 +198,7 @@ const createPokerState = ({
   blindBig,
   dealerButton,
   playerBlind,
-  dealerBlind,
-  balance,
+  dealerBlind
 }) => {
   const deck = shuffle(buildDeck());
   const player = [draw(deck), draw(deck), draw(deck), draw(deck), draw(deck)];
@@ -219,8 +218,8 @@ const createPokerState = ({
     blindBig,
     dealerButton: !dealerButton,
     awaitingRaise: false,
-    skipBetting: broke,
-    phase: broke ? "discard1" : "bet1",
+    skipBetting: false,
+    phase: "bet1",
     inRound: true,
     awaitingClear: false,
     dealerRaised: false,
