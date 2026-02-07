@@ -243,6 +243,9 @@ export class HoldemGame {
       if (payload.messages?.length) {
         this.showPhaseMessages(payload.messages);
       }
+      if (payload.showdown) {
+        this.renderShowdown(payload.showdown);
+      }
     } catch (err) {
       this.showToast(err.message || "Deal failed.", "danger");
     } finally {
