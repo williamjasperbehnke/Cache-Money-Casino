@@ -6,6 +6,7 @@ const gameLabels = {
   poker: "5-Card Poker",
   holdem: "Hold'em",
   roulette: "Roulette",
+  craps: "Craps",
   slots: "Slots",
 };
 

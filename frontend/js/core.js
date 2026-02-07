@@ -63,6 +63,16 @@ export const state = {
     spinning: false,
     roundPaid: false,
   },
+  craps: {
+    bets: {
+      pass: 0,
+      dont: 0,
+      field: 0,
+    },
+    point: 0,
+    rolling: false,
+    roundPaid: false,
+  },
   slots: {
     bet: 0,
   },

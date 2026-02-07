@@ -327,6 +327,12 @@ resource "aws_apigatewayv2_route" "slots_spin" {
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
+resource "aws_apigatewayv2_route" "craps_roll" {
+  api_id    = aws_apigatewayv2_api.rest.id
+  route_key = "POST /api/games/craps/roll"
+  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
+}
+
 resource "aws_apigatewayv2_route" "blackjack_deal" {
   api_id    = aws_apigatewayv2_api.rest.id
   route_key = "POST /api/games/blackjack/deal"
