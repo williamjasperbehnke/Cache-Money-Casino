@@ -236,8 +236,12 @@ export class SlotsGame {
       this.ui.lever.classList.add("pull");
       setTimeout(() => this.ui.lever.classList.remove("pull"), REEL_STOP_DELAY);
     }
-    let payload;
     const balanceBefore = state.balance;
+    if (balanceBefore < bet) {
+      this.showToast("Not enough credits to spin.", "danger");
+      return;
+    }
+    let payload;
     try {
       payload = await auth.request("/api/games/slots/spin", {
         method: "POST",
@@ -248,12 +252,7 @@ export class SlotsGame {
       if (this.ui.spinBtn) {
         this.ui.spinBtn.disabled = false;
       }
-      const msg = (err?.message || "").toLowerCase();
-      if (msg.includes("not enough credits")) {
-        this.showToast("Not enough credits to spin.", "danger");
-      } else {
-        this.showToast(err.message || "Spin failed.", "danger");
-      }
+      this.showToast(err.message || "Spin failed.", "danger");
       return;
     }
 

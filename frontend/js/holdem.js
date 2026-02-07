@@ -216,6 +216,13 @@ export class HoldemGame {
       this.showToast("Round already running.", "danger");
       return;
     }
+    const playerBlind = state.holdem.dealerButton
+      ? state.holdem.blindBig
+      : state.holdem.blindSmall;
+    if (state.balance < playerBlind) {
+      this.showToast("Need more credits to cover the blind.", "danger");
+      return;
+    }
     const unlock = lockPanel("holdem");
     try {
       const payload = await auth.request("/api/games/holdem/deal", {
@@ -237,11 +244,7 @@ export class HoldemGame {
         this.showPhaseMessages(payload.messages);
       }
     } catch (err) {
-      if ((err.message || "").toLowerCase().includes("not enough credits")) {
-        this.showToast("Need more credits to cover the blind.", "danger");
-      } else {
-        this.showToast(err.message || "Deal failed.", "danger");
-      }
+      this.showToast(err.message || "Deal failed.", "danger");
     } finally {
       unlock();
     }
