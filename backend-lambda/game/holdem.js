@@ -1,4 +1,4 @@
-const { buildDeck, shuffle, draw } = require("./cards");
+const { buildDeck, shuffle, draw, cardValue, evaluateFiveCardHand } = require("./cards");
 
 const BETTING_PHASES = new Set(["preflop", "flop", "turn", "river"]);
 
@@ -7,43 +7,6 @@ const holdemPhaseCommunityCount = (phase) => {
   if (phase === "turn") return 4;
   if (phase === "river" || phase === "showdown") return 5;
   return 0;
-};
-
-const holdemCardValue = (card) => {
-  if (card.rank === "A") return 14;
-  if (card.rank === "K") return 13;
-  if (card.rank === "Q") return 12;
-  if (card.rank === "J") return 11;
-  return Number(card.rank);
-};
-
-const holdemEvaluateHand = (cards) => {
-  const values = cards.map((card) => holdemCardValue(card)).sort((a, b) => a - b);
-  const counts = {};
-  const suitsCount = {};
-  cards.forEach((card) => {
-    const value = holdemCardValue(card);
-    counts[value] = (counts[value] || 0) + 1;
-    suitsCount[card.suit] = (suitsCount[card.suit] || 0) + 1;
-  });
-
-  const isFlush = Object.values(suitsCount).some((count) => count === 5);
-  const isWheel = values.toString() === "2,3,4,5,14";
-  const isStraight =
-    values.every((value, index) => (index === 0 ? true : value === values[index - 1] + 1)) ||
-    isWheel;
-  const straightValues = isWheel ? [5, 4, 3, 2, 1] : [...values];
-  const sortedCounts = Object.values(counts).sort((a, b) => b - a);
-
-  if (isStraight && isFlush) return { rank: 8, label: "Straight Flush", values: straightValues };
-  if (sortedCounts[0] === 4) return { rank: 7, label: "Four of a Kind", values };
-  if (sortedCounts[0] === 3 && sortedCounts[1] === 2) return { rank: 6, label: "Full House", values };
-  if (isFlush) return { rank: 5, label: "Flush", values };
-  if (isStraight) return { rank: 4, label: "Straight", values: straightValues };
-  if (sortedCounts[0] === 3) return { rank: 3, label: "Three of a Kind", values };
-  if (sortedCounts[0] === 2 && sortedCounts[1] === 2) return { rank: 2, label: "Two Pair", values };
-  if (sortedCounts[0] === 2) return { rank: 1, label: "One Pair", values };
-  return { rank: 0, label: "High Card", values };
 };
 
 const holdemCompareHands = (player, dealer) => {
@@ -84,7 +47,7 @@ const holdemBestHand = (cards) => {
   let bestCombo = combos[0];
   combos.forEach((indexes) => {
     const hand = indexes.map((idx) => cards[idx]);
-    const evalHand = holdemEvaluateHand(hand);
+    const evalHand = evaluateFiveCardHand(hand);
     if (!bestEval) {
       bestEval = evalHand;
       bestCombo = indexes;
@@ -116,7 +79,7 @@ const holdemAdvancePhase = (state) => {
 };
 
 const holdemPreflopStrength = (hand) => {
-  const values = hand.map((card) => holdemCardValue(card)).sort((a, b) => b - a);
+  const values = hand.map((card) => cardValue(card)).sort((a, b) => b - a);
   const isPair = values[0] === values[1];
   const suited = hand[0].suit === hand[1].suit;
   const gap = Math.abs(values[0] - values[1]);

@@ -315,17 +315,13 @@ export class PokerGame {
 
     if (this.discardPhaseActive()) {
       state.poker.discards = new Set();
-      if (!payload.messages?.length) {
-        const fire = () => {
-          if (!this.discardPhaseActive()) return;
-          showCenterToast("Click cards to discard.", "win", 2200);
-          this.renderDiscards();
-        };
-        if (messageDelay) setTimeout(fire, messageDelay);
-        else fire();
-      } else {
+      const fire = () => {
+        if (!this.discardPhaseActive()) return;
+        showCenterToast("Click cards to discard.", "win", 2200);
         this.renderDiscards();
-      }
+      };
+      if (messageDelay) setTimeout(fire, messageDelay);
+      else fire();
     }
 
     if (state.poker.phase === "reveal") {
@@ -380,9 +376,7 @@ export class PokerGame {
 
     if (this.discardPhaseActive()) {
       state.poker.discards = new Set();
-      if (!payload.messages?.length) {
-        showCenterToast("Click cards to discard.", "win", 2200);
-      }
+      showCenterToast("Click cards to discard.", "win", 2200);
       this.renderDiscards();
     }
 

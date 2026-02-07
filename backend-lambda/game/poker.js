@@ -1,77 +1,4 @@
-const { buildDeck, shuffle, draw } = require("./cards");
-
-const pokerCardValue = (card) => {
-  if (card.rank === "A") return 14;
-  if (card.rank === "K") return 13;
-  if (card.rank === "Q") return 12;
-  if (card.rank === "J") return 11;
-  return Number(card.rank);
-};
-
-const pokerEvaluateHand = (cards) => {
-  const values = cards.map((card) => pokerCardValue(card)).sort((a, b) => a - b);
-  const counts = {};
-  const suitsCount = {};
-  cards.forEach((card) => {
-    const value = pokerCardValue(card);
-    counts[value] = (counts[value] || 0) + 1;
-    suitsCount[card.suit] = (suitsCount[card.suit] || 0) + 1;
-  });
-
-  const isFlush = Object.values(suitsCount).some((count) => count === 5);
-  const isWheel = values.toString() === "2,3,4,5,14";
-  const isStraight =
-    values.every((value, index) => (index === 0 ? true : value === values[index - 1] + 1)) ||
-    isWheel;
-  const straightValues = isWheel ? [5, 4, 3, 2, 1] : [...values];
-  const sortedCounts = Object.values(counts).sort((a, b) => b - a);
-
-  const valueLabel = (value) => {
-    if (value === 14) return "Aces";
-    if (value === 13) return "Kings";
-    if (value === 12) return "Queens";
-    if (value === 11) return "Jacks";
-    return `${value}s`;
-  };
-
-  const byCount = Object.entries(counts)
-    .map(([value, count]) => ({ value: Number(value), count }))
-    .sort((a, b) => b.count - a.count || b.value - a.value);
-
-  if (isStraight && isFlush) return { rank: 8, label: "Straight Flush", values: straightValues };
-  if (sortedCounts[0] === 4) {
-    const quad = byCount.find((entry) => entry.count === 4)?.value;
-    return { rank: 7, label: `Four of a Kind (${valueLabel(quad)})`, values };
-  }
-  if (sortedCounts[0] === 3 && sortedCounts[1] === 2) {
-    const trips = byCount.find((entry) => entry.count === 3)?.value;
-    const pair = byCount.find((entry) => entry.count === 2)?.value;
-    return {
-      rank: 6,
-      label: `Full House (${valueLabel(trips)} over ${valueLabel(pair)})`,
-      values,
-    };
-  }
-  if (isFlush) return { rank: 5, label: "Flush", values };
-  if (isStraight) return { rank: 4, label: "Straight", values: straightValues };
-  if (sortedCounts[0] === 3) {
-    const trips = byCount.find((entry) => entry.count === 3)?.value;
-    return { rank: 3, label: `Three of a Kind (${valueLabel(trips)})`, values };
-  }
-  if (sortedCounts[0] === 2 && sortedCounts[1] === 2) {
-    const pairs = byCount.filter((entry) => entry.count === 2).map((entry) => entry.value);
-    return {
-      rank: 2,
-      label: `Two Pair (${valueLabel(pairs[0])} & ${valueLabel(pairs[1])})`,
-      values,
-    };
-  }
-  if (sortedCounts[0] === 2) {
-    const pair = byCount.find((entry) => entry.count === 2)?.value;
-    return { rank: 1, label: `Pair of ${valueLabel(pair)}`, values };
-  }
-  return { rank: 0, label: "High Card", values };
-};
+const { buildDeck, shuffle, draw, cardValue, evaluateFiveCardHand } = require("./cards");
 
 const pokerCompareHands = (player, dealer) => {
   if (player.rank !== dealer.rank) {
@@ -88,7 +15,7 @@ const pokerCompareHands = (player, dealer) => {
 };
 
 const pokerWinningIndexes = (cards, evaluation) => {
-  const values = cards.map((card) => pokerCardValue(card));
+  const values = cards.map((card) => cardValue(card));
   const counts = {};
   values.forEach((value) => {
     counts[value] = (counts[value] || 0) + 1;
@@ -129,7 +56,7 @@ const pokerRaisePercent = (rank) => {
 };
 
 const pokerDealerAction = (hand, betAmount, phase) => {
-  const evalHand = pokerEvaluateHand(hand);
+  const evalHand = evaluateFiveCardHand(hand);
   const raisePct = pokerRaisePercent(evalHand.rank);
   if (betAmount === 0) {
     if (raisePct > 0 && Math.random() > 0.35) {
@@ -147,11 +74,11 @@ const pokerDealerAction = (hand, betAmount, phase) => {
 };
 
 const pokerDealerDraw = (hand, deck) => {
-  const evaluation = pokerEvaluateHand(hand);
+  const evaluation = evaluateFiveCardHand(hand);
   const rank = evaluation.rank;
   const counts = {};
   hand.forEach((card) => {
-    const value = pokerCardValue(card);
+    const value = cardValue(card);
     counts[value] = (counts[value] || 0) + 1;
   });
 
@@ -165,14 +92,14 @@ const pokerDealerDraw = (hand, deck) => {
       if (count === keepCount) keepRanks.add(Number(value));
     });
   } else {
-    const high = Math.max(...hand.map((card) => pokerCardValue(card)));
+    const high = Math.max(...hand.map((card) => cardValue(card)));
     keepRanks.add(high);
   }
 
   const nextHand = [];
   let discarded = 0;
   hand.forEach((card) => {
-    const value = pokerCardValue(card);
+    const value = cardValue(card);
     if (keepRanks.has(value)) {
       nextHand.push(card);
     } else {
@@ -263,13 +190,14 @@ const applyPokerBet = (state, betAmount, balance, rng = Math.random) => {
     const maxRaiseTo = state.playerBet + nextBalance;
     const raiseTo = Math.min(state.currentBet + raiseBy, maxRaiseTo);
     if (raiseTo > state.currentBet) {
+      const raiseBy = raiseTo - state.currentBet;
       const add = raiseTo - state.dealerBet;
       state.dealerBet = raiseTo;
       state.currentBet = raiseTo;
       state.pot += add;
       state.awaitingRaise = true;
       state.dealerRaised = true;
-      messages.push({ text: `Dealer raises to $${raiseTo}.`, tone: "danger", duration: 2000 });
+      messages.push({ text: `Dealer raises $${raiseBy}.`, tone: "danger", duration: 2000 });
       return { state, balance: nextBalance, messages };
     }
   }
@@ -348,8 +276,8 @@ const applyPokerFold = (state, balance) => {
 
 const applyPokerReveal = (state, balance) => {
   if (!state) return { error: "Invalid state." };
-  const playerEval = pokerEvaluateHand(state.player);
-  const dealerEval = pokerEvaluateHand(state.dealer);
+  const playerEval = evaluateFiveCardHand(state.player);
+  const dealerEval = evaluateFiveCardHand(state.dealer);
   const result = pokerCompareHands(playerEval, dealerEval);
   let payoutTotal = 0;
   let net = 0;
