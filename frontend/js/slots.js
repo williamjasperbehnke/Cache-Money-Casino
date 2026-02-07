@@ -5,6 +5,7 @@ import {
   showCenterToast,
   triggerBigWin,
   triggerSmallWin,
+  lockPanel,
 } from "./core.js";
 import { auth } from "./auth.js";
 
@@ -220,6 +221,7 @@ export class SlotsGame {
     }
     this.spinning = true;
     if (this.ui.spinBtn) this.ui.spinBtn.disabled = true;
+    const unlock = lockPanel("slots");
     playSfx("spin");
     if (this.ui.lever) {
       this.ui.lever.classList.add("pull");
@@ -241,6 +243,7 @@ export class SlotsGame {
       } else {
         showCenterToast(err.message || "Spin failed.", "danger");
       }
+      unlock();
       return;
     }
 
@@ -261,8 +264,8 @@ export class SlotsGame {
     });
 
     setTimeout(() => {
-      this.ui.winLight?.classList.remove("active");
-      this.clearHighlights();
+        this.ui.winLight?.classList.remove("active");
+        this.clearHighlights();
 
       setTimeout(() => {
         const onAutoSpin = () => {
@@ -275,6 +278,7 @@ export class SlotsGame {
               }
             }, AUTO_SPIN_DELAY);
           }
+          unlock();
         };
         this.applyOutcome({
           bet,

@@ -6,6 +6,7 @@ import {
   makeChipStack,
   animateChip,
   triggerBigWin,
+  lockPanel,
 } from "./core.js";
 import { auth } from "./auth.js";
 
@@ -348,15 +349,20 @@ export class RouletteGame {
 
     chaosBtn?.addEventListener("click", async () => {
       if (state.roulette.spinning) return;
+      const unlock = lockPanel("roulette");
       const chips = Array.from(
         document.querySelectorAll('.chips[data-target="rouletteBet"] .chip')
       )
         .map((chip) => Number(chip.dataset.amount))
         .filter((amount) => amount > 0);
-      if (chips.length === 0) return;
+      if (chips.length === 0) {
+        unlock();
+        return;
+      }
       const available = Math.min(state.balance, 200);
       if (available <= 0) {
         showCenterToast("Not enough credits.", "danger");
+        unlock();
         return;
       }
       try {
@@ -384,6 +390,8 @@ export class RouletteGame {
         }
       } catch (err) {
         showCenterToast(err.message || "Luck grenade failed.", "danger");
+      } finally {
+        unlock();
       }
     });
 
@@ -396,9 +404,11 @@ export class RouletteGame {
         showCenterToast("Wheel is spinning...", "danger");
         return;
       }
+      const unlock = lockPanel("roulette");
       const totalBet = this.totalBet();
       if (totalBet <= 0) {
         showCenterToast("Place a bet on the table.", "danger");
+        unlock();
         return;
       }
       if (!state.roulette.roundPaid) {
@@ -409,6 +419,7 @@ export class RouletteGame {
           state.roulette.bets.parities = {};
           state.roulette.roundPaid = false;
           this.updateUI();
+          unlock();
           return;
         }
         state.balance -= totalBet;
@@ -433,6 +444,7 @@ export class RouletteGame {
         state.roulette.spinning = false;
         spinBtn.disabled = false;
         showCenterToast(err.message || "Spin failed.", "danger");
+        unlock();
         return;
       }
       const spin = payload.resultNumber;
@@ -463,6 +475,7 @@ export class RouletteGame {
         state.roulette.roundPaid = false;
         state.roulette.spinning = false;
         spinBtn.disabled = false;
+        unlock();
         if (autoToggle?.checked && this.totalBet() > 0) {
           state.roulette.roundPaid = false;
           setTimeout(() => {

@@ -10,6 +10,7 @@ import {
   makeChipStack,
   updateBetTotal,
   bindBetChips,
+  lockPanel,
 } from "./core.js";
 import { auth } from "./auth.js";
 
@@ -340,40 +341,41 @@ export class HoldemGame {
     return true;
   }
 
-  startHand() {
+  async startHand() {
     if (state.holdem.inRound) {
       showCenterToast("Round already running.", "danger");
       return;
     }
-    auth
-      .request("/api/games/holdem/deal", {
+    const unlock = lockPanel("holdem");
+    try {
+      const payload = await auth.request("/api/games/holdem/deal", {
         method: "POST",
         body: JSON.stringify({ state: {
           blindSmall: state.holdem.blindSmall,
           blindBig: state.holdem.blindBig,
           dealerButton: state.holdem.dealerButton,
         } }),
-      })
-      .then((payload) => {
-        playSfx("deal");
-        this.applyServerState(payload.state, payload.balance);
-        renderCards(this.ui.player, state.holdem.player);
-        renderHiddenCards("holdemDealer", state.holdem.dealer.length);
-        this.updateCommunity();
-        this.updatePotUI();
-        this.updateButtons();
-        if (this.skipBettingIfBroke()) return;
-        if (payload.messages?.length) {
-          showMessagesSequential(payload.messages);
-        }
-      })
-      .catch((err) => {
-        if ((err.message || "").toLowerCase().includes("not enough credits")) {
-          showCenterToast("Need more credits to cover the blind.", "danger");
-        } else {
-          showCenterToast(err.message || "Deal failed.", "danger");
-        }
       });
+      playSfx("deal");
+      this.applyServerState(payload.state, payload.balance);
+      renderCards(this.ui.player, state.holdem.player);
+      renderHiddenCards("holdemDealer", state.holdem.dealer.length);
+      this.updateCommunity();
+      this.updatePotUI();
+      this.updateButtons();
+      if (this.skipBettingIfBroke()) return;
+      if (payload.messages?.length) {
+        showMessagesSequential(payload.messages);
+      }
+    } catch (err) {
+      if ((err.message || "").toLowerCase().includes("not enough credits")) {
+        showCenterToast("Need more credits to cover the blind.", "danger");
+      } else {
+        showCenterToast(err.message || "Deal failed.", "danger");
+      }
+    } finally {
+      unlock();
+    }
   }
 
   resetBettingRound() {
@@ -527,6 +529,7 @@ export class HoldemGame {
   async playerAction() {
     if (!state.holdem.inRound || !BETTING_PHASES.has(state.holdem.phase)) return;
     playSfx("hit");
+    const unlock = lockPanel("holdem");
     try {
       const payload = await auth.request("/api/games/holdem/action", {
         method: "POST",
@@ -554,12 +557,15 @@ export class HoldemGame {
       }, revealDelay);
     } catch (err) {
       showCenterToast(err.message || "Action failed.", "danger");
+    } finally {
+      unlock();
     }
   }
 
   async playerFold() {
     if (!state.holdem.inRound) return;
     playSfx("lose");
+    const unlock = lockPanel("holdem");
     try {
       const payload = await auth.request("/api/games/holdem/fold", {
         method: "POST",
@@ -573,6 +579,8 @@ export class HoldemGame {
       }
     } catch (err) {
       showCenterToast(err.message || "Fold failed.", "danger");
+    } finally {
+      unlock();
     }
   }
 

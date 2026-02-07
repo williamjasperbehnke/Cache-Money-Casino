@@ -10,6 +10,7 @@ import {
   makeChipStack,
   updateBetTotal,
   bindBetChips,
+  lockPanel,
 } from "./core.js";
 import { auth } from "./auth.js";
 
@@ -219,14 +220,17 @@ export class PokerGame {
   }
 
   async requestGame(path, body) {
+    const unlock = lockPanel("poker");
     try {
       const payload = await auth.request(path, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
+      unlock();
       return payload;
     } catch (err) {
+      unlock();
       showCenterToast(err?.message || "Server error.", "danger");
       return null;
     }

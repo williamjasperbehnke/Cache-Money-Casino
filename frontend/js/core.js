@@ -509,6 +509,22 @@ export function triggerSmallWin() {
   setTimeout(() => document.body.classList.remove("small-win"), 240);
 }
 
+export function lockPanel(panel) {
+  const el = typeof panel === "string" ? document.getElementById(panel) : panel;
+  if (!el) return () => {};
+  el.classList.add("ui-locked");
+  return () => el.classList.remove("ui-locked");
+}
+
+export async function withPanelLock(panel, fn) {
+  const unlock = lockPanel(panel);
+  try {
+    return await fn();
+  } finally {
+    unlock();
+  }
+}
+
 export function showCenterToast(message, tone = "", duration = 1200) {
   showCenterToasts([{ text: message, tone, duration }]);
 }

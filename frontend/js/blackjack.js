@@ -10,6 +10,7 @@ import {
   handTotal,
   makeChipStack,
   bindBetChips,
+  lockPanel,
 } from "./core.js";
 import { auth } from "./auth.js";
 
@@ -346,6 +347,7 @@ export class BlackjackGame {
       }
       playSfx("deal");
       state.blackjack.lastBet = bet;
+      const unlock = lockPanel("blackjack");
       try {
         const payload = await auth.request("/api/games/blackjack/deal", {
           method: "POST",
@@ -358,11 +360,14 @@ export class BlackjackGame {
         this.updateTotal();
       } catch (err) {
         showCenterToast(err.message || "Deal failed.", "danger");
+      } finally {
+        unlock();
       }
     });
 
     hitBtn?.addEventListener("click", async () => {
       if (!state.blackjack.inRound) return;
+      const unlock = lockPanel("blackjack");
       try {
         const payload = await auth.request("/api/games/blackjack/hit", {
           method: "POST",
@@ -384,11 +389,14 @@ export class BlackjackGame {
         }
       } catch (err) {
         showCenterToast(err.message || "Hit failed.", "danger");
+      } finally {
+        unlock();
       }
     });
 
     standBtn?.addEventListener("click", async () => {
       if (!state.blackjack.inRound) return;
+      const unlock = lockPanel("blackjack");
       try {
         const payload = await auth.request("/api/games/blackjack/stand", {
           method: "POST",
@@ -410,6 +418,8 @@ export class BlackjackGame {
         }
       } catch (err) {
         showCenterToast(err.message || "Stand failed.", "danger");
+      } finally {
+        unlock();
       }
     });
 
@@ -422,6 +432,7 @@ export class BlackjackGame {
       }
       state.balance -= currentBet;
       updateBalance();
+      const unlock = lockPanel("blackjack");
       try {
         const payload = await auth.request("/api/games/blackjack/double", {
           method: "POST",
@@ -445,11 +456,14 @@ export class BlackjackGame {
         state.balance += currentBet;
         updateBalance();
         showCenterToast(err.message || "Double failed.", "danger");
+      } finally {
+        unlock();
       }
     });
 
     splitBtn?.addEventListener("click", async () => {
       if (!state.blackjack.inRound || state.blackjack.splitUsed) return;
+      const unlock = lockPanel("blackjack");
       try {
         const payload = await auth.request("/api/games/blackjack/split", {
           method: "POST",
@@ -463,6 +477,8 @@ export class BlackjackGame {
         this.handleOutcome(payload.outcomes || [], payload.messages || []);
       } catch (err) {
         showCenterToast(err.message || "Split failed.", "danger");
+      } finally {
+        unlock();
       }
     });
   }
