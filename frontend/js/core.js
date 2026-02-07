@@ -168,6 +168,30 @@ class ToastManager {
     this.pendingTimer = null;
   }
 
+  showStacked(messages) {
+    if (!this.container) return;
+    const list = Array.isArray(messages) ? messages : [messages];
+    this.container.innerHTML = "";
+    list.forEach((msg) => {
+      const el = document.createElement("div");
+      el.className = "center-toast-item";
+      if (msg.tone === "danger") el.classList.add("negative");
+      if (msg.tone === "win") el.classList.add("positive");
+      el.textContent = msg.text;
+      this.container.appendChild(el);
+      requestAnimationFrame(() => {
+        el.classList.add("show");
+      });
+      const duration = Number.isFinite(msg.duration) ? msg.duration : 1200;
+      setTimeout(() => {
+        el.classList.remove("show");
+        setTimeout(() => {
+          if (this.container.contains(el)) this.container.removeChild(el);
+        }, 120);
+      }, duration);
+    });
+  }
+
   enqueue(messages, gap = 0) {
     if (!this.container) return;
     const list = Array.isArray(messages) ? messages : [messages];
@@ -490,7 +514,7 @@ export function showCenterToast(message, tone = "", duration = 1200) {
 }
 
 export function showCenterToasts(messages) {
-  toastManager.enqueue(messages);
+  toastManager.showStacked(messages);
 }
 
 export function showMessagesSequential(messages = []) {
