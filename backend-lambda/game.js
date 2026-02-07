@@ -151,11 +151,20 @@ exports.handler = async (event) => {
     const paid = Boolean(body.paid);
     const state = (await getGameState(token, "craps")) || {
       point: 0,
-      bets: { pass: 0, dont: 0, field: 0 },
+      bets: {
+        pass: 0,
+        dont: 0,
+        field: 0,
+        come: 0,
+        place: { 4: 0, 5: 0, 6: 0, 8: 0, 9: 0, 10: 0 },
+        hardways: { 4: 0, 6: 0, 8: 0, 10: 0 },
+        comePoints: { 4: 0, 5: 0, 6: 0, 8: 0, 9: 0, 10: 0 },
+      },
       inRound: true,
     };
     const { user, balance } = await resolveBalance(session);
-    const result = resolveCrapsRoll(state, bets, balance, paid);
+    const tableOn = body.tableOn !== false;
+    const result = resolveCrapsRoll(state, bets, balance, paid, tableOn);
     if (result?.error) {
       return jsonResponse(400, { error: result.error }, CORS_ORIGIN);
     }

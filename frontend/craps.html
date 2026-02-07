@@ -37,6 +37,10 @@
           <div id="crapsBet" class="total-bet">$0</div>
           <button id="crapsRoll" class="btn">Roll</button>
           <button id="crapsClear" class="btn ghost">Clear Bets</button>
+          <div class="craps-toggle">
+            <button id="crapsTableOn" class="btn small">ON</button>
+            <button id="crapsTableOff" class="btn small ghost">OFF</button>
+          </div>
         </div>
         <div class="craps-meta">
           <div id="crapsPoint" class="craps-pill">Point: --</div>
@@ -61,20 +65,72 @@
           <button class="chip" data-amount="50">$50</button>
         </div>
         <div class="craps-table">
-          <div class="craps-zone pass" data-bet="pass">
-            <div class="craps-title">Pass Line</div>
-            <div class="craps-odds">Pays 1:1 on 7/11</div>
-            <div class="chip-stack"></div>
+          <div class="craps-rail">
+            <span>PASS LINE</span>
+            <span class="rail-divider"></span>
+            <span>DON'T PASS</span>
           </div>
-          <div class="craps-zone dont" data-bet="dont">
-            <div class="craps-title">Don't Pass</div>
-            <div class="craps-odds">Pays 1:1 on 2/3</div>
-            <div class="chip-stack"></div>
+          <div class="craps-layout">
+            <div class="craps-zone pass" data-bet="pass">
+              <div class="craps-title">Pass Line</div>
+              <div class="craps-odds">Pays 1:1 on 7/11</div>
+              <div class="chip-stack"></div>
+            </div>
+            <div class="craps-center">
+              <div class="craps-group">
+                <div class="craps-group-label">Come</div>
+                <div class="craps-box come-box" data-bet="come">
+                  <span>BET</span>
+                  <div class="chip-stack"></div>
+                </div>
+              </div>
+              <div class="craps-box field-box" data-bet="field">
+                <div class="craps-title">Field</div>
+                <div class="craps-odds">2/12 pay 2:1</div>
+                <div class="chip-stack"></div>
+              </div>
+              <div class="craps-group">
+                <div class="craps-group-label">Hardways</div>
+                <div class="hardways">
+                  <div class="hardway" data-bet="hard-4">4<div class="chip-stack"></div></div>
+                  <div class="hardway" data-bet="hard-6">6<div class="chip-stack"></div></div>
+                  <div class="hardway" data-bet="hard-8">8<div class="chip-stack"></div></div>
+                  <div class="hardway" data-bet="hard-10">10<div class="chip-stack"></div></div>
+                </div>
+              </div>
+              <div class="craps-group">
+                <div class="craps-group-label">Place Bets</div>
+                <div class="place-bets">
+                  <div class="place" data-bet="place-4">4<div class="chip-stack"></div></div>
+                  <div class="place" data-bet="place-5">5<div class="chip-stack"></div></div>
+                  <div class="place" data-bet="place-6">6<div class="chip-stack"></div></div>
+                  <div class="place" data-bet="place-8">8<div class="chip-stack"></div></div>
+                  <div class="place" data-bet="place-9">9<div class="chip-stack"></div></div>
+                  <div class="place" data-bet="place-10">10<div class="chip-stack"></div></div>
+                </div>
+              </div>
+              <div class="craps-group">
+                <div class="craps-group-label">Come Points</div>
+                <div class="come-points">
+                  <div class="come-point" data-bet="come-4">4<div class="chip-stack"></div></div>
+                  <div class="come-point" data-bet="come-5">5<div class="chip-stack"></div></div>
+                  <div class="come-point" data-bet="come-6">6<div class="chip-stack"></div></div>
+                  <div class="come-point" data-bet="come-8">8<div class="chip-stack"></div></div>
+                  <div class="come-point" data-bet="come-9">9<div class="chip-stack"></div></div>
+                  <div class="come-point" data-bet="come-10">10<div class="chip-stack"></div></div>
+                </div>
+              </div>
+            </div>
+            <div class="craps-zone dont" data-bet="dont">
+              <div class="craps-title">Don't Pass</div>
+              <div class="craps-odds">Pays 1:1 on 2/3</div>
+              <div class="chip-stack"></div>
+            </div>
           </div>
-          <div class="craps-zone field" data-bet="field">
-            <div class="craps-title">Field</div>
-            <div class="craps-odds">2/12 pay 2:1</div>
-            <div class="chip-stack"></div>
+          <div class="craps-badges">
+            <span class="badge">COME OUT</span>
+            <span class="badge">POINT</span>
+            <span class="badge">FIELD</span>
           </div>
         </div>
       </section>

@@ -20,29 +20,71 @@ export class CrapsGame {
     this.ui = {
       rollBtn: document.getElementById("crapsRoll"),
       clearBtn: document.getElementById("crapsClear"),
+      onBtn: document.getElementById("crapsTableOn"),
+      offBtn: document.getElementById("crapsTableOff"),
       betTotal: document.getElementById("crapsBet"),
       pointEl: document.getElementById("crapsPoint"),
       rollEl: document.getElementById("crapsLastRoll"),
       die1: document.getElementById("crapsDie1"),
       die2: document.getElementById("crapsDie2"),
-      passZone: document.querySelector('[data-bet="pass"]'),
-      dontZone: document.querySelector('[data-bet="dont"]'),
-      fieldZone: document.querySelector('[data-bet="field"]'),
+      betZones: document.querySelectorAll("#craps [data-bet]"),
       chips: document.querySelectorAll("#craps .chip"),
     };
   }
 
   totalBet() {
-    const { pass, dont, field } = state.craps.bets;
-    return pass + dont + field;
+    const { pass, dont, field, come, place, hardways, comePoints } = state.craps.bets;
+    const sum = (obj) =>
+      Object.values(obj || {}).reduce((total, val) => total + (Number(val) || 0), 0);
+    return pass + dont + field + come + sum(place) + sum(hardways) + sum(comePoints);
   }
 
   setBet(key, amount) {
     state.craps.bets[key] = Math.max(0, amount);
   }
 
+  getBetByKey(key) {
+    if (key.startsWith("place-")) {
+      const num = key.split("-")[1];
+      return state.craps.bets.place?.[num] || 0;
+    }
+    if (key.startsWith("hard-")) {
+      const num = key.split("-")[1];
+      return state.craps.bets.hardways?.[num] || 0;
+    }
+    if (key.startsWith("come-")) {
+      const num = key.split("-")[1];
+      return state.craps.bets.comePoints?.[num] || 0;
+    }
+    return state.craps.bets[key] || 0;
+  }
+
+  setBetByKey(key, amount) {
+    const value = Math.max(0, amount);
+    if (key.startsWith("place-")) {
+      const num = key.split("-")[1];
+      state.craps.bets.place[num] = value;
+      return;
+    }
+    if (key.startsWith("hard-")) {
+      const num = key.split("-")[1];
+      state.craps.bets.hardways[num] = value;
+      return;
+    }
+    if (key.startsWith("come-")) {
+      const num = key.split("-")[1];
+      state.craps.bets.comePoints[num] = value;
+      return;
+    }
+    state.craps.bets[key] = value;
+  }
+
   updateUI() {
     updateBetTotal(this.totalBet(), "crapsBet");
+    if (this.ui.onBtn && this.ui.offBtn) {
+      this.ui.onBtn.classList.toggle("ghost", !state.craps.tableOn);
+      this.ui.offBtn.classList.toggle("ghost", state.craps.tableOn);
+    }
     if (this.ui.pointEl) {
       this.ui.pointEl.textContent = state.craps.point ? `Point: ${state.craps.point}` : "Point: --";
     }
@@ -50,12 +92,12 @@ export class CrapsGame {
       const text = state.craps.lastRoll ? `Last Roll: ${state.craps.lastRoll}` : "Last Roll: --";
       this.ui.rollEl.textContent = text;
     }
-    const passStack = this.ui.passZone?.querySelector(".chip-stack");
-    const dontStack = this.ui.dontZone?.querySelector(".chip-stack");
-    const fieldStack = this.ui.fieldZone?.querySelector(".chip-stack");
-    makeChipStack(passStack, state.craps.bets.pass);
-    makeChipStack(dontStack, state.craps.bets.dont);
-    makeChipStack(fieldStack, state.craps.bets.field);
+    this.ui.betZones?.forEach((zone) => {
+      const key = zone.dataset.bet || "";
+      const stack = zone.querySelector(".chip-stack");
+      if (!stack) return;
+      makeChipStack(stack, this.getBetByKey(key));
+    });
   }
 
   setDiceFaces(total) {
@@ -84,10 +126,34 @@ export class CrapsGame {
   applyServerState(payload) {
     if (payload?.state) {
       state.craps.point = Number(payload.state.point) || 0;
+      state.craps.tableOn = payload.state.tableOn !== false;
       state.craps.bets = {
         pass: Number(payload.state.bets?.pass) || 0,
         dont: Number(payload.state.bets?.dont) || 0,
         field: Number(payload.state.bets?.field) || 0,
+        come: Number(payload.state.bets?.come) || 0,
+        place: {
+          4: Number(payload.state.bets?.place?.[4]) || 0,
+          5: Number(payload.state.bets?.place?.[5]) || 0,
+          6: Number(payload.state.bets?.place?.[6]) || 0,
+          8: Number(payload.state.bets?.place?.[8]) || 0,
+          9: Number(payload.state.bets?.place?.[9]) || 0,
+          10: Number(payload.state.bets?.place?.[10]) || 0,
+        },
+        hardways: {
+          4: Number(payload.state.bets?.hardways?.[4]) || 0,
+          6: Number(payload.state.bets?.hardways?.[6]) || 0,
+          8: Number(payload.state.bets?.hardways?.[8]) || 0,
+          10: Number(payload.state.bets?.hardways?.[10]) || 0,
+        },
+        comePoints: {
+          4: Number(payload.state.bets?.comePoints?.[4]) || 0,
+          5: Number(payload.state.bets?.comePoints?.[5]) || 0,
+          6: Number(payload.state.bets?.comePoints?.[6]) || 0,
+          8: Number(payload.state.bets?.comePoints?.[8]) || 0,
+          9: Number(payload.state.bets?.comePoints?.[9]) || 0,
+          10: Number(payload.state.bets?.comePoints?.[10]) || 0,
+        },
       };
       state.craps.roundPaid = this.totalBet() > 0;
     }
@@ -116,11 +182,12 @@ export class CrapsGame {
     });
   }
 
-  bindZone(zone, key) {
+  bindZone(zone) {
     if (!zone) return;
     zone.addEventListener("click", () => {
       if (state.craps.rolling) return;
-      const current = state.craps.bets[key] || 0;
+      const key = zone.dataset.bet || "";
+      const current = this.getBetByKey(key);
       const available = MAX_BET_PER_SLOT - current;
       if (available <= 0) {
         showCenterToast("Max bet per slot is $50.", "danger");
@@ -131,7 +198,7 @@ export class CrapsGame {
         return;
       }
       const delta = Math.min(this.selectedChip, state.balance, available);
-      this.setBet(key, current + delta);
+      this.setBetByKey(key, current + delta);
       state.balance -= delta;
       state.craps.roundPaid = true;
       updateBalance();
@@ -142,10 +209,11 @@ export class CrapsGame {
       event.preventDefault();
       if (state.craps.rolling) return;
       const removeAmount = this.selectedChip || 5;
-      const current = state.craps.bets[key] || 0;
+      const key = zone.dataset.bet || "";
+      const current = this.getBetByKey(key);
       if (!current) return;
       const delta = Math.min(removeAmount, current);
-      this.setBet(key, current - delta);
+      this.setBetByKey(key, current - delta);
       state.balance += delta;
       updateBalance();
       state.craps.roundPaid = this.totalBet() > 0;
@@ -167,7 +235,7 @@ export class CrapsGame {
       const payload = await auth.request("/api/games/craps/roll", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bets: state.craps.bets, paid: true }),
+        body: JSON.stringify({ bets: state.craps.bets, paid: true, tableOn: state.craps.tableOn }),
       });
       this.applyServerState(payload);
       stopDice();
@@ -194,7 +262,15 @@ export class CrapsGame {
       state.balance += total;
       updateBalance();
     }
-    state.craps.bets = { pass: 0, dont: 0, field: 0 };
+    state.craps.bets = {
+      pass: 0,
+      dont: 0,
+      field: 0,
+      come: 0,
+      place: { 4: 0, 5: 0, 6: 0, 8: 0, 9: 0, 10: 0 },
+      hardways: { 4: 0, 6: 0, 8: 0, 10: 0 },
+      comePoints: { 4: 0, 5: 0, 6: 0, 8: 0, 9: 0, 10: 0 },
+    };
     state.craps.roundPaid = false;
     this.updateUI();
   }
@@ -209,21 +285,36 @@ export class CrapsGame {
   }
 
   reset() {
-    state.craps.bets = { pass: 0, dont: 0, field: 0 };
+    state.craps.bets = {
+      pass: 0,
+      dont: 0,
+      field: 0,
+      come: 0,
+      place: { 4: 0, 5: 0, 6: 0, 8: 0, 9: 0, 10: 0 },
+      hardways: { 4: 0, 6: 0, 8: 0, 10: 0 },
+      comePoints: { 4: 0, 5: 0, 6: 0, 8: 0, 9: 0, 10: 0 },
+    };
     state.craps.point = 0;
     state.craps.roundPaid = false;
     state.craps.lastRoll = null;
+    state.craps.tableOn = true;
     this.updateUI();
   }
 
   init() {
     this.cacheElements();
     this.bindChipEvents();
-    this.bindZone(this.ui.passZone, "pass");
-    this.bindZone(this.ui.dontZone, "dont");
-    this.bindZone(this.ui.fieldZone, "field");
+    this.ui.betZones?.forEach((zone) => this.bindZone(zone));
     this.ui.rollBtn?.addEventListener("click", () => this.roll());
     this.ui.clearBtn?.addEventListener("click", () => this.clearBets());
+    this.ui.onBtn?.addEventListener("click", () => {
+      state.craps.tableOn = true;
+      this.updateUI();
+    });
+    this.ui.offBtn?.addEventListener("click", () => {
+      state.craps.tableOn = false;
+      this.updateUI();
+    });
     this.selectChip(this.selectedChip, this.ui.chips[0]);
     this.updateUI();
     this.loadState();
