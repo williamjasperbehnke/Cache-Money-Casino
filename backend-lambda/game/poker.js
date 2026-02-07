@@ -203,7 +203,6 @@ const createPokerState = ({
   const deck = shuffle(buildDeck());
   const player = [draw(deck), draw(deck), draw(deck), draw(deck), draw(deck)];
   const dealer = [draw(deck), draw(deck), draw(deck), draw(deck), draw(deck)];
-  const broke = balance === 0;
   return {
     deck,
     player,
