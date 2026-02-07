@@ -3,6 +3,7 @@ const balanceDeltaEl = document.getElementById("balanceDelta");
 const centerToastEl = document.getElementById("centerToast");
 
 import { DEFAULT_BALANCE, BALANCE_STORAGE_KEY } from "./constants.js";
+import { auth } from "./auth.js";
 
 const SUITS = ["♠", "♥", "♦", "♣"];
 const RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
@@ -351,6 +352,25 @@ export function saveGameState(key, data) {
     localStorage.setItem(`${GAME_STATE_PREFIX}${key}`, JSON.stringify(data));
   } catch (err) {
     // Ignore storage failures.
+  }
+}
+
+export function clearGameState(key) {
+  if (!key) return;
+  try {
+    localStorage.removeItem(`${GAME_STATE_PREFIX}${key}`);
+  } catch (err) {
+    // Ignore storage failures.
+  }
+}
+
+export async function fetchGameState(key) {
+  if (!key) return null;
+  try {
+    const payload = await auth.request(`/api/games/${key}/state`, { method: "GET" });
+    return payload;
+  } catch (err) {
+    return null;
   }
 }
 

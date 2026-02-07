@@ -710,6 +710,18 @@ exports.handler = async (event) => {
     return jsonResponse(200, { sessionId }, CORS_ORIGIN);
   }
 
+  if (method === "GET" && path.includes("/games/") && path.endsWith("/state")) {
+    const game = path.split("/games/")[1]?.split("/")[0] || "";
+    const state = await getGameState(token, game);
+    const { balance } = await resolveBalance(session);
+    const active = Boolean(state && (state.inRound || state.awaitingClear));
+    return respondWithState(200, game, {
+      active,
+      balance,
+      state: active ? state : null,
+    });
+  }
+
   if (method === "POST" && path.endsWith("/games/roulette/spin")) {
     const { bets, paid } = parseJson(event);
     const numbers = bets?.numbers || {};
