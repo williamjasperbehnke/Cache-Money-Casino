@@ -283,6 +283,19 @@ export class PokerGame {
     if (dealerResult) dealerResult.textContent = "";
     this.updatePokerTotal();
     this.updateUiForPhase();
+
+    if (state.balance <= 0 && this.discardPhaseActive()) {
+      const skipDuration = 2200;
+      showCenterToast("No credits left. Skipping betting.", "danger", skipDuration);
+      state.poker.canDiscard = true;
+      state.poker.discards = new Set();
+      setTimeout(() => {
+        if (!state.poker.inRound) return;
+        if (!this.discardPhaseActive()) return;
+        showCenterToast("Click cards to discard.", "win", 2200);
+        this.renderDiscards();
+      }, skipDuration);
+    }
   }
 
   async handleBet(drawBtn, clearTableBtn, foldBtn) {
