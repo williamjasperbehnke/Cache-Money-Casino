@@ -363,8 +363,14 @@ export class PokerGame {
     state.poker.discards = new Set();
     renderCards("pokerPlayer", state.poker.player);
     this.renderDiscards();
+    let messageDelay = 0;
     if (payload.messages?.length) {
       this.showPhaseMessages(payload.messages);
+      messageDelay =
+        payload.messages.reduce(
+          (total, msg) => total + (Number.isFinite(msg.duration) ? msg.duration : 1600),
+          0
+        ) + payload.messages.length * 200;
     }
     if (payload.dealerDiscarded !== undefined) {
       this.showToast(`Dealer discarded ${payload.dealerDiscarded} cards.`, "win", 2000);
