@@ -53,8 +53,8 @@ const buildChaosZones = () => [
   { bucket: "parities", key: "even" },
 ];
 
-const computeChaosBudget = (balance) => {
-  const available = Math.min(balance, 200);
+const computeChaosBudget = (remainingBalance) => {
+  const available = Math.min(remainingBalance, 200);
   if (available <= 0) return { available: 0, spend: 0 };
   const spend = Math.min(available, Math.floor(Math.random() * 150) + 50);
   return { available, spend };

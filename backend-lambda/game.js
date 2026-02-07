@@ -156,7 +156,9 @@ exports.handler = async (event) => {
       return jsonResponse(400, { error: "No chip values." }, CORS_ORIGIN);
     }
     const { balance } = await resolveBalance(session);
-    const { available, spend } = computeChaosBudget(balance);
+    const currentTotal = totalBet(bets);
+    const remaining = Math.max(0, balance - currentTotal);
+    const { available, spend } = computeChaosBudget(remaining);
     if (available <= 0) {
       return jsonResponse(400, { error: "Not enough credits." }, CORS_ORIGIN);
     }
