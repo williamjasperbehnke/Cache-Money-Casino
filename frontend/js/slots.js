@@ -235,7 +235,12 @@ export class SlotsGame {
     } catch (err) {
       this.spinning = false;
       if (this.ui.spinBtn) this.ui.spinBtn.disabled = false;
-      showCenterToast(err.message || "Spin failed.", "danger");
+      const msg = (err?.message || "").toLowerCase();
+      if (msg.includes("not enough credits")) {
+        showCenterToast("Not enough credits to spin.", "danger");
+      } else {
+        showCenterToast(err.message || "Spin failed.", "danger");
+      }
       return;
     }
 
