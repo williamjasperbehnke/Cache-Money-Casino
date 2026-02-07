@@ -286,6 +286,10 @@ const applyPokerBet = (state, betAmount, balance, rng = Math.random) => {
 
   advancePokerPhase(state);
 
+  if (state.phase === "reveal") {
+    return applyPokerReveal(state, nextBalance);
+  }
+
   return { state, balance: nextBalance, messages };
 };
 

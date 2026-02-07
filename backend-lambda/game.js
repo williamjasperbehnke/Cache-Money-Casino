@@ -418,6 +418,29 @@ exports.handler = async (event) => {
     if (result?.error) {
       return jsonResponse(400, { error: result.error }, CORS_ORIGIN);
     }
+    if (result?.playerLabel) {
+      if (user) {
+        user.stats = updateStats(user.stats, {
+          game: "poker",
+          bet: state.playerPaid,
+          net: result.net,
+          result: result.net > 0 ? "win" : result.net < 0 ? "loss" : "push",
+        });
+        await putUser(user);
+      }
+      const nextBalance = await persistBalance(session, user, result.balance);
+      await saveGameState(token, session, "poker", result.state);
+      return respondWithState(200, "poker", {
+        state: result.state,
+        balance: nextBalance,
+        result: result.result,
+        playerLabel: result.playerLabel,
+        dealerLabel: result.dealerLabel,
+        playerIndexes: result.playerIndexes,
+        dealerIndexes: result.dealerIndexes,
+        messages: result.messages || [],
+      });
+    }
     if (result?.net !== undefined && user) {
       user.stats = updateStats(user.stats, {
         game: "poker",
