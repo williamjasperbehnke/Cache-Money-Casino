@@ -17,7 +17,6 @@ const {
 const { resolveCrapsRoll } = require("./game/craps");
 const { spinSlots } = require("./game/slots");
 const { sanitizeState } = require("./game/sanitize");
-const { resolveCrapsRoll } = require("./game/craps");
 const {
   createPokerState,
   applyPokerBet,
