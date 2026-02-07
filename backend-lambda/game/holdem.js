@@ -164,13 +164,11 @@ const createHoldemState = ({
     blindBig,
     dealerButton: !dealerButton,
     awaitingRaise: false,
-    skipBetting: false,
     deck,
     player: [draw(deck), draw(deck)],
     dealer: [draw(deck), draw(deck)],
     community: [draw(deck), draw(deck), draw(deck), draw(deck), draw(deck)],
     phase: "preflop",
-    awaitingClear: false,
     inRound: true,
     dealerRaised: false,
   };
@@ -198,7 +196,6 @@ const applyHoldemAction = (state, betAmount, balance, rng = Math.random) => {
 
   const advanceToShowdownIfBroke = () => {
     if (nextBalance > 0) return false;
-    state.skipBetting = true;
     while (state.inRound && BETTING_PHASES.has(state.phase)) {
       holdemAdvancePhase(state);
     }
@@ -226,7 +223,6 @@ const applyHoldemAction = (state, betAmount, balance, rng = Math.random) => {
       messages.push({ text: "Push. Pot split.", tone: "win", duration: 2000 });
     }
     nextBalance += payoutTotal;
-    state.awaitingClear = true;
     state.inRound = false;
     state.phase = "showdown";
     return {
@@ -269,7 +265,6 @@ const applyHoldemAction = (state, betAmount, balance, rng = Math.random) => {
     if (strength <= 1 && rng() > 0.85) {
       messages.push({ text: "Dealer folds. You win!", tone: "win", duration: 2000 });
       nextBalance += state.pot;
-      state.awaitingClear = true;
       state.inRound = false;
       state.phase = "showdown";
       return { folded: true };
@@ -356,7 +351,7 @@ const applyHoldemAction = (state, betAmount, balance, rng = Math.random) => {
   }
 
   if (skipDealer) {
-    if (state.phase !== prevPhase && state.phase !== "showdown" && !state.skipBetting) {
+    if (state.phase !== prevPhase && state.phase !== "showdown") {
       const label = phaseLabels[state.phase];
       if (label) messages.push({ text: label, tone: "win", duration: 1400 });
     }
@@ -374,7 +369,7 @@ const applyHoldemAction = (state, betAmount, balance, rng = Math.random) => {
 
   if (state.phase !== prevPhase && state.phase !== "showdown") {
     const label = phaseLabels[state.phase];
-    if (label && !state.skipBetting) {
+    if (label) {
       messages.push({ text: label, tone: "win", duration: 1400 });
     }
   }
@@ -391,7 +386,6 @@ const applyHoldemFold = (state, balance) => {
   if (!state || !state.inRound) {
     return { error: "Round not running." };
   }
-  state.awaitingClear = true;
   state.inRound = false;
   state.phase = "showdown";
   return {

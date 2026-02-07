@@ -56,9 +56,8 @@ export class PokerGame {
     state.poker.player = Array.isArray(state.poker.player) ? state.poker.player : [];
     state.poker.dealer = Array.isArray(state.poker.dealer) ? state.poker.dealer : [];
     state.poker.inRound = Boolean(state.poker.inRound);
-    state.poker.awaitingClear = Boolean(state.poker.awaitingClear);
+    state.poker.awaitingClear = !state.poker.inRound && state.poker.phase === "reveal";
     state.poker.awaitingRaise = Boolean(state.poker.awaitingRaise);
-    state.poker.canDiscard = Boolean(state.poker.canDiscard);
     if (state.poker.inRound) {
       renderCards("pokerPlayer", state.poker.player);
       if (state.poker.phase === "reveal" || state.poker.awaitingClear) {
@@ -80,6 +79,7 @@ export class PokerGame {
     if (nextState) {
       Object.assign(state.poker, nextState);
       state.poker.discards = this.normalizeDiscards(nextState);
+      state.poker.awaitingClear = !state.poker.inRound && state.poker.phase === "reveal";
       if (Number.isFinite(state.poker.currentBet) && Number.isFinite(state.poker.playerBet)) {
         state.poker.pendingCall = Math.max(0, state.poker.currentBet - state.poker.playerBet);
       }
@@ -184,7 +184,7 @@ export class PokerGame {
   handleCardClick(event) {
     const target = event.target.closest(".card");
     if (!target) return;
-    if (!state.poker.canDiscard) return;
+    if (!this.discardPhaseActive()) return;
     if (!state.poker.discards) state.poker.discards = new Set();
     const idx = Number(target.dataset.index);
     if (!Number.isFinite(idx)) return;
@@ -242,18 +242,6 @@ export class PokerGame {
       showCenterToast(err?.message || "Server error.", "danger");
       return null;
     }
-  }
-
-  async revealFromServer() {
-    const payload = await this.requestGame("/api/games/poker/reveal", {});
-    if (!payload) return;
-    this.applyServerState(payload.state, payload.balance);
-    revealDealer("pokerDealer");
-    renderCards("pokerPlayer", state.poker.player);
-    renderCards("pokerDealer", state.poker.dealer);
-    this.updateUiForPhase();
-    this.updatePokerTotal();
-    this.showResult(payload);
   }
 
   async handleDeal() {
@@ -326,7 +314,6 @@ export class PokerGame {
     this.updatePokerTotal();
 
     if (this.discardPhaseActive()) {
-      state.poker.canDiscard = true;
       state.poker.discards = new Set();
       if (!payload.messages?.length) {
         const fire = () => {
@@ -342,7 +329,9 @@ export class PokerGame {
     }
 
     if (state.poker.phase === "reveal" && !state.poker.awaitingClear) {
-      await this.revealFromServer();
+      revealDealer("pokerDealer");
+      renderCards("pokerDealer", state.poker.dealer);
+      this.showResult(payload);
     }
   }
 
@@ -369,6 +358,12 @@ export class PokerGame {
     if (this.betPhaseActive()) {
       this.updateUiForPhase();
     }
+
+    if (state.poker.phase === "reveal" && !state.poker.awaitingClear) {
+      revealDealer("pokerDealer");
+      renderCards("pokerDealer", state.poker.dealer);
+      this.showResult(payload);
+    }
   }
 
   async handleCall(drawBtn, clearTableBtn, foldBtn) {
@@ -384,7 +379,6 @@ export class PokerGame {
     this.updatePokerTotal();
 
     if (this.discardPhaseActive()) {
-      state.poker.canDiscard = true;
       state.poker.discards = new Set();
       if (!payload.messages?.length) {
         showCenterToast("Click cards to discard.", "win", 2200);
@@ -393,7 +387,9 @@ export class PokerGame {
     }
 
     if (state.poker.phase === "reveal" && !state.poker.awaitingClear) {
-      await this.revealFromServer();
+      revealDealer("pokerDealer");
+      renderCards("pokerDealer", state.poker.dealer);
+      this.showResult(payload);
     }
   }
 
@@ -419,7 +415,6 @@ export class PokerGame {
     state.poker.pendingCall = 0;
     state.poker.drawRound = 0;
     state.poker.discards = new Set();
-    state.poker.canDiscard = false;
     state.poker.awaitingClear = false;
     state.poker.awaitingRaise = false;
     state.poker.phase = "idle";

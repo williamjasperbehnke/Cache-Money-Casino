@@ -59,6 +59,7 @@ export class HoldemGame {
   applyServerState(nextState, balance) {
     if (!nextState) return;
     Object.assign(state.holdem, nextState);
+    state.holdem.awaitingClear = !state.holdem.inRound && state.holdem.phase === "showdown";
     if (Number.isFinite(balance)) {
       state.balance = balance;
       updateBalance();
@@ -76,7 +77,7 @@ export class HoldemGame {
     state.holdem.dealer = Array.isArray(state.holdem.dealer) ? state.holdem.dealer : [];
     state.holdem.community = Array.isArray(state.holdem.community) ? state.holdem.community : [];
     state.holdem.inRound = Boolean(state.holdem.inRound);
-    state.holdem.awaitingClear = Boolean(state.holdem.awaitingClear);
+    state.holdem.awaitingClear = !state.holdem.inRound && state.holdem.phase === "showdown";
     this.updateCommunity();
     if (state.holdem.inRound) {
       renderCards(this.ui.player, state.holdem.player);
@@ -128,7 +129,6 @@ export class HoldemGame {
 
   updateButtons() {
     const inBetting = state.holdem.inRound && BETTING_PHASES.has(state.holdem.phase);
-    const skipping = state.holdem.skipBetting;
     const toCall = this.toCallAmount();
     if (this.ui.raiseBtn) {
       const amount = state.holdem.betAmount > 0 ? state.holdem.betAmount : 0;
@@ -145,14 +145,14 @@ export class HoldemGame {
       "hidden",
       state.holdem.inRound || state.holdem.awaitingClear
     );
-    this.ui.foldBtn?.classList.toggle("hidden", !state.holdem.inRound || skipping);
+    this.ui.foldBtn?.classList.toggle("hidden", !state.holdem.inRound);
     this.ui.raiseBtn?.classList.toggle(
       "hidden",
-      !inBetting || state.holdem.awaitingClear || skipping
+      !inBetting || state.holdem.awaitingClear
     );
     this.ui.clearBetBtn?.classList.toggle(
       "hidden",
-      !inBetting || state.holdem.awaitingClear || skipping
+      !inBetting || state.holdem.awaitingClear
     );
     this.ui.clearBtn?.classList.toggle("hidden", !state.holdem.awaitingClear);
 
@@ -164,7 +164,7 @@ export class HoldemGame {
     }
 
     this.ui.chips?.forEach((chip) => {
-      if (!inBetting || state.holdem.awaitingClear || skipping) {
+      if (!inBetting || state.holdem.awaitingClear) {
         chip.setAttribute("disabled", "disabled");
       } else {
         chip.removeAttribute("disabled");
@@ -180,7 +180,6 @@ export class HoldemGame {
     state.holdem.currentBet = 0;
     state.holdem.betAmount = 0;
     state.holdem.awaitingRaise = false;
-    state.holdem.skipBetting = false;
     state.holdem.deck = [];
     state.holdem.player = [];
     state.holdem.dealer = [];
@@ -188,7 +187,6 @@ export class HoldemGame {
     state.holdem.phase = "idle";
     state.holdem.awaitingClear = false;
     state.holdem.inRound = false;
-    state.holdem.skipBetting = false;
     state.holdem.dealerRaised = false;
     if (this.ui.playerResult) this.ui.playerResult.textContent = "";
     if (this.ui.dealerResult) this.ui.dealerResult.textContent = "";
@@ -197,29 +195,6 @@ export class HoldemGame {
     renderCards(this.ui.community, []);
     this.updatePotUI();
     this.updateButtons();
-  }
-
-  postBlinds(dealerButton = state.holdem.dealerButton) {
-    const { blindSmall, blindBig } = state.holdem;
-    const desiredPlayerBlind = dealerButton ? blindBig : blindSmall;
-    const desiredDealerBlind = dealerButton ? blindSmall : blindBig;
-    const available = state.balance;
-    const playerBlind = Math.min(desiredPlayerBlind, available);
-    const dealerBlind = Math.min(desiredDealerBlind, available);
-    if (playerBlind <= 0) {
-      showCenterToast("Not enough credits.", "danger");
-      return false;
-    }
-    state.balance -= playerBlind;
-    updateBalance();
-    state.holdem.playerBet = playerBlind;
-    state.holdem.playerPaid = playerBlind;
-    state.holdem.dealerBet = dealerBlind;
-    state.holdem.currentBet = Math.max(playerBlind, dealerBlind);
-    state.holdem.pot = playerBlind + dealerBlind;
-    this.updatePotUI();
-    showCenterToast(`Blinds in. You: $${playerBlind}, Dealer: $${dealerBlind}.`, "win", 1600);
-    return true;
   }
 
   async startHand() {
@@ -359,8 +334,7 @@ export class HoldemGame {
       canBet: () =>
         BETTING_PHASES.has(state.holdem.phase) &&
         state.holdem.inRound &&
-        !state.holdem.awaitingClear &&
-        !state.holdem.skipBetting,
+        !state.holdem.awaitingClear,
       getBalance: () => state.balance,
       getToCall: () => this.toCallAmount(),
       getBetAmount: () => state.holdem.betAmount,

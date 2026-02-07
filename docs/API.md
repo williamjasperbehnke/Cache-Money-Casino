@@ -417,7 +417,6 @@ Deal a new hand.
     "phase": "bet1",
     "drawRound": 0,
     "discards": [],
-    "canDiscard": false,
     "player": [
       { "rank": "J", "suit": "♠" },
       { "rank": "7", "suit": "♦" },
@@ -433,7 +432,6 @@ Deal a new hand.
       { "rank": "?", "suit": "?" }
     ],
     "inRound": true,
-    "awaitingClear": false
   },
   "balance": 995
 }
@@ -460,7 +458,6 @@ Place a bet in the current betting phase.
     "pendingCall": 0,
     "awaitingRaise": false,
     "phase": "discard1",
-    "canDiscard": true,
     "player": [
       { "rank": "J", "suit": "♠" },
       { "rank": "7", "suit": "♦" },
@@ -494,7 +491,6 @@ Discard selected cards.
 {
   "state": {
     "phase": "bet2",
-    "canDiscard": false,
     "player": [
       { "rank": "A", "suit": "♣" },
       { "rank": "7", "suit": "♦" },
@@ -531,7 +527,6 @@ Call a dealer raise.
     "pendingCall": 0,
     "awaitingRaise": false,
     "phase": "discard1",
-    "canDiscard": true,
     "player": [
       { "rank": "J", "suit": "♠" },
       { "rank": "7", "suit": "♦" },
@@ -565,52 +560,9 @@ Fold the current hand.
   "state": {
     "phase": "reveal",
     "inRound": false,
-    "awaitingClear": true
   },
   "balance": 990,
   "messages": [{ "text": "You folded.", "tone": "danger", "duration": 2000 }]
-}
-```
-
-#### POST /api/games/poker/reveal
-Reveal and settle the hand.
-
-**Body**
-```
-{}
-```
-
-**Response 200**
-```
-{
-  "state": {
-    "blind": 5,
-    "pot": 10,
-    "playerPaid": 5,
-    "phase": "reveal",
-    "inRound": false,
-    "awaitingClear": true,
-    "player": [
-      { "rank": "J", "suit": "♠" },
-      { "rank": "J", "suit": "♥" },
-      { "rank": "4", "suit": "♦" },
-      { "rank": "7", "suit": "♣" },
-      { "rank": "2", "suit": "♠" }
-    ],
-    "dealer": [
-      { "rank": "K", "suit": "♠" },
-      { "rank": "9", "suit": "♥" },
-      { "rank": "6", "suit": "♦" },
-      { "rank": "5", "suit": "♣" },
-      { "rank": "3", "suit": "♠" }
-    ]
-  },
-  "balance": 1020,
-  "result": 1,
-  "playerLabel": "Pair of Jacks",
-  "dealerLabel": "High Card",
-  "playerIndexes": [0, 1],
-  "dealerIndexes": [0]
 }
 ```
 
@@ -638,7 +590,6 @@ Start a new hand (posts blinds).
     "blindBig": 10,
     "dealerButton": true,
     "awaitingRaise": false,
-    "skipBetting": false,
     "player": [
       { "rank": "A", "suit": "♠" },
       { "rank": "9", "suit": "♦" }
@@ -649,7 +600,6 @@ Start a new hand (posts blinds).
     ],
     "community": [],
     "phase": "preflop",
-    "awaitingClear": false,
     "inRound": true,
     "dealerRaised": false
   },
@@ -686,7 +636,6 @@ Place a bet or call.
       { "rank": "?", "suit": "?" }
     ],
     "awaitingRaise": false,
-    "skipBetting": false
   },
   "balance": 980,
   "messages": [{ "text": "Flop dealt.", "tone": "win", "duration": 1400 }]
@@ -707,7 +656,6 @@ Fold the current hand.
   "state": {
     "phase": "showdown",
     "inRound": false,
-    "awaitingClear": true
   },
   "balance": 980,
   "messages": [{ "text": "You folded. Dealer wins.", "tone": "danger", "duration": 2000 }]

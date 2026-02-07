@@ -188,8 +188,8 @@ const advancePokerPhase = (state) => {
   if (state.phase === "bet1") state.phase = "discard1";
   else if (state.phase === "bet2") state.phase = "discard2";
   else if (state.phase === "bet3") state.phase = "reveal";
-  else if (state.phase === "discard1") state.phase = state.skipBetting ? "discard2" : "bet2";
-  else if (state.phase === "discard2") state.phase = state.skipBetting ? "reveal" : "bet3";
+  else if (state.phase === "discard1") state.phase = "bet2";
+  else if (state.phase === "discard2") state.phase = "bet3";
   return state.phase;
 };
 
@@ -199,12 +199,10 @@ const createPokerState = ({
   dealerButton,
   playerBlind,
   dealerBlind,
-  balance = 0,
 }) => {
   const deck = shuffle(buildDeck());
   const player = [draw(deck), draw(deck), draw(deck), draw(deck), draw(deck)];
   const dealer = [draw(deck), draw(deck), draw(deck), draw(deck), draw(deck)];
-  const broke = balance <= 0;
   return {
     deck,
     player,
@@ -219,10 +217,8 @@ const createPokerState = ({
     blindBig,
     dealerButton: !dealerButton,
     awaitingRaise: false,
-    skipBetting: broke,
-    phase: broke ? "discard1" : "bet1",
+    phase: "bet1",
     inRound: true,
-    awaitingClear: false,
     dealerRaised: false,
   };
 };
@@ -234,20 +230,6 @@ const applyPokerBet = (state, betAmount, balance, rng = Math.random) => {
   const toCall = Math.max(0, state.currentBet - state.playerBet);
   let nextBalance = balance;
   const messages = [];
-  const addSkipMessages = () => {
-    messages.push({ text: "No credits left. Skipping betting.", tone: "danger", duration: 2200 });
-    if (state.phase.startsWith("discard")) {
-      messages.push({ text: "Click cards to discard.", tone: "win", duration: 2200 });
-    }
-  };
-  const advanceIfBroke = () => {
-    if (nextBalance > 0) return false;
-    state.skipBetting = true;
-    advancePokerPhase(state);
-    state.awaitingRaise = false;
-    addSkipMessages();
-    return true;
-  };
 
   if (betAmount > 0) {
     const totalNeeded = toCall + betAmount;
@@ -267,15 +249,10 @@ const applyPokerBet = (state, betAmount, balance, rng = Math.random) => {
     state.awaitingRaise = false;
   }
 
-  if (advanceIfBroke()) {
-    return { state, balance: nextBalance, messages };
-  }
-
   const decision = pokerDealerAction(dealer, betAmount, state.phase);
   if (decision.action === "fold") {
     messages.push({ text: "Dealer folds. You win!", tone: "win", duration: 2000 });
     nextBalance += state.pot;
-    state.awaitingClear = true;
     state.inRound = false;
     state.phase = "reveal";
     return { state, balance: nextBalance, messages, net: state.pot - state.playerPaid, result: "win" };
@@ -301,7 +278,6 @@ const applyPokerBet = (state, betAmount, balance, rng = Math.random) => {
   state.dealerBet = state.currentBet;
   state.pot += dealerToCall;
   state.awaitingRaise = false;
-  if (nextBalance === 0) state.skipBetting = true;
   messages.push({
     text: dealerToCall > 0 ? "Dealer calls." : "Dealer checks.",
     tone: "win",
@@ -310,18 +286,11 @@ const applyPokerBet = (state, betAmount, balance, rng = Math.random) => {
 
   advancePokerPhase(state);
 
-  if (state.skipBetting && nextBalance <= 0) {
-    addSkipMessages();
-  }
-
   return { state, balance: nextBalance, messages };
 };
 
 const applyPokerDraw = (state, discards) => {
   if (!state || !state.inRound) return { error: "Round not running." };
-  if (state.skipBetting && state.phase.startsWith("bet")) {
-    advancePokerPhase(state);
-  }
   if (!state.phase.startsWith("discard")) return { error: "Not in discard phase." };
 
   const discardSet = new Set(discards);
@@ -331,16 +300,15 @@ const applyPokerDraw = (state, discards) => {
 
   const dealerDraw = pokerDealerDraw(state.dealer, state.deck);
   state.dealer = dealerDraw.hand;
-
-  const messages = [];
-  if (state.skipBetting) {
-    messages.push({ text: "No credits left. Skipping betting.", tone: "danger", duration: 2200 });
-    if (state.phase.startsWith("discard")) {
-      messages.push({ text: "Click cards to discard.", tone: "win", duration: 2200 });
-    }
+  const result = state.phase === "reveal" ? applyPokerReveal(state, 0) : null;
+  if (result) {
+    return {
+      state: result.state,
+      dealerDiscarded: dealerDraw.discarded,
+      reveal: result,
+    };
   }
-
-  return { state, dealerDiscarded: dealerDraw.discarded, messages };
+  return { state, dealerDiscarded: dealerDraw.discarded };
 };
 
 const applyPokerCall = (state, balance) => {
@@ -355,22 +323,14 @@ const applyPokerCall = (state, balance) => {
   state.awaitingRaise = false;
 
   advancePokerPhase(state);
-
-  const messages = [];
-  if (nextBalance <= 0) {
-    state.skipBetting = true;
-    messages.push({ text: "No credits left. Skipping betting.", tone: "danger", duration: 2200 });
-    if (state.phase.startsWith("discard")) {
-      messages.push({ text: "Click cards to discard.", tone: "win", duration: 2200 });
-    }
+  if (state.phase === "reveal") {
+    return applyPokerReveal(state, nextBalance);
   }
-
-  return { state, balance: nextBalance, messages };
+  return { state, balance: nextBalance };
 };
 
 const applyPokerFold = (state, balance) => {
   if (!state || !state.inRound) return { error: "Round not running." };
-  state.awaitingClear = true;
   state.inRound = false;
   state.phase = "reveal";
   return {
@@ -399,7 +359,6 @@ const applyPokerReveal = (state, balance) => {
     net = 0;
   }
   const nextBalance = balance + payoutTotal;
-  state.awaitingClear = true;
   state.inRound = false;
   state.phase = "reveal";
 

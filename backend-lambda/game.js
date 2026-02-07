@@ -99,7 +99,7 @@ exports.handler = async (event) => {
     const game = parseGameFromPath(path);
     const state = await getGameState(token, game);
     const { balance } = await resolveBalance(session);
-    const active = Boolean(state && (state.inRound || state.awaitingClear));
+    const active = Boolean(state && state.inRound);
     return respondWithState(200, game, {
       active,
       balance,
@@ -443,17 +443,9 @@ exports.handler = async (event) => {
       dealerButton,
       playerBlind,
       dealerBlind,
-      balance: nextBalance,
     });
-    const messages = [];
-    if (state.skipBetting) {
-      messages.push({ text: "No credits left. Skipping betting.", tone: "danger", duration: 2200 });
-      if (state.phase.startsWith("discard")) {
-        messages.push({ text: "Click cards to discard.", tone: "win", duration: 2200 });
-      }
-    }
     await saveGameState(token, session, "poker", state);
-    return respondWithState(200, "poker", { state, balance: nextBalance, messages });
+    return respondWithState(200, "poker", { state, balance: nextBalance });
   }
 
   if (method === "POST" && path.endsWith("/games/poker/bet")) {
@@ -491,11 +483,35 @@ exports.handler = async (event) => {
     if (result?.error) {
       return jsonResponse(400, { error: result.error }, CORS_ORIGIN);
     }
+    if (result?.reveal) {
+      const { user, balance } = await resolveBalance(session);
+      if (user) {
+        user.stats = updateStats(user.stats, {
+          game: "poker",
+          bet: state.playerPaid,
+          net: result.reveal.net,
+          result:
+            result.reveal.net > 0 ? "win" : result.reveal.net < 0 ? "loss" : "push",
+        });
+        await putUser(user);
+      }
+      const nextBalance = await persistBalance(session, user, balance + result.reveal.net);
+      await saveGameState(token, session, "poker", result.reveal.state);
+      return respondWithState(200, "poker", {
+        state: result.reveal.state,
+        balance: nextBalance,
+        dealerDiscarded: result.dealerDiscarded,
+        result: result.reveal.result,
+        playerLabel: result.reveal.playerLabel,
+        dealerLabel: result.reveal.dealerLabel,
+        playerIndexes: result.reveal.playerIndexes,
+        dealerIndexes: result.reveal.dealerIndexes,
+      });
+    }
     await saveGameState(token, session, "poker", state);
     return respondWithState(200, "poker", {
       state,
       dealerDiscarded: result.dealerDiscarded,
-      messages: result.messages || [],
     });
   }
 
@@ -506,12 +522,33 @@ exports.handler = async (event) => {
     if (result?.error) {
       return jsonResponse(400, { error: result.error }, CORS_ORIGIN);
     }
+    if (result?.playerLabel) {
+      if (user) {
+        user.stats = updateStats(user.stats, {
+          game: "poker",
+          bet: state.playerPaid,
+          net: result.net,
+          result: result.net > 0 ? "win" : result.net < 0 ? "loss" : "push",
+        });
+        await putUser(user);
+      }
+      const nextBalance = await persistBalance(session, user, result.balance);
+      await saveGameState(token, session, "poker", result.state);
+      return respondWithState(200, "poker", {
+        state: result.state,
+        balance: nextBalance,
+        result: result.result,
+        playerLabel: result.playerLabel,
+        dealerLabel: result.dealerLabel,
+        playerIndexes: result.playerIndexes,
+        dealerIndexes: result.dealerIndexes,
+      });
+    }
     const nextBalance = await persistBalance(session, user, result.balance);
     await saveGameState(token, session, "poker", state);
     return respondWithState(200, "poker", {
       state,
       balance: nextBalance,
-      messages: result.messages || [],
     });
   }
 
@@ -537,35 +574,6 @@ exports.handler = async (event) => {
       state,
       balance: nextBalance,
       messages: result.messages || [],
-    });
-  }
-
-  if (method === "POST" && path.endsWith("/games/poker/reveal")) {
-    const state = await getGameState(token, "poker");
-    const { user, balance } = await resolveBalance(session);
-    const result = applyPokerReveal(state, balance);
-    if (result?.error) {
-      return jsonResponse(400, { error: result.error }, CORS_ORIGIN);
-    }
-    if (user) {
-      user.stats = updateStats(user.stats, {
-        game: "poker",
-        bet: state.playerPaid,
-        net: result.net,
-        result: result.net > 0 ? "win" : result.net < 0 ? "loss" : "push",
-      });
-      await putUser(user);
-    }
-    const nextBalance = await persistBalance(session, user, result.balance);
-    await saveGameState(token, session, "poker", state);
-    return respondWithState(200, "poker", {
-      state,
-      balance: nextBalance,
-      result: result.result,
-      playerLabel: result.playerLabel,
-      dealerLabel: result.dealerLabel,
-      playerIndexes: result.playerIndexes,
-      dealerIndexes: result.dealerIndexes,
     });
   }
 

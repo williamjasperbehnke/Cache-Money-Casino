@@ -28,7 +28,7 @@ initCore(() => {
     game.applyServerState(payload.state, payload.balance);
     if (state.poker.inRound) {
       renderCards("pokerPlayer", state.poker.player);
-      if (state.poker.phase === "reveal" || state.poker.awaitingClear) {
+      if (state.poker.phase === "reveal") {
         revealDealer("pokerDealer");
         renderCards("pokerDealer", state.poker.dealer);
       } else {

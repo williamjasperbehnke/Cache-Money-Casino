@@ -27,7 +27,7 @@ initCore(() => {
   if (payload.active && payload.state) {
     game.applyServerState(payload.state, payload.balance);
     game.updateCommunity();
-    if (payload.state.phase === "showdown" || payload.state.awaitingClear) {
+    if (payload.state.phase === "showdown") {
       revealDealer("holdemDealer");
       renderCards("holdemDealer", state.holdem.dealer);
     } else {

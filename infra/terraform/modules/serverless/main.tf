@@ -411,12 +411,6 @@ resource "aws_apigatewayv2_route" "poker_fold" {
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
-resource "aws_apigatewayv2_route" "poker_reveal" {
-  api_id    = aws_apigatewayv2_api.rest.id
-  route_key = "POST /api/games/poker/reveal"
-  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
-}
-
 resource "aws_lambda_permission" "auth" {
   statement_id  = "AllowInvokeAuth"
   action        = "lambda:InvokeFunction"
