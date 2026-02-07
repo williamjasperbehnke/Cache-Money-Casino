@@ -199,10 +199,12 @@ const createPokerState = ({
   dealerButton,
   playerBlind,
   dealerBlind,
+  balance,
 }) => {
   const deck = shuffle(buildDeck());
   const player = [draw(deck), draw(deck), draw(deck), draw(deck), draw(deck)];
   const dealer = [draw(deck), draw(deck), draw(deck), draw(deck), draw(deck)];
+  const broke = balance === 0;
   return {
     deck,
     player,
@@ -217,8 +219,8 @@ const createPokerState = ({
     blindBig,
     dealerButton: !dealerButton,
     awaitingRaise: false,
-    skipBetting: false,
-    phase: "bet1",
+    skipBetting: broke,
+    phase: broke ? "discard1" : "bet1",
     inRound: true,
     awaitingClear: false,
     dealerRaised: false,
@@ -232,13 +234,6 @@ const applyPokerBet = (state, betAmount, balance, rng = Math.random) => {
   const toCall = Math.max(0, state.currentBet - state.playerBet);
   let nextBalance = balance;
   const messages = [];
-  const advanceIfBroke = () => {
-    if (nextBalance > 0) return false;
-    state.skipBetting = true;
-    advancePokerPhase(state);
-    state.awaitingRaise = false;
-    return true;
-  };
 
   if (betAmount > 0) {
     const totalNeeded = toCall + betAmount;
@@ -256,10 +251,6 @@ const applyPokerBet = (state, betAmount, balance, rng = Math.random) => {
     state.playerBet += toCall;
     state.pot += toCall;
     state.awaitingRaise = false;
-  }
-
-  if (advanceIfBroke()) {
-    return { state, balance: nextBalance, messages };
   }
 
   const decision = pokerDealerAction(dealer, betAmount, state.phase);
@@ -292,6 +283,7 @@ const applyPokerBet = (state, betAmount, balance, rng = Math.random) => {
   state.dealerBet = state.currentBet;
   state.pot += dealerToCall;
   state.awaitingRaise = false;
+  if (nextBalance === 0) state.skipBetting = true;
   messages.push({
     text: dealerToCall > 0 ? "Dealer calls." : "Dealer checks.",
     tone: "win",

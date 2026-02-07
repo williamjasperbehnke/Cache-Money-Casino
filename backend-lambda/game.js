@@ -443,6 +443,7 @@ exports.handler = async (event) => {
       dealerButton,
       playerBlind,
       dealerBlind,
+      nextBalance,
     });
     await saveGameState(token, session, "poker", state);
     return respondWithState(200, "poker", { state, balance: nextBalance });
