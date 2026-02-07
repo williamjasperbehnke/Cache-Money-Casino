@@ -23,6 +23,27 @@ export class BlackjackGame {
     this.ui = {};
   }
 
+  toastGuard() {
+    const snapshot = {
+      inRound: state.blackjack.inRound,
+      reveal: state.blackjack.revealDealer,
+      awaitingClear: state.blackjack.awaitingClear,
+    };
+    return () =>
+      state.blackjack.inRound === snapshot.inRound &&
+      state.blackjack.revealDealer === snapshot.reveal &&
+      state.blackjack.awaitingClear === snapshot.awaitingClear;
+  }
+
+  showToast(message, tone, duration) {
+    showCenterToast(message, tone, duration, this.toastGuard());
+  }
+
+  showToasts(messages) {
+    const guard = this.toastGuard();
+    showCenterToasts(messages.map((msg) => ({ ...msg, guard })));
+  }
+
   cacheElements() {
     this.ui = {
       dealBtn: document.getElementById("bjDeal"),
@@ -249,7 +270,7 @@ export class BlackjackGame {
     } else if (messages.length > 0) {
       playSfx("lose");
     }
-    if (combined.length > 0) showCenterToasts(combined);
+    if (combined.length > 0) this.showToasts(combined);
   }
 
   handleRoundEnd(autoDeal) {
@@ -266,12 +287,12 @@ export class BlackjackGame {
 
   addBet(amount) {
     if (state.blackjack.inRound) {
-      showCenterToast("Round running.", "danger");
+      this.showToast("Round running.", "danger");
       return;
     }
     const next = Math.min(MAX_BET, state.blackjack.betAmount + amount);
     if (next === state.blackjack.betAmount) {
-      showCenterToast("Max bet is $100.", "danger");
+      this.showToast("Max bet is $100.", "danger");
       return;
     }
     state.blackjack.betAmount = next;
@@ -280,7 +301,7 @@ export class BlackjackGame {
 
   removeBet(amount) {
     if (state.blackjack.inRound) {
-      showCenterToast("Round running.", "danger");
+      this.showToast("Round running.", "danger");
       return;
     }
     state.blackjack.betAmount = Math.max(0, state.blackjack.betAmount - amount);
@@ -298,7 +319,7 @@ export class BlackjackGame {
       getBetAmount: () => state.blackjack.betAmount,
       setBetAmount: (amount) => {
         if (amount === state.blackjack.betAmount && amount === MAX_BET) {
-          showCenterToast("Max bet is $100.", "danger");
+          this.showToast("Max bet is $100.", "danger");
         }
         state.blackjack.betAmount = amount;
       },
@@ -306,16 +327,16 @@ export class BlackjackGame {
       onHit: () => playSfx("hit"),
       onClosed: () => {
         if (state.blackjack.inRound) {
-          showCenterToast("Round running.", "danger");
+          this.showToast("Round running.", "danger");
         } else {
-          showCenterToast("Not enough credits.", "danger");
+          this.showToast("Not enough credits.", "danger");
         }
       },
     });
 
     clearBtn?.addEventListener("click", () => {
       if (state.blackjack.inRound) {
-        showCenterToast("Round running.", "danger");
+        this.showToast("Round running.", "danger");
         return;
       }
       state.blackjack.betAmount = 0;
@@ -324,7 +345,7 @@ export class BlackjackGame {
 
     maxBtn?.addEventListener("click", () => {
       if (state.blackjack.inRound) {
-        showCenterToast("Round running.", "danger");
+        this.showToast("Round running.", "danger");
         return;
       }
       state.blackjack.betAmount = Math.min(MAX_BET, state.balance);
@@ -333,16 +354,16 @@ export class BlackjackGame {
 
     dealBtn?.addEventListener("click", async () => {
       if (state.blackjack.inRound) {
-        showCenterToast("Round already running.", "danger");
+        this.showToast("Round already running.", "danger");
         return;
       }
       const bet = state.blackjack.betAmount;
       if (bet <= 0) {
-        showCenterToast("Place a bet to deal.", "danger");
+        this.showToast("Place a bet to deal.", "danger");
         return;
       }
       if (bet > state.balance) {
-        showCenterToast("Not enough credits.", "danger");
+        this.showToast("Not enough credits.", "danger");
         return;
       }
       playSfx("deal");
@@ -359,7 +380,7 @@ export class BlackjackGame {
         this.updateControls();
         this.updateTotal();
       } catch (err) {
-        showCenterToast(err.message || "Deal failed.", "danger");
+        this.showToast(err.message || "Deal failed.", "danger");
       } finally {
         unlock();
       }
@@ -388,7 +409,7 @@ export class BlackjackGame {
           this.handleRoundEnd(auto);
         }
       } catch (err) {
-        showCenterToast(err.message || "Hit failed.", "danger");
+        this.showToast(err.message || "Hit failed.", "danger");
       } finally {
         unlock();
       }
@@ -417,7 +438,7 @@ export class BlackjackGame {
           this.handleRoundEnd(auto);
         }
       } catch (err) {
-        showCenterToast(err.message || "Stand failed.", "danger");
+        this.showToast(err.message || "Stand failed.", "danger");
       } finally {
         unlock();
       }
@@ -427,7 +448,7 @@ export class BlackjackGame {
       if (!state.blackjack.inRound) return;
       const currentBet = state.blackjack.bets[state.blackjack.activeHand] || 0;
       if (currentBet > state.balance) {
-        showCenterToast("Not enough credits to double.", "danger");
+        this.showToast("Not enough credits to double.", "danger");
         return;
       }
       state.balance -= currentBet;
@@ -455,7 +476,7 @@ export class BlackjackGame {
       } catch (err) {
         state.balance += currentBet;
         updateBalance();
-        showCenterToast(err.message || "Double failed.", "danger");
+        this.showToast(err.message || "Double failed.", "danger");
       } finally {
         unlock();
       }
@@ -476,7 +497,7 @@ export class BlackjackGame {
         this.updateControls();
         this.handleOutcome(payload.outcomes || [], payload.messages || []);
       } catch (err) {
-        showCenterToast(err.message || "Split failed.", "danger");
+        this.showToast(err.message || "Split failed.", "danger");
       } finally {
         unlock();
       }

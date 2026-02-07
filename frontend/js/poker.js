@@ -4,6 +4,8 @@ import {
   playSfx,
   showCenterToast,
   showMessagesSequential,
+  phaseGuard,
+  withPhaseGuards,
   renderCards,
   renderHiddenCards,
   revealDealer,
@@ -33,6 +35,18 @@ export class PokerGame {
 
   constructor() {
     this.handleCardClick = this.handleCardClick.bind(this);
+  }
+
+  toastGuard() {
+    return phaseGuard(() => state.poker.phase);
+  }
+
+  showToast(message, tone, duration) {
+    showCenterToast(message, tone, duration, this.toastGuard());
+  }
+
+  showPhaseMessages(messages) {
+    showMessagesSequential(withPhaseGuards(messages, () => state.poker.phase));
   }
 
   normalizeDiscards(nextState) {
@@ -205,7 +219,7 @@ export class PokerGame {
       PokerGame.highlightIndexes("pokerPlayer", payload.playerIndexes, "win");
       PokerGame.highlightIndexes("pokerDealer", payload.dealerIndexes, "lose");
       playSfx("win");
-      showCenterToast(
+      this.showToast(
         `You win with ${payload.playerLabel}! Dealer had ${payload.dealerLabel}.`,
         "win",
         4500
@@ -214,7 +228,7 @@ export class PokerGame {
       PokerGame.highlightIndexes("pokerPlayer", payload.playerIndexes, "lose");
       PokerGame.highlightIndexes("pokerDealer", payload.dealerIndexes, "win");
       playSfx("lose");
-      showCenterToast(
+      this.showToast(
         `Dealer wins with ${payload.dealerLabel}. You had ${payload.playerLabel}.`,
         "danger",
         4500
@@ -223,7 +237,7 @@ export class PokerGame {
       PokerGame.highlightIndexes("pokerPlayer", payload.playerIndexes, "win");
       PokerGame.highlightIndexes("pokerDealer", payload.dealerIndexes, "win");
       playSfx("win");
-      showCenterToast(`Push! Both had ${payload.playerLabel}.`, "win", 4500);
+      this.showToast(`Push! Both had ${payload.playerLabel}.`, "win", 4500);
     }
   }
 
@@ -239,18 +253,23 @@ export class PokerGame {
       return payload;
     } catch (err) {
       unlock();
-      showCenterToast(err?.message || "Server error.", "danger");
+      this.showToast(err?.message || "Server error.", "danger");
       return null;
     }
   }
 
+  showPhaseToast(phase, text, tone, duration) {
+    if (state.poker.phase !== phase) return;
+    this.showToast(text, tone, duration);
+  }
+
   async handleDeal() {
     if (state.poker.inRound) {
-      showCenterToast("Round already running.", "danger");
+      this.showToast("Round already running.", "danger");
       return;
     }
     if (state.balance < state.poker.blind) {
-      showCenterToast("Not enough credits to cover the blind.", "danger");
+      this.showToast("Not enough credits to cover the blind.", "danger");
       return;
     }
     const payload = await this.requestGame("/api/games/poker/deal", {
@@ -265,9 +284,9 @@ export class PokerGame {
     renderCards("pokerPlayer", state.poker.player);
     renderHiddenCards("pokerDealer", state.poker.dealer.length);
     if (payload.messages?.length) {
-      showMessagesSequential(payload.messages);
+      this.showPhaseMessages(payload.messages);
     } else {
-      showCenterToast("Place your bet.", "win", 2200);
+      this.showToast("Place your bet.", "win", 2200);
     }
     const playerResult = document.getElementById("pokerPlayerResult");
     const dealerResult = document.getElementById("pokerDealerResult");
@@ -279,13 +298,13 @@ export class PokerGame {
 
   async handleBet(drawBtn, clearTableBtn, foldBtn) {
     if (!state.poker.inRound) {
-      showCenterToast("Deal first.", "danger");
+      this.showToast("Deal first.", "danger");
       return;
     }
     if (state.poker.awaitingRaise) return;
     const betAmount = state.poker.betAmount || 0;
     if (betAmount < 0) {
-      showCenterToast("Select a bet amount.", "danger");
+      this.showToast("Select a bet amount.", "danger");
       return;
     }
     playSfx("hit");
@@ -297,7 +316,7 @@ export class PokerGame {
     this.applyServerState(payload.state, payload.balance);
     let messageDelay = 0;
     if (payload.messages?.length) {
-      showMessagesSequential(payload.messages);
+      this.showPhaseMessages(payload.messages);
       messageDelay =
         payload.messages.reduce(
           (total, msg) => total + (Number.isFinite(msg.duration) ? msg.duration : 1600),
@@ -317,7 +336,7 @@ export class PokerGame {
       state.poker.discards = new Set();
       const fire = () => {
         if (!this.discardPhaseActive()) return;
-        showCenterToast("Click cards to discard.", "win", 2200);
+        this.showPhaseToast(state.poker.phase, "Click cards to discard.", "win", 2200);
         this.renderDiscards();
       };
       if (messageDelay) setTimeout(fire, messageDelay);
@@ -343,10 +362,10 @@ export class PokerGame {
     renderCards("pokerPlayer", state.poker.player);
     this.renderDiscards();
     if (payload.messages?.length) {
-      showMessagesSequential(payload.messages);
+      this.showPhaseMessages(payload.messages);
     }
     if (payload.dealerDiscarded !== undefined) {
-      showCenterToast(`Dealer discarded ${payload.dealerDiscarded} cards.`, "win", 2000);
+      this.showToast(`Dealer discarded ${payload.dealerDiscarded} cards.`, "win", 2000);
     }
     this.updateUiForPhase();
     this.updatePokerTotal();
@@ -369,14 +388,14 @@ export class PokerGame {
     if (!payload) return;
     this.applyServerState(payload.state, payload.balance);
     if (payload.messages?.length) {
-      showMessagesSequential(payload.messages);
+      this.showPhaseMessages(payload.messages);
     }
     this.updateUiForPhase();
     this.updatePokerTotal();
 
     if (this.discardPhaseActive()) {
       state.poker.discards = new Set();
-      showCenterToast("Click cards to discard.", "win", 2200);
+      this.showPhaseToast(state.poker.phase, "Click cards to discard.", "win", 2200);
       this.renderDiscards();
     }
 
@@ -393,7 +412,7 @@ export class PokerGame {
     const payload = await this.requestGame("/api/games/poker/fold", {});
     if (!payload) return;
     this.applyServerState(payload.state, payload.balance);
-    if (payload.messages?.length) showMessagesSequential(payload.messages);
+    if (payload.messages?.length) this.showPhaseMessages(payload.messages);
     this.updateUiForPhase();
     this.updatePokerTotal();
   }
@@ -458,12 +477,12 @@ export class PokerGame {
         this.updateUiForPhase();
       },
       onHit: () => playSfx("hit"),
-      onClosed: () => showCenterToast("Betting is closed.", "danger"),
+      onClosed: () => this.showToast("Betting is closed.", "danger"),
     });
 
     clearBetBtn?.addEventListener("click", () => {
       if (!this.betPhaseActive() || state.poker.awaitingRaise) {
-        showCenterToast("Betting is closed.", "danger");
+        this.showToast("Betting is closed.", "danger");
         return;
       }
       state.poker.betAmount = 0;
@@ -475,7 +494,7 @@ export class PokerGame {
 
     drawBtn?.addEventListener("click", async () => {
       if (!state.poker.inRound) {
-        showCenterToast("Deal first.", "danger");
+        this.showToast("Deal first.", "danger");
         return;
       }
       if (state.poker.awaitingRaise) return;

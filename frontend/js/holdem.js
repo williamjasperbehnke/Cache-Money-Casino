@@ -4,6 +4,8 @@ import {
   playSfx,
   showCenterToast,
   showMessagesSequential,
+  phaseGuard,
+  withPhaseGuards,
   renderCards,
   renderHiddenCards,
   revealDealer,
@@ -19,6 +21,18 @@ const BETTING_PHASES = new Set(["preflop", "flop", "turn", "river"]);
 export class HoldemGame {
   constructor() {
     this.ui = {};
+  }
+
+  toastGuard() {
+    return phaseGuard(() => state.holdem.phase);
+  }
+
+  showToast(message, tone, duration) {
+    showCenterToast(message, tone, duration, this.toastGuard());
+  }
+
+  showPhaseMessages(messages) {
+    showMessagesSequential(withPhaseGuards(messages, () => state.holdem.phase));
   }
 
   cacheElements() {
@@ -199,7 +213,7 @@ export class HoldemGame {
 
   async startHand() {
     if (state.holdem.inRound) {
-      showCenterToast("Round already running.", "danger");
+      this.showToast("Round already running.", "danger");
       return;
     }
     const unlock = lockPanel("holdem");
@@ -220,13 +234,13 @@ export class HoldemGame {
       this.updatePotUI();
       this.updateButtons();
       if (payload.messages?.length) {
-        showMessagesSequential(payload.messages);
+        this.showPhaseMessages(payload.messages);
       }
     } catch (err) {
       if ((err.message || "").toLowerCase().includes("not enough credits")) {
-        showCenterToast("Need more credits to cover the blind.", "danger");
+        this.showToast("Need more credits to cover the blind.", "danger");
       } else {
-        showCenterToast(err.message || "Deal failed.", "danger");
+        this.showToast(err.message || "Deal failed.", "danger");
       }
     } finally {
       unlock();
@@ -251,13 +265,13 @@ export class HoldemGame {
       const hasShowdown = Boolean(payload.showdown);
       const messages = payload.messages || [];
       if (messages.length) {
-        showMessagesSequential(messages);
+        this.showPhaseMessages(messages);
       }
       if (hasShowdown) {
         this.renderShowdown(payload.showdown);
       }
     } catch (err) {
-      showCenterToast(err.message || "Action failed.", "danger");
+      this.showToast(err.message || "Action failed.", "danger");
     } finally {
       unlock();
     }
@@ -276,10 +290,10 @@ export class HoldemGame {
       this.updatePotUI();
       this.updateButtons();
       if (payload.messages?.length) {
-        showMessagesSequential(payload.messages);
+        this.showPhaseMessages(payload.messages);
       }
     } catch (err) {
-      showCenterToast(err.message || "Fold failed.", "danger");
+      this.showToast(err.message || "Fold failed.", "danger");
     } finally {
       unlock();
     }
@@ -343,7 +357,7 @@ export class HoldemGame {
       },
       onUpdate: () => this.updateButtons(),
       onHit: () => playSfx("hit"),
-      onClosed: () => showCenterToast("Betting is closed.", "danger"),
+      onClosed: () => this.showToast("Betting is closed.", "danger"),
     });
   }
 
@@ -352,7 +366,7 @@ export class HoldemGame {
     this.ui.raiseBtn?.addEventListener("click", () => this.playerAction());
     this.ui.clearBetBtn?.addEventListener("click", () => {
       if (!BETTING_PHASES.has(state.holdem.phase)) {
-        showCenterToast("Betting is closed.", "danger");
+        this.showToast("Betting is closed.", "danger");
         return;
       }
       state.holdem.betAmount = 0;

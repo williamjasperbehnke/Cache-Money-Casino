@@ -33,6 +33,15 @@ export class SlotsGame {
     this.reels = [];
   }
 
+  toastGuard() {
+    const spinning = state.slots.spinning;
+    return () => state.slots.spinning === spinning;
+  }
+
+  showToast(message, tone, duration) {
+    showCenterToast(message, tone, duration, this.toastGuard());
+  }
+
   cacheElements() {
     this.ui = {
       spinBtn: document.getElementById("slotsSpin"),
@@ -171,7 +180,7 @@ export class SlotsGame {
 
     if (wipeBalance) {
       playSfx("lose");
-      showCenterToast("Kaboom! Balance wiped.", "danger");
+      this.showToast("Kaboom! Balance wiped.", "danger");
       winLight?.classList.remove("active");
       triggerBigWin(false);
       this.clearHighlights();
@@ -181,7 +190,7 @@ export class SlotsGame {
 
     if (outcome.hasTwoKind && outcome.twoSymbol === "💥") {
       playSfx("lose");
-      showCenterToast("Bang! House takes it.", "danger");
+      this.showToast("Bang! House takes it.", "danger");
       onAutoSpin();
       return;
     }
@@ -196,7 +205,7 @@ export class SlotsGame {
       } else if (outcome.multiplier >= 10) {
         triggerBigWin();
       }
-      showCenterToast(`You win ${payMultiplier}x!`, "win");
+      this.showToast(`You win ${payMultiplier}x!`, "win");
       winLight?.classList.add("active");
       this.highlightPayout(outcome.key);
       onAutoSpin();
@@ -204,18 +213,18 @@ export class SlotsGame {
     }
 
     playSfx("lose");
-    showCenterToast("No win. Spin again!", "danger");
+    this.showToast("No win. Spin again!", "danger");
     onAutoSpin();
   }
 
   async pullLever() {
     if (this.spinning) {
-      showCenterToast("Reels are spinning...", "danger");
+      this.showToast("Reels are spinning...", "danger");
       return;
     }
     const bet = this.currentBet;
     if (!Number.isFinite(bet) || bet <= 0) {
-      showCenterToast("Enter a valid bet.", "danger");
+      this.showToast("Enter a valid bet.", "danger");
       return;
     }
     this.spinning = true;
@@ -241,9 +250,9 @@ export class SlotsGame {
       }
       const msg = (err?.message || "").toLowerCase();
       if (msg.includes("not enough credits")) {
-        showCenterToast("Not enough credits to spin.", "danger");
+        this.showToast("Not enough credits to spin.", "danger");
       } else {
-        showCenterToast(err.message || "Spin failed.", "danger");
+        this.showToast(err.message || "Spin failed.", "danger");
       }
       return;
     }

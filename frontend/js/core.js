@@ -169,8 +169,10 @@ class ToastManager {
   showStacked(messages) {
     if (!this.container) return;
     const list = Array.isArray(messages) ? messages : [messages];
+    const filtered = list.filter((msg) => !msg.guard || msg.guard());
+    if (!filtered.length) return;
     this.container.innerHTML = "";
-    list.forEach((msg) => {
+    filtered.forEach((msg) => {
       const el = document.createElement("div");
       el.className = "center-toast-item";
       if (msg.tone === "danger") el.classList.add("negative");
@@ -204,6 +206,11 @@ class ToastManager {
     const next = this.queue.shift();
     if (!next) return;
     const { msg, gap } = next;
+    if (msg.guard && !msg.guard()) {
+      this.active = false;
+      this.showNext();
+      return;
+    }
     this.active = true;
     if (this.pendingTimer) {
       clearTimeout(this.pendingTimer);
@@ -212,6 +219,11 @@ class ToastManager {
     if (gap > 0) {
       this.pendingTimer = setTimeout(() => {
         this.pendingTimer = null;
+        if (msg.guard && !msg.guard()) {
+          this.active = false;
+          this.showNext();
+          return;
+        }
         this.display(msg);
       }, gap);
       return;
@@ -220,6 +232,11 @@ class ToastManager {
   }
 
   display(msg) {
+    if (msg.guard && !msg.guard()) {
+      this.active = false;
+      this.showNext();
+      return;
+    }
     if (!this.container) {
       this.active = false;
       this.showNext();
@@ -523,8 +540,8 @@ export async function withPanelLock(panel, fn) {
   }
 }
 
-export function showCenterToast(message, tone = "", duration = 1200) {
-  showCenterToasts([{ text: message, tone, duration }]);
+export function showCenterToast(message, tone = "", duration = 1200, guard = null) {
+  showCenterToasts([{ text: message, tone, duration, guard }]);
 }
 
 export function showCenterToasts(messages) {
@@ -537,8 +554,20 @@ export function showMessagesSequential(messages = []) {
     text: msg.text,
     tone: msg.tone || "win",
     duration: Number.isFinite(msg.duration) ? msg.duration : 1600,
+    guard: msg.guard,
   }));
   toastManager.enqueue(normalized, 100);
+}
+
+export function phaseGuard(getPhase) {
+  const phase = getPhase();
+  return () => getPhase() === phase;
+}
+
+export function withPhaseGuards(messages, getPhase) {
+  const guard = phaseGuard(getPhase);
+  const list = Array.isArray(messages) ? messages : [messages];
+  return list.map((msg) => ({ ...msg, guard }));
 }
 
 export function renderCards(containerId, cards, hideFirst = false) {
