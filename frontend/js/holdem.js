@@ -216,10 +216,7 @@ export class HoldemGame {
       this.showToast("Round already running.", "danger");
       return;
     }
-    const playerBlind = state.holdem.dealerButton
-      ? state.holdem.blindBig
-      : state.holdem.blindSmall;
-    if (state.balance < playerBlind) {
+    if (state.balance <= 0) {
       this.showToast("Need more credits to cover the blind.", "danger");
       return;
     }
