@@ -184,6 +184,15 @@ const pokerDealerDraw = (hand, deck) => {
   return { hand: nextHand, discarded };
 };
 
+const advancePokerPhase = (state) => {
+  if (state.phase === "bet1") state.phase = "discard1";
+  else if (state.phase === "bet2") state.phase = "discard2";
+  else if (state.phase === "bet3") state.phase = "reveal";
+  else if (state.phase === "discard1") state.phase = state.skipBetting ? "discard2" : "bet2";
+  else if (state.phase === "discard2") state.phase = state.skipBetting ? "reveal" : "bet3";
+  return state.phase;
+};
+
 const createPokerState = ({
   blindSmall,
   blindBig,
@@ -223,6 +232,13 @@ const applyPokerBet = (state, betAmount, balance, rng = Math.random) => {
   const toCall = Math.max(0, state.currentBet - state.playerBet);
   let nextBalance = balance;
   const messages = [];
+  const advanceIfBroke = () => {
+    if (nextBalance > 0) return false;
+    state.skipBetting = true;
+    advancePokerPhase(state);
+    state.awaitingRaise = false;
+    return true;
+  };
 
   if (betAmount > 0) {
     const totalNeeded = toCall + betAmount;
@@ -240,11 +256,9 @@ const applyPokerBet = (state, betAmount, balance, rng = Math.random) => {
     state.playerBet += toCall;
     state.pot += toCall;
     state.awaitingRaise = false;
-  } else if (nextBalance <= 0) {
-    if (state.phase === "bet1") state.phase = "discard1";
-    else if (state.phase === "bet2") state.phase = "discard2";
-    else if (state.phase === "bet3") state.phase = "reveal";
-    state.awaitingRaise = false;
+  }
+
+  if (advanceIfBroke()) {
     return { state, balance: nextBalance, messages };
   }
 
@@ -284,9 +298,7 @@ const applyPokerBet = (state, betAmount, balance, rng = Math.random) => {
     duration: 1200,
   });
 
-  if (state.phase === "bet1") state.phase = "discard1";
-  else if (state.phase === "bet2") state.phase = "discard2";
-  else if (state.phase === "bet3") state.phase = "reveal";
+  advancePokerPhase(state);
 
   return { state, balance: nextBalance, messages };
 };
@@ -298,8 +310,7 @@ const applyPokerDraw = (state, discards) => {
   const discardSet = new Set(discards);
   state.player = state.player.map((card, idx) => (discardSet.has(idx) ? draw(state.deck) : card));
 
-  if (state.phase === "discard1") state.phase = "bet2";
-  else if (state.phase === "discard2") state.phase = "bet3";
+  advancePokerPhase(state);
 
   const dealerDraw = pokerDealerDraw(state.dealer, state.deck);
   state.dealer = dealerDraw.hand;
@@ -318,9 +329,7 @@ const applyPokerCall = (state, balance) => {
   state.pot += toCall;
   state.awaitingRaise = false;
 
-  if (state.phase === "bet1") state.phase = "discard1";
-  else if (state.phase === "bet2") state.phase = "discard2";
-  else if (state.phase === "bet3") state.phase = "reveal";
+  advancePokerPhase(state);
 
   return { state, balance: nextBalance };
 };
