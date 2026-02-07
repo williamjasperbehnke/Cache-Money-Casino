@@ -13,7 +13,6 @@ const {
   totalBet,
   spinOutcome,
   computePayout,
-  applyRandomBets,
 } = require("./game/roulette");
 const { spinSlots } = require("./game/slots");
 const { sanitizeState } = require("./game/sanitize");
