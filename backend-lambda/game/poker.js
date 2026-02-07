@@ -240,6 +240,12 @@ const applyPokerBet = (state, betAmount, balance, rng = Math.random) => {
     state.playerBet += toCall;
     state.pot += toCall;
     state.awaitingRaise = false;
+  } else if (nextBalance <= 0) {
+    if (state.phase === "bet1") state.phase = "discard1";
+    else if (state.phase === "bet2") state.phase = "discard2";
+    else if (state.phase === "bet3") state.phase = "reveal";
+    state.awaitingRaise = false;
+    return { state, balance: nextBalance, messages };
   }
 
   const decision = pokerDealerAction(dealer, betAmount, state.phase);
