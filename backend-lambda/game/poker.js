@@ -240,8 +240,6 @@ const applyPokerBet = (state, betAmount, balance, rng = Math.random) => {
     state.playerBet += toCall;
     state.pot += toCall;
     state.awaitingRaise = false;
-  } else if (betAmount === 0) {
-    return { error: "Bet cannot be zero." };
   }
 
   const decision = pokerDealerAction(dealer, betAmount, state.phase);
