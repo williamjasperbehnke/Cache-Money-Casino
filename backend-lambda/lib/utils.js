@@ -59,6 +59,11 @@ const getRoute = (event) => {
   return { method, path };
 };
 
+const sumValues = (obj) =>
+  Object.values(obj || {}).reduce((acc, val) => acc + Number(val || 0), 0);
+
+const ttlFromNow = (seconds) => Math.floor(Date.now() / 1000) + seconds;
+
 module.exports = {
   jsonResponse,
   parseJson,
@@ -68,4 +73,6 @@ module.exports = {
   hashPassword,
   verifyPassword,
   getRoute,
+  sumValues,
+  ttlFromNow,
 };

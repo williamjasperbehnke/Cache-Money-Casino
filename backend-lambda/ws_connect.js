@@ -1,16 +1,8 @@
-const { get, put } = require("./lib/db");
+const { put } = require("./lib/db");
 const { jsonResponse } = require("./lib/utils");
+const { getSession } = require("./lib/session");
 
-const { CONNECTIONS_TABLE, SESSIONS_TABLE, CORS_ORIGIN = "*" } = process.env;
-
-const getSession = async (token) => {
-  if (!token) return null;
-  const resp = await get({
-    TableName: SESSIONS_TABLE,
-    Key: { token },
-  });
-  return resp.Item || null;
-};
+const { CONNECTIONS_TABLE, CORS_ORIGIN = "*" } = process.env;
 
 exports.handler = async (event) => {
   const connectionId = event.requestContext.connectionId;

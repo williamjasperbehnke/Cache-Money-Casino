@@ -9,44 +9,25 @@ const {
   verifyPassword,
 } = require("./lib/utils");
 const { emptyStats } = require("./lib/stats");
+const { getUser, putUser, putSession } = require("./lib/session");
 
-const { USERS_TABLE, SESSIONS_TABLE, CORS_ORIGIN = "*" } = process.env;
+const { CORS_ORIGIN = "*" } = process.env;
 
 const ttlFromNow = (seconds) => Math.floor(Date.now() / 1000) + seconds;
 
-const getUser = async (username) => {
-  const resp = await get({
-    TableName: USERS_TABLE,
-    Key: { username },
-  });
-  return resp.Item || null;
-};
-
-const putUser = (user) =>
-  put({
-    TableName: USERS_TABLE,
-    Item: user,
-  });
-
-const putSession = (token, username) =>
-  put({
-    TableName: SESSIONS_TABLE,
-    Item: {
-      token,
-      username,
-      ttl: ttlFromNow(60 * 60 * 24 * 7),
-    },
+const putUserSession = (token, username) =>
+  putSession({
+    token,
+    username,
+    ttl: ttlFromNow(60 * 60 * 24 * 7),
   });
 
 const putGuestSession = (token) =>
-  put({
-    TableName: SESSIONS_TABLE,
-    Item: {
-      token,
-      username: null,
-      balance: 1000,
-      ttl: ttlFromNow(60 * 60 * 24 * 7),
-    },
+  putSession({
+    token,
+    username: null,
+    balance: 1000,
+    ttl: ttlFromNow(60 * 60 * 24 * 7),
   });
 
 exports.handler = async (event) => {
@@ -80,7 +61,7 @@ exports.handler = async (event) => {
       };
       await putUser(user);
       const token = createToken();
-      await putSession(token, username);
+      await putUserSession(token, username);
       return jsonResponse(
         200,
         { token, user: { username, balance: user.balance, stats: user.stats } },
@@ -98,7 +79,7 @@ exports.handler = async (event) => {
       const ok = verifyPassword(password, user.password_salt, user.password_hash);
       if (!ok) return jsonResponse(401, { error: "Invalid credentials." }, CORS_ORIGIN);
       const token = createToken();
-      await putSession(token, username);
+      await putUserSession(token, username);
       return jsonResponse(
         200,
         { token, user: { username, balance: user.balance, stats: user.stats } },
