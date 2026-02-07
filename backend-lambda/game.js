@@ -27,6 +27,7 @@ const {
   createHoldemState,
   applyHoldemAction,
   applyHoldemFold,
+  resolveHoldemShowdown,
 } = require("./game/holdem");
 const { 
   createBlackjackState, 
@@ -319,8 +320,20 @@ exports.handler = async (event) => {
       dealerButton,
       playerBlind,
       dealerBlind,
+      balanceAfterBlind: nextBalance,
     });
     const message = `Blinds in. You: $${playerBlind}, Dealer: $${dealerBlind}.`;
+    if (nextBalance <= 0) {
+      const showdownResult = resolveHoldemShowdown(state, nextBalance);
+      const finalBalance = await persistBalance(session, user, showdownResult.balance);
+      await saveGameState(token, session, "holdem", showdownResult.state);
+      return respondWithState(200, "holdem", {
+        state: showdownResult.state,
+        balance: finalBalance,
+        messages: [{ text: message, tone: "win", duration: 1600 }],
+        showdown: showdownResult.showdown,
+      });
+    }
     await saveGameState(token, session, "holdem", state);
     return respondWithState(200, "holdem", {
       state,

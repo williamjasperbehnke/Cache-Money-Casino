@@ -107,6 +107,46 @@ const holdemDealerRaiseAmount = (state, strength, playerBalance) => {
   return Math.min(base, Math.max(5, playerBalance));
 };
 
+const resolveHoldemShowdown = (state, balance, messages = null) => {
+  const playerCombined = [...state.player, ...state.community];
+  const dealerCombined = [...state.dealer, ...state.community];
+  const playerBest = holdemBestHand(playerCombined);
+  const dealerBest = holdemBestHand(dealerCombined);
+  const result = holdemCompareHands(playerBest.eval, dealerBest.eval);
+  let payoutTotal = 0;
+  let net = 0;
+  if (result > 0) {
+    payoutTotal = state.pot;
+    net = state.pot - state.playerPaid;
+    messages?.push({ text: `You win with ${playerBest.eval.label}!`, tone: "win", duration: 2400 });
+  } else if (result < 0) {
+    net = -state.playerPaid;
+    messages?.push({
+      text: `Dealer wins with ${dealerBest.eval.label}.`,
+      tone: "danger",
+      duration: 2400,
+    });
+  } else {
+    payoutTotal = state.pot / 2;
+    net = 0;
+    messages?.push({ text: "Push. Pot split.", tone: "win", duration: 2000 });
+  }
+  const nextBalance = balance + payoutTotal;
+  state.inRound = false;
+  state.phase = "showdown";
+  return {
+    state,
+    balance: nextBalance,
+    net,
+    showdown: {
+      playerLabel: playerBest.eval.label,
+      dealerLabel: dealerBest.eval.label,
+      result,
+      playerIndexes: playerBest.indexes,
+      dealerIndexes: dealerBest.indexes,
+    },
+  };
+};
 
 const createHoldemState = ({
   blindSmall,
@@ -114,14 +154,17 @@ const createHoldemState = ({
   dealerButton,
   playerBlind,
   dealerBlind,
+  balanceAfterBlind = 0,
 }) => {
   const deck = shuffle(buildDeck());
+  const skipToShowdown = balanceAfterBlind <= 0;
+  const effectiveDealerBlind = skipToShowdown ? playerBlind : dealerBlind;
   return {
-    pot: playerBlind + dealerBlind,
+    pot: skipToShowdown ? playerBlind * 2 : playerBlind + dealerBlind,
     playerPaid: playerBlind,
     playerBet: playerBlind,
-    dealerBet: dealerBlind,
-    currentBet: Math.max(playerBlind, dealerBlind),
+    dealerBet: effectiveDealerBlind,
+    currentBet: Math.max(playerBlind, effectiveDealerBlind),
     betAmount: 0,
     blindSmall,
     blindBig,
@@ -131,8 +174,8 @@ const createHoldemState = ({
     player: [draw(deck), draw(deck)],
     dealer: [draw(deck), draw(deck)],
     community: [draw(deck), draw(deck), draw(deck), draw(deck), draw(deck)],
-    phase: "preflop",
-    inRound: true,
+    phase: skipToShowdown ? "showdown" : "preflop",
+    inRound: !skipToShowdown,
     dealerRaised: false,
   };
 };
@@ -165,40 +208,6 @@ const applyHoldemAction = (state, betAmount, balance, rng = Math.random) => {
     return true;
   };
 
-  const finishShowdown = () => {
-    const playerCombined = [...state.player, ...state.community];
-    const dealerCombined = [...state.dealer, ...state.community];
-    const playerBest = holdemBestHand(playerCombined);
-    const dealerBest = holdemBestHand(dealerCombined);
-    const result = holdemCompareHands(playerBest.eval, dealerBest.eval);
-    let payoutTotal = 0;
-    let net = 0;
-    if (result > 0) {
-      payoutTotal = state.pot;
-      net = state.pot - state.playerPaid;
-      messages.push({ text: `You win with ${playerBest.eval.label}!`, tone: "win", duration: 2400 });
-    } else if (result < 0) {
-      net = -state.playerPaid;
-      messages.push({ text: `Dealer wins with ${dealerBest.eval.label}.`, tone: "danger", duration: 2400 });
-    } else {
-      payoutTotal = state.pot / 2;
-      net = 0;
-      messages.push({ text: "Push. Pot split.", tone: "win", duration: 2000 });
-    }
-    nextBalance += payoutTotal;
-    state.inRound = false;
-    state.phase = "showdown";
-    return {
-      showdown: {
-        playerLabel: playerBest.eval.label,
-        dealerLabel: dealerBest.eval.label,
-        result,
-        playerIndexes: playerBest.indexes,
-        dealerIndexes: dealerBest.indexes,
-      },
-      net,
-    };
-  };
 
   const dealerActs = () => {
     const dealerToCall = Math.max(0, state.currentBet - state.dealerBet);
@@ -307,8 +316,8 @@ const applyHoldemAction = (state, betAmount, balance, rng = Math.random) => {
   }
 
   if (state.phase === "showdown") {
-    const showdown = finishShowdown();
-    return { state, balance: nextBalance, messages, ...showdown };
+    const showdown = resolveHoldemShowdown(state, nextBalance, messages);
+    return { state, balance: showdown.balance, messages, ...showdown };
   }
 
   if (state.awaitingRaise && nextBalance > 0) {
@@ -329,8 +338,8 @@ const applyHoldemAction = (state, betAmount, balance, rng = Math.random) => {
   }
 
   if (advanceToShowdownIfBroke()) {
-    const showdown = finishShowdown();
-    return { state, balance: nextBalance, messages, ...showdown };
+    const showdown = resolveHoldemShowdown(state, nextBalance, messages);
+    return { state, balance: showdown.balance, messages, ...showdown };
   }
 
   if (state.awaitingRaise) {
@@ -345,8 +354,8 @@ const applyHoldemAction = (state, betAmount, balance, rng = Math.random) => {
   }
 
   if (state.phase === "showdown") {
-    const showdown = finishShowdown();
-    return { state, balance: nextBalance, messages, ...showdown };
+    const showdown = resolveHoldemShowdown(state, nextBalance, messages);
+    return { state, balance: showdown.balance, messages, ...showdown };
   }
 
   return { state, balance: nextBalance, messages };
@@ -370,5 +379,6 @@ module.exports = {
   createHoldemState,
   applyHoldemAction,
   applyHoldemFold,
+  resolveHoldemShowdown,
   holdemPhaseCommunityCount,
 };

@@ -219,25 +219,25 @@ export class PokerGame {
       PokerGame.highlightIndexes("pokerPlayer", payload.playerIndexes, "win");
       PokerGame.highlightIndexes("pokerDealer", payload.dealerIndexes, "lose");
       playSfx("win");
-      this.showToast(
-        `You win with ${payload.playerLabel}! Dealer had ${payload.dealerLabel}.`,
-        "win",
-        4500
-      );
+      return {
+        text: `You win with ${payload.playerLabel}! Dealer had ${payload.dealerLabel}.`,
+        tone: "win",
+        duration: 4500,
+      };
     } else if (payload.result < 0) {
       PokerGame.highlightIndexes("pokerPlayer", payload.playerIndexes, "lose");
       PokerGame.highlightIndexes("pokerDealer", payload.dealerIndexes, "win");
       playSfx("lose");
-      this.showToast(
-        `Dealer wins with ${payload.dealerLabel}. You had ${payload.playerLabel}.`,
-        "danger",
-        4500
-      );
+      return {
+        text: `Dealer wins with ${payload.dealerLabel}. You had ${payload.playerLabel}.`,
+        tone: "danger",
+        duration: 4500,
+      };
     } else {
       PokerGame.highlightIndexes("pokerPlayer", payload.playerIndexes, "win");
       PokerGame.highlightIndexes("pokerDealer", payload.dealerIndexes, "win");
       playSfx("win");
-      this.showToast(`Push! Both had ${payload.playerLabel}.`, "win", 4500);
+      return { text: `Push! Both had ${payload.playerLabel}.`, tone: "win", duration: 4500 };
     }
   }
 
@@ -283,12 +283,15 @@ export class PokerGame {
     if (dealerDiscardEl) dealerDiscardEl.textContent = "";
     renderCards("pokerPlayer", state.poker.player);
     renderHiddenCards("pokerDealer", state.poker.dealer.length);
-    if (payload.messages?.length) {
-      this.showPhaseMessages(payload.messages);
-    } else if (this.discardPhaseActive()) {
-      this.showPhaseToast(state.poker.phase, "Click cards to discard.", "win", 2200);
-    } else {
+    const queued = [];
+    if (payload.messages?.length) queued.push(...payload.messages);
+    if (this.discardPhaseActive()) {
+      queued.push({ text: "Click cards to discard.", tone: "win", duration: 2200 });
+    }
+    if (!queued.length) {
       this.showToast("Place your bet.", "win", 2200);
+    } else {
+      this.showPhaseMessages(queued);
     }
     const playerResult = document.getElementById("pokerPlayerResult");
     const dealerResult = document.getElementById("pokerDealerResult");
@@ -316,15 +319,8 @@ export class PokerGame {
     if (!payload) return;
     state.poker.betAmount = 0;
     this.applyServerState(payload.state, payload.balance);
-    let messageDelay = 0;
-    if (payload.messages?.length) {
-      this.showPhaseMessages(payload.messages);
-      messageDelay =
-        payload.messages.reduce(
-          (total, msg) => total + (Number.isFinite(msg.duration) ? msg.duration : 1600),
-          0
-        ) + payload.messages.length * 200;
-    }
+    const queued = [];
+    if (payload.messages?.length) queued.push(...payload.messages);
 
     if (state.poker.awaitingRaise) {
       const callRaiseBtn = document.getElementById("pokerCallRaise");
@@ -336,20 +332,18 @@ export class PokerGame {
 
     if (this.discardPhaseActive()) {
       state.poker.discards = new Set();
-      const fire = () => {
-        if (!this.discardPhaseActive()) return;
-        this.showPhaseToast(state.poker.phase, "Click cards to discard.", "win", 2200);
-        this.renderDiscards();
-      };
-      if (messageDelay) setTimeout(fire, messageDelay);
-      else fire();
+      queued.push({ text: "Click cards to discard.", tone: "win", duration: 2200 });
+      this.renderDiscards();
     }
 
     if (state.poker.phase === "reveal") {
       revealDealer("pokerDealer");
       renderCards("pokerDealer", state.poker.dealer);
-      this.showResult(payload);
+      const resultMessage = this.showResult(payload);
+      if (resultMessage) queued.push(resultMessage);
     }
+
+    if (queued.length) this.showPhaseMessages(queued);
   }
 
   async handleDiscard(drawBtn, clearTableBtn, foldBtn) {
@@ -376,13 +370,14 @@ export class PokerGame {
       this.renderDiscards();
     }
 
-    if (queued.length) this.showPhaseMessages(queued);
-
     if (state.poker.phase === "reveal") {
       revealDealer("pokerDealer");
       renderCards("pokerDealer", state.poker.dealer);
-      this.showResult(payload);
+      const resultMessage = this.showResult(payload);
+      if (resultMessage) queued.push(resultMessage);
     }
+
+    if (queued.length) this.showPhaseMessages(queued);
   }
 
   async handleCall(drawBtn, clearTableBtn, foldBtn) {
@@ -391,23 +386,25 @@ export class PokerGame {
     const payload = await this.requestGame("/api/games/poker/call", {});
     if (!payload) return;
     this.applyServerState(payload.state, payload.balance);
-    if (payload.messages?.length) {
-      this.showPhaseMessages(payload.messages);
-    }
+    const queued = [];
+    if (payload.messages?.length) queued.push(...payload.messages);
     this.updateUiForPhase();
     this.updatePokerTotal();
 
     if (this.discardPhaseActive()) {
       state.poker.discards = new Set();
-      this.showPhaseToast(state.poker.phase, "Click cards to discard.", "win", 2200);
+      queued.push({ text: "Click cards to discard.", tone: "win", duration: 2200 });
       this.renderDiscards();
     }
 
     if (state.poker.phase === "reveal") {
       revealDealer("pokerDealer");
       renderCards("pokerDealer", state.poker.dealer);
-      this.showResult(payload);
+      const resultMessage = this.showResult(payload);
+      if (resultMessage) queued.push(resultMessage);
     }
+
+    if (queued.length) this.showPhaseMessages(queued);
   }
 
   async handleFold() {
