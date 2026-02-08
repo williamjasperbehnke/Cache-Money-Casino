@@ -1724,14 +1724,15 @@ h3 {
 }
 
 #yahtzee .yahtzee-die {
-  width: 48px;
-  height: 48px;
+  width: 56px;
+  height: 56px;
   cursor: pointer;
 }
 
 #yahtzee .yahtzee-die.held {
   border-color: var(--neon);
   box-shadow: 0 0 12px rgba(56, 189, 248, 0.45);
+  transform: translateY(-6px);
 }
 
 #yahtzee .yahtzee-scores {
@@ -1746,7 +1747,7 @@ h3 {
 #yahtzee .yahtzee-score-totals,
 #yahtzee .yahtzee-score-row {
   display: grid;
-  grid-template-columns: 1.5fr 0.7fr 0.7fr 0.9fr;
+  grid-template-columns: 1.6fr 0.8fr 0.8fr;
   gap: 8px;
   align-items: center;
 }
@@ -1800,6 +1801,12 @@ h3 {
 #yahtzee .yahtzee-score-action:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+#yahtzee .yahtzee-score-action.locked {
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.2), rgba(15, 23, 42, 0.7));
+  border-color: rgba(56, 189, 248, 0.6);
+  color: #7dd3fc;
 }
 
 #yahtzee .yahtzee-score-totals {

@@ -184,6 +184,7 @@ export class YahtzeeGame {
       const btn = this.buildDie(die, {
         interactive: state.yahtzee.inRound,
         held: state.yahtzee.holds[index],
+        rolling: state.yahtzee.rolling,
       });
       btn.dataset.index = String(index);
       this.ui.diceWrap.appendChild(btn);
@@ -215,29 +216,28 @@ export class YahtzeeGame {
       label.textContent = cat.label;
 
       const player = document.createElement("div");
-      player.className = "yahtzee-score-value";
       const playerScore = state.yahtzee.playerScores?.[cat.key];
-      player.textContent = Number.isFinite(playerScore) ? String(playerScore) : "—";
+      const available = !Number.isFinite(playerScore) && state.yahtzee.inRound;
+      const preview = computeScore(cat.key, dice);
+      const action = document.createElement("button");
+      action.type = "button";
+      action.className = "yahtzee-score-action";
+      action.textContent = Number.isFinite(playerScore) ? String(playerScore) : String(preview);
+      action.disabled = !available;
+      action.dataset.category = cat.key;
+      action.title = available ? `Score ${preview}` : "Locked";
+      if (Number.isFinite(playerScore)) action.classList.add("locked");
+      player.className = "yahtzee-score-value";
+      player.appendChild(action);
 
       const dealer = document.createElement("div");
       dealer.className = "yahtzee-score-value";
       const dealerScore = state.yahtzee.dealerScores?.[cat.key];
       dealer.textContent = Number.isFinite(dealerScore) ? String(dealerScore) : "—";
 
-      const action = document.createElement("button");
-      action.type = "button";
-      action.className = "yahtzee-score-action";
-      const available = !Number.isFinite(playerScore) && state.yahtzee.inRound;
-      const preview = computeScore(cat.key, dice);
-      action.textContent = available ? String(preview) : "—";
-      action.disabled = !available;
-      action.dataset.category = cat.key;
-      action.title = available ? `Score ${preview}` : "Unavailable";
-
       row.appendChild(label);
       row.appendChild(player);
       row.appendChild(dealer);
-      row.appendChild(action);
       this.ui.scoreBody.appendChild(row);
     });
   }
@@ -295,6 +295,8 @@ export class YahtzeeGame {
 
   async rollDice() {
     if (!state.yahtzee.inRound) return;
+    state.yahtzee.rolling = true;
+    this.updateUI();
     const unlock = lockPanel("yahtzee");
     try {
       const payload = await auth.request("/api/games/yahtzee/roll", {
@@ -303,9 +305,11 @@ export class YahtzeeGame {
         body: JSON.stringify({ holds: state.yahtzee.holds }),
       });
       this.applyServerState(payload);
+      state.yahtzee.rolling = false;
       this.updateUI();
       playSfx("spin");
     } catch (err) {
+      state.yahtzee.rolling = false;
       showCenterToast(err?.message || "Roll failed.", "danger");
     } finally {
       unlock();

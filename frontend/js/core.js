@@ -105,6 +105,7 @@ export const state = {
     holds: [false, false, false, false, false],
     dealerDice: [],
     dealerRolling: false,
+    rolling: false,
     playerScores: {},
     dealerScores: {},
   },
