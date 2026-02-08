@@ -12,7 +12,7 @@ initCore(() => {
   const payload = await fetchGameState("memory");
   if (!payload) return;
   if (payload.active && payload.state && !payload.state.completed) {
-    game.applyServerState(payload);
+    game.applyServerState(payload, { hideUnmatched: true });
     if (Number.isFinite(payload.balance)) {
       state.balance = payload.balance;
       updateBalance();

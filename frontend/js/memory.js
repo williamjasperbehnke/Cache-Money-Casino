@@ -53,7 +53,7 @@ export class MemoryGame {
     return Array.from({ length: total }, () => ({ value: null, revealed: false, matched: false }));
   }
 
-  applyServerState(payload) {
+  applyServerState(payload, { hideUnmatched = false } = {}) {
     const server = payload?.state;
     if (!server) return;
     state.memory.rows = server.rows || DEFAULT_ROWS;
@@ -65,7 +65,7 @@ export class MemoryGame {
     state.memory.awaitingClear = Boolean(server.completed);
     state.memory.inRound = Boolean(server.inRound);
     state.memory.cards = Array.isArray(server.cards) ? server.cards : this.buildPlaceholderCards();
-    if (state.memory.inRound) {
+    if (hideUnmatched && state.memory.inRound) {
       state.memory.cards = state.memory.cards.map((card) => {
         if (!card.matched) return { ...card, revealed: false, value: null };
         return card;
