@@ -120,6 +120,7 @@ const dealerTurn = (state) => {
   for (let i = 0; i < 2; i += 1) {
     dice = Array.from({ length: 5 }, () => rollDie());
   }
+  state.dealerDice = dice;
   const choices = availableCategories(dealerScores);
   let best = choices[0];
   let bestScore = -1;
@@ -149,9 +150,9 @@ const applyYahtzeeScore = (state, category) => {
   state.rollsLeft = 3;
   state.holds = [false, false, false, false, false];
   state.dice = Array.from({ length: 5 }, () => rollDie());
+  state.dealerDice = state.dice.slice();
 
   const dealerResult = dealerTurn(state);
-  state.dealerDice = dealerResult.dice;
   const done =
     availableCategories(state.playerScores).length === 0 &&
     availableCategories(state.dealerScores).length === 0;
