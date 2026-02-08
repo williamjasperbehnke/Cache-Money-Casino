@@ -2,7 +2,7 @@ name: Terraform Deploy
 
 on:
   push:
-    branches: [ main, memory ]
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
