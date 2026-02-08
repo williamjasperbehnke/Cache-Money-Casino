@@ -208,7 +208,6 @@ const applyHoldemAction = (state, betAmount, balance, rng = Math.random) => {
     return true;
   };
 
-
   const dealerActs = () => {
     const dealerToCall = Math.max(0, state.currentBet - state.dealerBet);
     const strength = holdemDealerStrength(state);

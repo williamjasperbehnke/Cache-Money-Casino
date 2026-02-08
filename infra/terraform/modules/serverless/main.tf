@@ -231,6 +231,23 @@ resource "aws_lambda_function" "ws_message" {
   }
 }
 
+locals {
+  lambda_functions = {
+    auth          = aws_lambda_function.auth
+    account       = aws_lambda_function.account
+    game          = aws_lambda_function.game
+    ws_connect    = aws_lambda_function.ws_connect
+    ws_disconnect = aws_lambda_function.ws_disconnect
+    ws_message    = aws_lambda_function.ws_message
+  }
+}
+
+resource "aws_cloudwatch_log_group" "lambda" {
+  for_each          = local.lambda_functions
+  name              = "/aws/lambda/${each.value.function_name}"
+  retention_in_days = 1
+}
+
 resource "aws_apigatewayv2_api" "rest" {
   name          = "${var.project_name}-http-api"
   protocol_type = "HTTP"
@@ -324,6 +341,12 @@ resource "aws_apigatewayv2_route" "roulette_spin" {
 resource "aws_apigatewayv2_route" "slots_spin" {
   api_id    = aws_apigatewayv2_api.rest.id
   route_key = "POST /api/games/slots/spin"
+  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
+}
+
+resource "aws_apigatewayv2_route" "craps_roll" {
+  api_id    = aws_apigatewayv2_api.rest.id
+  route_key = "POST /api/games/craps/roll"
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 

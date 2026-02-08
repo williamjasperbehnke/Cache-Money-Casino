@@ -14,6 +14,7 @@ const {
   spinOutcome,
   computePayout,
 } = require("./game/roulette");
+const { createCrapsState, resolveCrapsRoll } = require("./game/craps");
 const { spinSlots } = require("./game/slots");
 const { sanitizeState } = require("./game/sanitize");
 const {
@@ -142,6 +143,40 @@ exports.handler = async (event) => {
       },
       CORS_ORIGIN
     );
+  }
+
+  if (method === "POST" && path.endsWith("/games/craps/roll")) {
+    const body = parseJson(event);
+    const bets = body.bets || {};
+    const paid = Boolean(body.paid);
+    const state = (await getGameState(token, "craps")) || createCrapsState();
+    const { user, balance } = await resolveBalance(session);
+    const tableOn = body.tableOn !== false;
+    const result = resolveCrapsRoll(state, bets, balance, paid, tableOn);
+    if (result?.error) {
+      return jsonResponse(400, { error: result.error }, CORS_ORIGIN);
+    }
+    const net = result.payout - result.wager;
+    if (user) {
+      user.stats = updateStats(user.stats, {
+        game: "craps",
+        bet: result.wager,
+        net,
+        result: net > 0 ? "win" : net < 0 ? "loss" : "push",
+      });
+      await putUser(user);
+    }
+    const nextState = { ...result.state, inRound: true };
+    const nextBalance = await persistBalance(session, user, result.balance);
+    await saveGameState(token, session, "craps", nextState);
+    return respondWithState(200, "craps", {
+      state: nextState,
+      balance: nextBalance,
+      roll: result.roll,
+      payout: result.payout,
+      wager: result.wager,
+      win: result.win,
+    });
   }
 
   if (method === "POST" && path.endsWith("/games/slots/spin")) {
@@ -335,6 +370,7 @@ exports.handler = async (event) => {
         showdown: showdownResult.showdown,
       });
     }
+  }
 
   if (method === "POST" && path.endsWith("/games/holdem/action")) {
     const body = parseJson(event);

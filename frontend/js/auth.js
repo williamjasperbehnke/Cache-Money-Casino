@@ -182,6 +182,7 @@ export const auth = {
       togglePassword: document.getElementById("authTogglePassword"),
       toggle: document.getElementById("authToggle"),
       message: document.getElementById("authMessage"),
+      closeBtn: document.getElementById("authClose"),
     };
   },
 
@@ -221,6 +222,7 @@ export const auth = {
       freeCreditsBtn,
       accountLink,
       backdrop,
+      closeBtn,
       form,
       toggle,
       togglePassword,
@@ -255,6 +257,7 @@ export const auth = {
       window.location.href = "account.html";
     });
     backdrop?.addEventListener("click", () => this.closeModal());
+    closeBtn?.addEventListener("click", () => this.closeModal());
     toggle?.addEventListener("click", () => {
       if (!modal) return;
       const mode = modal.dataset.mode === "login" ? "register" : "login";
@@ -266,6 +269,11 @@ export const auth = {
       const next = input.type === "password" ? "text" : "password";
       input.type = next;
       togglePassword.textContent = next === "password" ? "Show" : "Hide";
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      if (!modal || modal.classList.contains("hidden")) return;
+      this.closeModal();
     });
     form?.addEventListener("submit", async (event) => {
       event.preventDefault();
