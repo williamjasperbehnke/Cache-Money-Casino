@@ -2,7 +2,7 @@ name: Terraform Deploy
 
 on:
   push:
-    branches: [ main, yahtzee ]
+    branches: [ main ]
   workflow_dispatch:
 
 permissions:
