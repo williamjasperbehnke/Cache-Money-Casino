@@ -55,7 +55,8 @@ const verifyPassword = (password, salt, hash) => {
 
 const getRoute = (event) => {
   const method = event?.requestContext?.http?.method || event?.httpMethod || "";
-  const path = event?.requestContext?.http?.path || event?.path || "";
+  const rawPath = event?.requestContext?.http?.path || event?.path || "";
+  const path = rawPath.replace(/\/+$/, "") || "/";
   return { method, path };
 };
 
