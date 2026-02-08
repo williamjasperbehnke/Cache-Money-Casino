@@ -49,6 +49,12 @@ jobs:
       - name: Terraform Apply
         working-directory: infra/terraform
         run: |
+          terraform state rm 'module.serverless[0].aws_cloudwatch_log_group.lambda["auth"]' || true
+          terraform state rm 'module.serverless[0].aws_cloudwatch_log_group.lambda["account"]' || true
+          terraform state rm 'module.serverless[0].aws_cloudwatch_log_group.lambda["game"]' || true
+          terraform state rm 'module.serverless[0].aws_cloudwatch_log_group.lambda["ws_connect"]' || true
+          terraform state rm 'module.serverless[0].aws_cloudwatch_log_group.lambda["ws_disconnect"]' || true
+          terraform state rm 'module.serverless[0].aws_cloudwatch_log_group.lambda["ws_message"]' || true
           terraform import 'module.serverless[0].aws_cloudwatch_log_group.lambda["auth"]' /aws/lambda/cache-money-casino-auth
           terraform import 'module.serverless[0].aws_cloudwatch_log_group.lambda["account"]' /aws/lambda/cache-money-casino-account
           terraform import 'module.serverless[0].aws_cloudwatch_log_group.lambda["game"]' /aws/lambda/cache-money-casino-game
