@@ -95,7 +95,7 @@ const createYahtzeeState = ({ bet }) => ({
   inRound: true,
   phase: "player",
   rollsLeft: 3,
-  dice: Array.from({ length: 5 }, () => rollDie()),
+  dice: [],
   holds: [false, false, false, false, false],
   dealerDice: [],
   playerScores: emptyScorecard(),

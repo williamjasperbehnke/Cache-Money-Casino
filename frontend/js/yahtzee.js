@@ -189,7 +189,7 @@ export class YahtzeeGame {
     }
     dice.forEach((die, index) => {
       const btn = this.buildDie(die, {
-        interactive: state.yahtzee.inRound,
+        interactive: state.yahtzee.inRound && state.yahtzee.hasRolled,
         held: state.yahtzee.holds[index],
         rolling: state.yahtzee.rolling && !state.yahtzee.holds[index],
       });
@@ -376,7 +376,7 @@ export class YahtzeeGame {
     this.ui.diceWrap?.addEventListener("click", (event) => {
       const btn = event.target.closest(".yahtzee-die");
       if (!btn) return;
-      if (!state.yahtzee.inRound) return;
+      if (!state.yahtzee.inRound || !state.yahtzee.hasRolled) return;
       const index = Number(btn.dataset.index);
       if (!Number.isInteger(index)) return;
       state.yahtzee.holds[index] = !state.yahtzee.holds[index];
