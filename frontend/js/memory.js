@@ -94,6 +94,7 @@ export class MemoryGame {
       ? state.memory.cards
       : this.buildPlaceholderCards();
     const nextRevealed = new Set();
+    const nextHidden = new Set();
     this.ui.grid.innerHTML = "";
     cards.forEach((card, index) => {
       const button = document.createElement("button");
@@ -106,8 +107,11 @@ export class MemoryGame {
         if (!this.prevRevealed.has(index)) {
           button.classList.add("just-revealed");
         }
+      } else if (this.prevRevealed.has(index)) {
+        nextHidden.add(index);
       }
       if (card.matched) button.classList.add("matched");
+      if (nextHidden.has(index)) button.classList.add("just-hidden");
       const face = document.createElement("span");
       face.className = "memory-face";
       face.textContent = card.value || "?";
