@@ -3,6 +3,7 @@ name: Terraform Deploy
 on:
   push:
     branches: [ main, memory ]
+  workflow_dispatch:
 
 permissions:
   id-token: write
