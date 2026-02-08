@@ -61,6 +61,7 @@ export class MemoryGame {
     state.memory.cols = server.cols || DEFAULT_COLS;
     state.memory.bet = Number(server.bet) || 0;
     state.memory.moves = Number(server.moves) || 0;
+    state.memory.misses = Number(server.misses) || 0;
     state.memory.matches = Number(server.matches) || 0;
     state.memory.completed = Boolean(server.completed);
     state.memory.awaitingClear = Boolean(server.completed);
@@ -86,8 +87,8 @@ export class MemoryGame {
     }
     if (this.ui.multiplierEl) {
       const pairs = this.totalPairs();
-      const moves = state.memory.moves || 0;
-      const extra = Math.max(0, moves - pairs);
+      const misses = state.memory.misses || 0;
+      const extra = Math.max(0, misses);
       const running = Math.max(MIN_MULTIPLIER, MAX_MULTIPLIER - extra * MOVE_PENALTY);
       const bet = Number(state.memory.bet) || 0;
       if (state.memory.completed) {
@@ -297,6 +298,7 @@ export class MemoryGame {
     state.memory.completed = false;
     state.memory.awaitingClear = false;
     state.memory.moves = 0;
+    state.memory.misses = 0;
     state.memory.matches = 0;
     state.memory.rows = DEFAULT_ROWS;
     state.memory.cols = DEFAULT_COLS;

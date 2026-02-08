@@ -85,6 +85,7 @@ export const state = {
     inRound: false,
     completed: false,
     moves: 0,
+    misses: 0,
     matches: 0,
     rows: 4,
     cols: 6,

@@ -47,15 +47,16 @@ const createMemoryState = ({ bet, rows = DEFAULT_ROWS, cols = DEFAULT_COLS, rng 
     matched: Array(size).fill(false),
     flipped: [],
     moves: 0,
+    misses: 0,
     matches: 0,
     completed: false,
     inRound: true,
   };
 };
 
-const computeMultiplier = (moves, pairs) => {
+const computeMultiplier = (misses, pairs) => {
   const perfect = Math.max(1, pairs);
-  const extra = Math.max(0, moves - perfect);
+  const extra = Math.max(0, misses);
   const maxMultiplier = 3;
   const minMultiplier = 0.5;
   const penalty = 0.1;
@@ -94,6 +95,7 @@ const applyMemoryFlip = (state, index) => {
   flipped.push(index);
 
   let moves = state.moves || 0;
+  let misses = state.misses || 0;
   let matches = state.matches || 0;
   let matchedPair = false;
 
@@ -106,6 +108,8 @@ const applyMemoryFlip = (state, index) => {
       matches += 1;
       matchedPair = true;
       flipped = [];
+    } else {
+      misses += 1;
     }
   }
 
@@ -118,6 +122,7 @@ const applyMemoryFlip = (state, index) => {
       matched,
       flipped,
       moves,
+      misses,
       matches,
       completed,
       inRound: true,
@@ -129,7 +134,7 @@ const applyMemoryFlip = (state, index) => {
 
 const finalizeMemoryGame = (state) => {
   const pairs = Math.floor((state.deck?.length || 0) / 2);
-  const multiplier = computeMultiplier(state.moves || 0, pairs);
+  const multiplier = computeMultiplier(state.misses || 0, pairs);
   const payout = Math.round((state.bet || 0) * multiplier);
   return {
     multiplier,
