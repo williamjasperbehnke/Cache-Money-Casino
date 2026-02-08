@@ -90,6 +90,7 @@ export const state = {
     cols: 6,
     cards: [],
     multiplier: 0,
+    awaitingClear: false,
   },
   slots: {
     bet: 0,

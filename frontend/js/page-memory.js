@@ -11,7 +11,7 @@ initCore(() => {
 (async () => {
   const payload = await fetchGameState("memory");
   if (!payload) return;
-  if (payload.active && payload.state) {
+  if (payload.active && payload.state && !payload.state.completed) {
     game.applyServerState(payload);
     if (Number.isFinite(payload.balance)) {
       state.balance = payload.balance;

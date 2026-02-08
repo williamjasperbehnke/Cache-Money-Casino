@@ -60,6 +60,7 @@ export class MemoryGame {
     state.memory.moves = Number(server.moves) || 0;
     state.memory.matches = Number(server.matches) || 0;
     state.memory.completed = Boolean(server.completed);
+    state.memory.awaitingClear = Boolean(server.completed);
     state.memory.inRound = Boolean(server.inRound);
     state.memory.cards = Array.isArray(server.cards) ? server.cards : this.buildPlaceholderCards();
   }
@@ -109,12 +110,13 @@ export class MemoryGame {
 
   updateUI() {
     const total = state.memory.inRound ? state.memory.bet : state.memory.betAmount;
+    const lockControls = (state.memory.inRound && !state.memory.completed) || state.memory.awaitingClear;
     updateBetTotal(total, "memoryBet");
     if (this.ui.chipsWrap) {
-      this.ui.chipsWrap.classList.toggle("hidden", state.memory.inRound && !state.memory.completed);
+      this.ui.chipsWrap.classList.toggle("hidden", lockControls);
     }
     if (this.ui.startBtn) {
-      if (state.memory.inRound && !state.memory.completed) {
+      if (lockControls) {
         this.ui.startBtn.textContent = "In Play";
         this.ui.startBtn.disabled = true;
         this.ui.startBtn.classList.add("hidden");
@@ -125,7 +127,7 @@ export class MemoryGame {
       }
     }
     if (this.ui.clearBtn) {
-      const hide = state.memory.inRound && !state.memory.completed;
+      const hide = lockControls;
       this.ui.clearBtn.disabled = hide;
       this.ui.clearBtn.classList.toggle("hidden", hide);
     }
@@ -134,7 +136,7 @@ export class MemoryGame {
     if (this.ui.matchesWrap) this.ui.matchesWrap.classList.toggle("hidden", !showMetrics);
     if (this.ui.payoutWrap) this.ui.payoutWrap.classList.toggle("hidden", !showMetrics);
     if (this.ui.betTotal) {
-      const hideBet = state.memory.inRound;
+      const hideBet = state.memory.inRound || state.memory.awaitingClear;
       this.ui.betTotal.classList.toggle("hidden", hideBet);
       const label = this.ui.betTotal.previousElementSibling;
       if (label && label.tagName === "LABEL") {
@@ -262,6 +264,7 @@ export class MemoryGame {
     state.memory.bet = 0;
     state.memory.inRound = false;
     state.memory.completed = false;
+    state.memory.awaitingClear = false;
     state.memory.moves = 0;
     state.memory.matches = 0;
     state.memory.rows = DEFAULT_ROWS;
