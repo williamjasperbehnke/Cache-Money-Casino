@@ -7,6 +7,7 @@ const gameLabels = {
   holdem: "Hold'em",
   roulette: "Roulette",
   craps: "Craps",
+  memory: "Memory",
   slots: "Slots",
 };
 

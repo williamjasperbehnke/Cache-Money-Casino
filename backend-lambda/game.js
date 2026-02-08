@@ -15,6 +15,11 @@ const {
   computePayout,
 } = require("./game/roulette");
 const { createCrapsState, resolveCrapsRoll } = require("./game/craps");
+const {
+  createMemoryState,
+  applyMemoryFlip,
+  finalizeMemoryGame,
+} = require("./game/memory");
 const { spinSlots } = require("./game/slots");
 const { sanitizeState } = require("./game/sanitize");
 const {
@@ -176,6 +181,69 @@ exports.handler = async (event) => {
       payout: result.payout,
       wager: result.wager,
       win: result.win,
+    });
+  }
+
+  if (method === "POST" && path.endsWith("/games/memory/start")) {
+    const { bet } = parseJson(event);
+    const wager = Number(bet) || 0;
+    const MAX_MEMORY_BET = 100;
+    if (wager <= 0) {
+      return jsonResponse(400, { error: "Invalid bet." }, CORS_ORIGIN);
+    }
+    if (wager > MAX_MEMORY_BET) {
+      return jsonResponse(400, { error: "Max bet is $100." }, CORS_ORIGIN);
+    }
+    const { user, balance } = await resolveBalance(session);
+    if (balance < wager) {
+      return jsonResponse(400, { error: "Not enough credits." }, CORS_ORIGIN);
+    }
+    const state = createMemoryState({ bet: wager });
+    const nextBalance = await persistBalance(session, user, balance - wager);
+    await saveGameState(token, session, "memory", state);
+    return respondWithState(200, "memory", { state, balance: nextBalance });
+  }
+
+  if (method === "POST" && path.endsWith("/games/memory/flip")) {
+    const { index } = parseJson(event);
+    const current = await getGameState(token, "memory");
+    if (!current || !current.inRound) {
+      return jsonResponse(400, { error: "No active game." }, CORS_ORIGIN);
+    }
+    const result = applyMemoryFlip(current, Number(index));
+    if (result?.error) {
+      return jsonResponse(400, { error: result.error }, CORS_ORIGIN);
+    }
+    const { user, balance } = await resolveBalance(session);
+    let nextBalance = balance;
+    let payout = 0;
+    let profit = 0;
+    let multiplier = 0;
+    if (result.completed) {
+      const final = finalizeMemoryGame(result.state);
+      payout = final.payout;
+      profit = final.profit;
+      multiplier = final.multiplier;
+      nextBalance = await persistBalance(session, user, balance + payout);
+      if (user) {
+        user.stats = updateStats(user.stats, {
+          game: "memory",
+          bet: result.state.bet,
+          net: profit,
+          result: profit > 0 ? "win" : profit < 0 ? "loss" : "push",
+        });
+        await putUser(user);
+      }
+    }
+    await saveGameState(token, session, "memory", result.state);
+    return respondWithState(200, "memory", {
+      state: result.state,
+      balance: nextBalance,
+      completed: Boolean(result.completed),
+      payout,
+      profit,
+      multiplier,
+      matched: Boolean(result.matched),
     });
   }
 
@@ -370,6 +438,12 @@ exports.handler = async (event) => {
         showdown: showdownResult.showdown,
       });
     }
+    await saveGameState(token, session, "holdem", state);
+    return respondWithState(200, "holdem", {
+      state,
+      balance: nextBalance,
+      messages: [{ text: message, tone: "win", duration: 1600 }],
+    });
   }
 
   if (method === "POST" && path.endsWith("/games/holdem/action")) {

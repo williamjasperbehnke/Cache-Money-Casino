@@ -210,7 +210,7 @@ body::before {
 
 .arcade-tabs {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 12px;
   margin-bottom: 18px;
 }
@@ -301,6 +301,7 @@ h3 {
   background: rgba(15, 23, 42, 0.6);
   border-radius: 8px;
 }
+
 
 .chips {
   display: flex;
@@ -1572,6 +1573,96 @@ h3 {
   animation: tooltip-fadeout 0.2s ease 1.8s forwards;
 }
 
+/* Memory */
+.memory-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+  justify-content: center;
+}
+
+.memory-stat {
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 211, 252, 0.55);
+  background: linear-gradient(180deg, rgba(8, 47, 73, 0.7), rgba(2, 6, 23, 0.9));
+  color: #e2e8f0;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  box-shadow: inset 0 0 12px rgba(2, 6, 23, 0.6), 0 6px 0 rgba(2, 6, 23, 0.5);
+}
+
+.memory-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 2px solid rgba(148, 163, 184, 0.25);
+  background: radial-gradient(circle at 50% 0%, rgba(30, 58, 138, 0.18), rgba(2, 6, 23, 0.9));
+  box-shadow: inset 0 0 18px rgba(2, 6, 23, 0.6), 0 10px 24px rgba(2, 6, 23, 0.45);
+}
+
+.memory-card {
+  border-radius: 10px;
+  border: 2px solid var(--card-border);
+  background: var(--card-bg);
+  color: #0f172a;
+  aspect-ratio: 1 / 1;
+  min-height: 62px;
+  display: grid;
+  place-items: center;
+  position: relative;
+  overflow: hidden;
+  font-size: clamp(28px, 5vw, 40px);
+  box-shadow: 0 6px 0 rgba(15, 23, 42, 0.5);
+  transition: transform 0.15s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.memory-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(125, 211, 252, 0.7);
+  box-shadow: 0 8px 0 rgba(15, 23, 42, 0.6);
+}
+
+.memory-card:not(.revealed):not(.matched) {
+  border-color: var(--neon);
+  color: var(--neon);
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(34, 211, 238, 0.18),
+    rgba(34, 211, 238, 0.18) 20px,
+    rgba(15, 23, 42, 0.92) 20px,
+    rgba(15, 23, 42, 0.92) 40px
+  );
+}
+
+.memory-card.revealed {
+  border-color: var(--card-border);
+  background: var(--card-bg);
+  color: #0f172a;
+}
+
+.memory-card.matched {
+  border-color: #34d399;
+  background: var(--card-bg);
+  color: #0f172a;
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.45);
+}
+
+.memory-face {
+  pointer-events: none;
+  display: block;
+  line-height: 1;
+}
+
+.memory-card:not(.revealed):not(.matched) .memory-face {
+  text-shadow: 0 0 8px rgba(34, 211, 238, 0.45);
+}
+
 #craps .bet-row [data-tooltip] {
   position: relative;
   z-index: 50;
@@ -2509,6 +2600,14 @@ body.small-win .topbar {
     height: 76px;
     font-size: 12px;
   }
+
+  .memory-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .memory-face {
+    transform: translateY(30px);
+  }
 }
 
 @media (max-width: 480px) {
@@ -2564,6 +2663,7 @@ body.small-win .topbar {
 
   .arcade-tabs {
     width: 150%;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
 
   .topbar {
@@ -2884,6 +2984,49 @@ body.small-win .topbar {
 
   .craps-meta {
     justify-content: flex-start;
+  }
+
+  .memory-grid {
+    gap: 6px;
+  }
+
+  .memory-card {
+    min-height: 44px;
+    font-size: clamp(28px, 5vw, 40px);
+  }
+
+  #memory .bet-row {
+    display: grid;
+    grid-template-columns: 1.2fr 1.3fr 1fr 1.6fr;
+    gap: 4px;
+    align-items: center;
+  }
+
+  #memory .bet-row > label,
+  #memory #memoryBet,
+  #memory #memoryStart,
+  #memory #memoryClear {
+    min-width: 0;
+  }
+
+  #memory #memoryBet {
+    text-align: center;
+    font-size: 16px;
+  }
+
+  .memory-stat {
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    justify-content: center;
+    text-align: center;
+  }
+
+  #memory #memoryMovesWrap { min-width: 125px; }
+  #memory #memoryMatchesWrap { min-width: 170px; }
+  #memory #memoryPayoutWrap { min-width: 160px; }
+
+  .memory-stat span {
+    font-size: 0.6rem;
   }
 }
 

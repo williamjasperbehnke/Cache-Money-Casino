@@ -350,6 +350,18 @@ resource "aws_apigatewayv2_route" "craps_roll" {
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
+resource "aws_apigatewayv2_route" "memory_start" {
+  api_id    = aws_apigatewayv2_api.rest.id
+  route_key = "POST /api/games/memory/start"
+  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
+}
+
+resource "aws_apigatewayv2_route" "memory_flip" {
+  api_id    = aws_apigatewayv2_api.rest.id
+  route_key = "POST /api/games/memory/flip"
+  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
+}
+
 resource "aws_apigatewayv2_route" "blackjack_deal" {
   api_id    = aws_apigatewayv2_api.rest.id
   route_key = "POST /api/games/blackjack/deal"
