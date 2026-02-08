@@ -30,6 +30,7 @@ export class MemoryGame {
       betTotal: document.getElementById("memoryBet"),
       startBtn: document.getElementById("memoryStart"),
       clearBtn: document.getElementById("memoryClear"),
+      giveUpBtn: document.getElementById("memoryGiveUp"),
       movesEl: document.getElementById("memoryMoves"),
       matchesEl: document.getElementById("memoryMatches"),
       multiplierEl: document.getElementById("memoryMultiplier"),
@@ -149,6 +150,11 @@ export class MemoryGame {
       const hide = lockControls;
       this.ui.clearBtn.disabled = hide;
       this.ui.clearBtn.classList.toggle("hidden", hide);
+    }
+    if (this.ui.giveUpBtn) {
+      const show = state.memory.inRound && !state.memory.completed;
+      this.ui.giveUpBtn.classList.toggle("hidden", !show);
+      this.ui.giveUpBtn.disabled = !show;
     }
     const showMetrics = state.memory.inRound || state.memory.completed;
     if (this.ui.movesWrap) this.ui.movesWrap.classList.toggle("hidden", !showMetrics);
@@ -337,6 +343,16 @@ export class MemoryGame {
       if (state.memory.inRound && !state.memory.completed) return;
       state.memory.betAmount = 0;
       this.updateUI();
+    });
+    this.ui.giveUpBtn?.addEventListener("click", () => {
+      if (!state.memory.inRound || state.memory.completed) return;
+      state.memory.inRound = false;
+      state.memory.completed = true;
+      state.memory.awaitingClear = true;
+      state.memory.multiplier = 0;
+      showCenterToast("You gave up.", "danger");
+      this.updateUI();
+      this.scheduleFinishReset();
     });
     this.reset();
   }

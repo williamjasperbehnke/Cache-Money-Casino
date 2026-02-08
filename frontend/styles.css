@@ -1689,6 +1689,10 @@ h3 {
   text-shadow: 0 0 8px rgba(34, 211, 238, 0.45);
 }
 
+#memory #memoryGiveUp {
+  margin-left: auto;
+}
+
 #craps .bet-row [data-tooltip] {
   position: relative;
   z-index: 50;
@@ -3035,7 +3039,8 @@ body.small-win .topbar {
   #memory .bet-row > label,
   #memory #memoryBet,
   #memory #memoryStart,
-  #memory #memoryClear {
+  #memory #memoryClear,
+  #memory #memoryGiveUp {
     min-width: 0;
   }
 
@@ -3049,6 +3054,8 @@ body.small-win .topbar {
     letter-spacing: 0.1em;
     justify-content: center;
     text-align: center;
+    flex: 1 1 0;
+    min-width: 0;
   }
 
   #memory #memoryMovesWrap { min-width: 125px; }
@@ -3057,6 +3064,21 @@ body.small-win .topbar {
 
   .memory-stat span {
     font-size: 0.6rem;
+  }
+
+  #memory .bet-row > label { order: 1; }
+  #memory #memoryBet { order: 2; }
+  #memory #memoryStart { order: 3; }
+  #memory #memoryClear { order: 4; }
+  #memory #memoryMovesWrap { order: 5; }
+  #memory #memoryMatchesWrap { order: 6; }
+  #memory #memoryPayoutWrap { order: 7; }
+  #memory #memoryGiveUp {
+    order: 8;
+    grid-column: 1 / -1;
+    margin-top: 4px;
+    width: 97%;
+    margin-left: 0;
   }
 }
 
