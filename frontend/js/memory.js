@@ -136,6 +136,9 @@ export class MemoryGame {
       getBalance: () => state.balance,
       getBetAmount: () => state.memory.betAmount,
       setBetAmount: (amount) => {
+        if (amount > MAX_BET) {
+          showCenterToast("Max bet is $100.", "danger");
+        }
         state.memory.betAmount = Math.min(MAX_BET, amount);
       },
       onUpdate: () => this.updateUI(),
@@ -204,6 +207,12 @@ export class MemoryGame {
       if (payload?.multiplier) state.memory.multiplier = payload.multiplier;
       this.applyServerState(payload);
       this.updateUI();
+      const unmatchedRevealed = state.memory.cards.filter(
+        (card) => card.revealed && !card.matched
+      ).length;
+      if (!payload?.matched && unmatchedRevealed >= 2) {
+        playSfx("lose");
+      }
       this.scheduleFlipReset();
       if (payload?.matched) {
         playSfx("win");
@@ -259,8 +268,10 @@ export class MemoryGame {
     if (!state.memory.inRound || state.memory.completed) return;
     this.flipResetTimer = setTimeout(async () => {
       if (!state.memory.inRound || state.memory.completed) return;
-      const hasUnmatched = state.memory.cards.some((card) => card.revealed && !card.matched);
-      if (!hasUnmatched) return;
+      const unmatched = state.memory.cards.filter(
+        (card) => card.revealed && !card.matched
+      ).length;
+      if (unmatched < 2) return;
       state.memory.cards = state.memory.cards.map((card) => {
         if (card.revealed && !card.matched) {
           return { ...card, revealed: false, value: null };
@@ -268,7 +279,7 @@ export class MemoryGame {
         return card;
       });
       this.updateUI();
-    }, 650);
+    }, 950);
   }
 
   scheduleFinishReset() {
