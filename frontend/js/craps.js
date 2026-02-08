@@ -269,7 +269,7 @@ export class CrapsGame {
         showCenterToast("No win.", "danger");
       }
       if (state.craps.autoBet && this.totalBet() > 0) {
-        setTimeout(() => this.roll(true), 420);
+        setTimeout(() => this.roll(true), 700);
       }
     } catch (err) {
       stopDice();

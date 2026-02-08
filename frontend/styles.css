@@ -2979,7 +2979,7 @@ body.small-win .topbar {
   #memory .bet-row {
     display: grid;
     grid-template-columns: 1.2fr 1.3fr 1fr 1.6fr;
-    gap: 8px;
+    gap: 4px;
     align-items: center;
   }
 
@@ -2995,18 +2995,19 @@ body.small-win .topbar {
     font-size: 16px;
   }
 
-  .memory-stats {
-    gap: 6px;
-    padding: 8px 10px;
+  .memory-stat {
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    justify-content: center;
+    text-align: center;
   }
 
-  .memory-stat {
-    font-size: 0.65rem;
-    letter-spacing: 0.1em;
-  }
+  #memory #memoryMovesWrap { min-width: 115px; }
+  #memory #memoryMatchesWrap { min-width: 170px; }
+  #memory #memoryPayoutWrap { min-width: 168px; }
 
   .memory-stat span {
-    font-size: 0.65rem;
+    font-size: 0.6rem;
   }
 }
 

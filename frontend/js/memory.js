@@ -32,6 +32,9 @@ export class MemoryGame {
       movesEl: document.getElementById("memoryMoves"),
       matchesEl: document.getElementById("memoryMatches"),
       multiplierEl: document.getElementById("memoryMultiplier"),
+      movesWrap: document.getElementById("memoryMovesWrap"),
+      matchesWrap: document.getElementById("memoryMatchesWrap"),
+      payoutWrap: document.getElementById("memoryPayoutWrap"),
       chipsWrap: document.getElementById("memoryChips"),
       chips: document.querySelectorAll('#memoryChips .chip'),
     };
@@ -71,13 +74,14 @@ export class MemoryGame {
       const moves = state.memory.moves || 0;
       const extra = Math.max(0, moves - pairs);
       const running = Math.max(MIN_MULTIPLIER, MAX_MULTIPLIER - extra * MOVE_PENALTY);
+      const bet = Number(state.memory.bet) || 0;
       if (state.memory.completed) {
         const finalValue = Number.isFinite(state.memory.multiplier)
           ? state.memory.multiplier
           : running;
-        this.ui.multiplierEl.textContent = `${Number(finalValue).toFixed(2)}x`;
+        this.ui.multiplierEl.textContent = `$${Math.round(bet * finalValue)}`;
       } else {
-        this.ui.multiplierEl.textContent = `${running.toFixed(2)}x`;
+        this.ui.multiplierEl.textContent = `$${Math.round(bet * running)}`;
       }
     }
   }
@@ -124,6 +128,18 @@ export class MemoryGame {
       const hide = state.memory.inRound && !state.memory.completed;
       this.ui.clearBtn.disabled = hide;
       this.ui.clearBtn.classList.toggle("hidden", hide);
+    }
+    const showMetrics = state.memory.inRound || state.memory.completed;
+    if (this.ui.movesWrap) this.ui.movesWrap.classList.toggle("hidden", !showMetrics);
+    if (this.ui.matchesWrap) this.ui.matchesWrap.classList.toggle("hidden", !showMetrics);
+    if (this.ui.payoutWrap) this.ui.payoutWrap.classList.toggle("hidden", !showMetrics);
+    if (this.ui.betTotal) {
+      const hideBet = state.memory.inRound;
+      this.ui.betTotal.classList.toggle("hidden", hideBet);
+      const label = this.ui.betTotal.previousElementSibling;
+      if (label && label.tagName === "LABEL") {
+        label.classList.toggle("hidden", hideBet);
+      }
     }
     this.updateStats();
     this.renderBoard();

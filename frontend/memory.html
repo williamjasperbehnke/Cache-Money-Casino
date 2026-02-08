@@ -38,6 +38,9 @@
           <div id="memoryBet" class="total-bet">$0</div>
           <button id="memoryStart" class="btn">Start</button>
           <button id="memoryClear" class="btn ghost">Clear Bet</button>
+          <div class="memory-stat hidden" id="memoryMovesWrap">Moves: <span id="memoryMoves">0</span></div>
+          <div class="memory-stat hidden" id="memoryMatchesWrap">Matches: <span id="memoryMatches">0</span>/12</div>
+          <div class="memory-stat hidden" id="memoryPayoutWrap">Payout: <span id="memoryMultiplier">--</span></div>
         </div>
         <div class="chips" data-target="memoryBet" id="memoryChips">
           <button class="chip" data-amount="5">$5</button>
@@ -45,11 +48,6 @@
           <button class="chip" data-amount="25">$25</button>
           <button class="chip" data-amount="50">$50</button>
           <button class="chip" data-amount="100">$100</button>
-        </div>
-        <div class="memory-stats">
-          <div class="memory-stat">Moves: <span id="memoryMoves">0</span></div>
-          <div class="memory-stat">Matches: <span id="memoryMatches">0</span>/12</div>
-          <div class="memory-stat">Mult: <span id="memoryMultiplier">--</span></div>
         </div>
         <div id="memoryGrid" class="memory-grid" aria-live="polite"></div>
       </section>
