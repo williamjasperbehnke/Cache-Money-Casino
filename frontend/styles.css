@@ -210,7 +210,7 @@ body::before {
 
 .arcade-tabs {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 12px;
   margin-bottom: 18px;
 }
@@ -1608,41 +1608,59 @@ h3 {
 
 .memory-card {
   border-radius: 10px;
-  border: 2px solid rgba(148, 163, 184, 0.35);
-  background: linear-gradient(160deg, rgba(30, 41, 59, 0.95), rgba(2, 6, 23, 0.98));
-  color: #e2e8f0;
+  border: 2px solid var(--card-border);
+  background: var(--card-bg);
+  color: #0f172a;
   aspect-ratio: 1 / 1;
   min-height: 62px;
   display: grid;
   place-items: center;
+  position: relative;
+  overflow: hidden;
   font-size: clamp(28px, 5vw, 40px);
-  text-shadow: 0 2px 0 rgba(2, 6, 23, 0.6);
-  box-shadow: inset 0 0 12px rgba(2, 6, 23, 0.6), 0 6px 0 rgba(2, 6, 23, 0.55);
+  box-shadow: 0 6px 0 rgba(15, 23, 42, 0.5);
   transition: transform 0.15s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
 }
 
 .memory-card:hover {
   transform: translateY(-2px);
   border-color: rgba(125, 211, 252, 0.7);
-  box-shadow: inset 0 0 10px rgba(2, 6, 23, 0.4), 0 8px 0 rgba(2, 6, 23, 0.6);
+  box-shadow: 0 8px 0 rgba(15, 23, 42, 0.6);
+}
+
+.memory-card:not(.revealed):not(.matched) {
+  border-color: var(--neon);
+  color: var(--neon);
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(34, 211, 238, 0.18),
+    rgba(34, 211, 238, 0.18) 20px,
+    rgba(15, 23, 42, 0.92) 20px,
+    rgba(15, 23, 42, 0.92) 40px
+  );
 }
 
 .memory-card.revealed {
-  background: linear-gradient(160deg, rgba(14, 116, 144, 0.6), rgba(2, 6, 23, 0.96));
-  border-color: rgba(125, 211, 252, 0.8);
-  color: #f8fafc;
+  border-color: var(--card-border);
+  background: var(--card-bg);
+  color: #0f172a;
 }
 
 .memory-card.matched {
-  background: linear-gradient(160deg, rgba(34, 197, 94, 0.55), rgba(2, 6, 23, 0.96));
-  border-color: rgba(34, 197, 94, 0.8);
-  color: #f8fafc;
+  border-color: #34d399;
+  background: var(--card-bg);
+  color: #0f172a;
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.45);
 }
 
 .memory-face {
   pointer-events: none;
   display: block;
   line-height: 1;
+}
+
+.memory-card:not(.revealed):not(.matched) .memory-face {
+  text-shadow: 0 0 8px rgba(34, 211, 238, 0.45);
 }
 
 #craps .bet-row [data-tooltip] {
@@ -2645,6 +2663,7 @@ body.small-win .topbar {
 
   .arcade-tabs {
     width: 150%;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
 
   .topbar {
