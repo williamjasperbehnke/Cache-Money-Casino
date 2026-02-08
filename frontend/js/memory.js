@@ -64,6 +64,12 @@ export class MemoryGame {
     state.memory.awaitingClear = Boolean(server.completed);
     state.memory.inRound = Boolean(server.inRound);
     state.memory.cards = Array.isArray(server.cards) ? server.cards : this.buildPlaceholderCards();
+    if (state.memory.inRound) {
+      state.memory.cards = state.memory.cards.map((card) => {
+        if (!card.matched) return { ...card, revealed: false, value: null };
+        return card;
+      });
+    }
   }
 
   updateStats() {
