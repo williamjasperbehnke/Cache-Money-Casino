@@ -118,6 +118,11 @@ export class YahtzeeGame {
     state.yahtzee.dealerDice = Array.isArray(server.dealerDice) ? server.dealerDice : [];
     state.yahtzee.playerScores = server.playerScores || {};
     state.yahtzee.dealerScores = server.dealerScores || {};
+    if (state.yahtzee.inRound) {
+      state.yahtzee.hasRolled = Number(server.rollsLeft) < 3;
+    } else {
+      state.yahtzee.hasRolled = false;
+    }
   }
 
   updateUI() {
