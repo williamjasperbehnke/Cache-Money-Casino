@@ -106,7 +106,7 @@ export class YahtzeeGame {
     };
   }
 
-  applyServerState(payload) {
+  applyServerState(payload, { skipDealerScores = false } = {}) {
     const server = payload?.state;
     if (!server) return;
     state.yahtzee.bet = Number(server.bet) || 0;
@@ -117,7 +117,9 @@ export class YahtzeeGame {
     state.yahtzee.holds = Array.isArray(server.holds) ? server.holds : [false, false, false, false, false];
     state.yahtzee.dealerDice = Array.isArray(server.dealerDice) ? server.dealerDice : [];
     state.yahtzee.playerScores = server.playerScores || {};
-    state.yahtzee.dealerScores = server.dealerScores || {};
+    if (!skipDealerScores) {
+      state.yahtzee.dealerScores = server.dealerScores || {};
+    }
     if (state.yahtzee.inRound) {
       state.yahtzee.hasRolled = Number(server.rollsLeft) < 3;
     } else {
@@ -348,10 +350,12 @@ export class YahtzeeGame {
         state.balance = payload.balance;
         updateBalance();
       }
+      this.applyServerState(payload, { skipDealerScores: true });
+      state.yahtzee.hasRolled = false;
+      this.updateUI();
       setTimeout(() => {
         state.yahtzee.dealerRolling = false;
         this.applyServerState(payload);
-        state.yahtzee.hasRolled = false;
         this.updateUI();
         if (payload?.messages?.length) {
           payload.messages.forEach((msg) => showCenterToast(msg.text, msg.tone, msg.duration));
