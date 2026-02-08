@@ -96,7 +96,6 @@ export class YahtzeeGame {
       startBtn: document.getElementById("yahtzeeStart"),
       clearBtn: document.getElementById("yahtzeeClear"),
       rollBtn: document.getElementById("yahtzeeRoll"),
-      rollsLeft: document.getElementById("yahtzeeRollsLeft"),
       diceWrap: document.getElementById("yahtzeeDice"),
       dealerDiceWrap: document.getElementById("yahtzeeDealerDice"),
       scoreBody: document.getElementById("yahtzeeScores"),
@@ -134,12 +133,10 @@ export class YahtzeeGame {
       this.ui.clearBtn.disabled = state.yahtzee.inRound;
     }
     if (this.ui.rollBtn) {
-      this.ui.rollBtn.disabled = !state.yahtzee.inRound || state.yahtzee.rollsLeft <= 0;
+      const left = state.yahtzee.rollsLeft || 0;
+      this.ui.rollBtn.textContent = state.yahtzee.inRound ? `Roll (${left} left)` : "Roll";
+      this.ui.rollBtn.disabled = !state.yahtzee.inRound || left <= 0;
       this.ui.rollBtn.classList.toggle("hidden", !state.yahtzee.inRound);
-    }
-    if (this.ui.rollsLeft) {
-      this.ui.rollsLeft.textContent = state.yahtzee.inRound ? String(state.yahtzee.rollsLeft) : "—";
-      this.ui.rollsLeft.parentElement?.classList.toggle("hidden", !state.yahtzee.inRound);
     }
     if (this.ui.chipsWrap) {
       this.ui.chipsWrap.classList.toggle("hidden", state.yahtzee.inRound);
@@ -181,7 +178,10 @@ export class YahtzeeGame {
   renderDice() {
     if (!this.ui.diceWrap) return;
     this.ui.diceWrap.innerHTML = "";
-    const dice = state.yahtzee.dice || [];
+    let dice = state.yahtzee.dice || [];
+    if (!state.yahtzee.inRound && dice.length === 0) {
+      dice = [1, 1, 1, 1, 1];
+    }
     dice.forEach((die, index) => {
       const btn = this.buildDie(die, {
         interactive: state.yahtzee.inRound,
@@ -194,6 +194,9 @@ export class YahtzeeGame {
     if (!this.ui.dealerDiceWrap) return;
     this.ui.dealerDiceWrap.innerHTML = "";
     let dealerDice = state.yahtzee.dealerDice || [];
+    if (dealerDice.length === 0) {
+      dealerDice = [1, 1, 1, 1, 1];
+    }
     if (state.yahtzee.dealerRolling && dealerDice.length === 0) {
       dealerDice = Array.from({ length: 5 }, () => Math.floor(Math.random() * 6) + 1);
     }
@@ -219,12 +222,17 @@ export class YahtzeeGame {
 
       const player = document.createElement("div");
       const playerScore = state.yahtzee.playerScores?.[cat.key];
-      const available = !Number.isFinite(playerScore) && state.yahtzee.inRound;
+      const available =
+        !Number.isFinite(playerScore) && state.yahtzee.inRound && state.yahtzee.hasRolled;
       const preview = computeScore(cat.key, dice);
       const action = document.createElement("button");
       action.type = "button";
       action.className = "yahtzee-score-action";
-      action.textContent = Number.isFinite(playerScore) ? String(playerScore) : String(preview);
+      action.textContent = Number.isFinite(playerScore)
+        ? String(playerScore)
+        : state.yahtzee.hasRolled
+        ? String(preview)
+        : "—";
       action.disabled = !available;
       action.dataset.category = cat.key;
       action.title = available ? `Score ${preview}` : "Locked";
@@ -273,8 +281,6 @@ export class YahtzeeGame {
       showCenterToast("Not enough credits.", "danger");
       return;
     }
-    state.yahtzee.rolling = true;
-    this.updateUI();
     const unlock = lockPanel("yahtzee");
     try {
       const payload = await auth.request("/api/games/yahtzee/start", {
@@ -287,15 +293,11 @@ export class YahtzeeGame {
         updateBalance();
       }
       state.yahtzee.betAmount = 0;
-      playSfx("spin");
-      setTimeout(() => {
-        state.yahtzee.rolling = false;
-        this.applyServerState(payload);
-        this.updateUI();
-        showCenterToast("Roll the dice!", "win");
-      }, 350);
+      this.applyServerState(payload);
+      state.yahtzee.hasRolled = false;
+      this.updateUI();
+      showCenterToast("Roll to start.", "win");
     } catch (err) {
-      state.yahtzee.rolling = false;
       showCenterToast(err?.message || "Start failed.", "danger");
     } finally {
       unlock();
@@ -314,6 +316,7 @@ export class YahtzeeGame {
         body: JSON.stringify({ holds: state.yahtzee.holds }),
       });
       this.applyServerState(payload);
+      state.yahtzee.hasRolled = true;
       state.yahtzee.rolling = false;
       this.updateUI();
       playSfx("spin");
@@ -328,7 +331,6 @@ export class YahtzeeGame {
   async scoreCategory(category) {
     if (!state.yahtzee.inRound) return;
     state.yahtzee.dealerRolling = true;
-    state.yahtzee.rolling = false;
     this.updateUI();
     const unlock = lockPanel("yahtzee");
     try {
@@ -344,20 +346,14 @@ export class YahtzeeGame {
       setTimeout(() => {
         state.yahtzee.dealerRolling = false;
         this.applyServerState(payload);
-        state.yahtzee.rolling = true;
+        state.yahtzee.hasRolled = false;
         this.updateUI();
-        playSfx("spin");
-        setTimeout(() => {
-          state.yahtzee.rolling = false;
-          this.updateUI();
-          if (payload?.messages?.length) {
-            payload.messages.forEach((msg) => showCenterToast(msg.text, msg.tone, msg.duration));
-          }
-        }, 350);
+        if (payload?.messages?.length) {
+          payload.messages.forEach((msg) => showCenterToast(msg.text, msg.tone, msg.duration));
+        }
       }, 500);
     } catch (err) {
       state.yahtzee.dealerRolling = false;
-      state.yahtzee.rolling = false;
       showCenterToast(err?.message || "Score failed.", "danger");
     } finally {
       unlock();
@@ -399,6 +395,7 @@ export class YahtzeeGame {
     state.yahtzee.holds = [false, false, false, false, false];
     state.yahtzee.playerScores = {};
     state.yahtzee.dealerScores = {};
+    state.yahtzee.hasRolled = false;
     this.updateUI();
   }
 

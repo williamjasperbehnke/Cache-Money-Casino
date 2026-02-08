@@ -149,8 +149,7 @@ const applyYahtzeeScore = (state, category) => {
   state.playerScores[category] = score;
   state.rollsLeft = 3;
   state.holds = [false, false, false, false, false];
-  state.dice = Array.from({ length: 5 }, () => rollDie());
-  state.dealerDice = state.dice.slice();
+  // Keep player dice between rounds; only change on explicit roll.
 
   const dealerResult = dealerTurn(state);
   const done =

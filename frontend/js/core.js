@@ -106,6 +106,7 @@ export const state = {
     dealerDice: [],
     dealerRolling: false,
     rolling: false,
+    hasRolled: false,
     playerScores: {},
     dealerScores: {},
   },

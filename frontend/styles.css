@@ -1818,16 +1818,6 @@ h3 {
   text-transform: uppercase;
 }
 
-#yahtzee .yahtzee-rolls {
-  font-size: 12px;
-  color: #93c5fd;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 6px 10px;
-  border-radius: 10px;
-  border: 2px solid rgba(148, 163, 184, 0.25);
-  background: rgba(15, 23, 42, 0.6);
-}
 
 #craps .bet-row [data-tooltip] {
   position: relative;
@@ -3219,6 +3209,25 @@ body.small-win .topbar {
 
   #yahtzee .yahtzee-board {
     grid-template-columns: 1fr;
+  }
+
+  #yahtzee .bet-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+  }
+
+  #yahtzee #yahtzeeBet {
+    min-width: 120px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  #yahtzee #yahtzeeStart,
+  #yahtzee #yahtzeeClear,
+  #yahtzee #yahtzeeRoll {
+    flex: 1 1 auto;
   }
 }
 
