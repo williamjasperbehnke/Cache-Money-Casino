@@ -75,7 +75,16 @@ const respondWithState = (status, game, payload) =>
 
 exports.handler = async (event) => {
   const { method, path } = getRoute(event);
-  console.log("route", { method, path, rawPath: event?.rawPath, eventPath: event?.path });
+  console.log("route", {
+    method,
+    path,
+    rawPath: event?.rawPath,
+    eventPath: event?.path,
+    pathJson: JSON.stringify(path),
+    pathLen: typeof path === "string" ? path.length : null,
+    endsHoldem: typeof path === "string" ? path.endsWith("/games/holdem/deal") : null,
+    endsPoker: typeof path === "string" ? path.endsWith("/games/poker/deal") : null,
+  });
   if (method === "OPTIONS") return jsonResponse(204, {}, CORS_ORIGIN);
 
   const token = getAuthToken(event);
