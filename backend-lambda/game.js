@@ -21,6 +21,11 @@ const {
   finalizeMemoryGame,
 } = require("./game/memory");
 const { spinSlots } = require("./game/slots");
+const {
+  createYahtzeeState,
+  applyYahtzeeRoll,
+  applyYahtzeeScore,
+} = require("./game/yahtzee");
 const { sanitizeState } = require("./game/sanitize");
 const {
   createPokerState,
@@ -279,6 +284,67 @@ exports.handler = async (event) => {
       },
       CORS_ORIGIN
     );
+  }
+
+  if (method === "POST" && path.endsWith("/games/yahtzee/start")) {
+    const { bet } = parseJson(event);
+    const wager = Number(bet) || 0;
+    if (wager <= 0) {
+      return jsonResponse(400, { error: "Place a bet to start." }, CORS_ORIGIN);
+    }
+    const { user, balance } = await resolveBalance(session);
+    if (balance < wager) {
+      return jsonResponse(400, { error: "Not enough credits." }, CORS_ORIGIN);
+    }
+    const nextBalance = await persistBalance(session, user, balance - wager);
+    const state = createYahtzeeState({ bet: wager });
+    await saveGameState(token, session, "yahtzee", state);
+    return respondWithState(200, "yahtzee", { state, balance: nextBalance });
+  }
+
+  if (method === "POST" && path.endsWith("/games/yahtzee/roll")) {
+    const { holds } = parseJson(event);
+    const state = await getGameState(token, "yahtzee");
+    const result = applyYahtzeeRoll(state, holds);
+    if (result?.error) {
+      return jsonResponse(400, { error: result.error }, CORS_ORIGIN);
+    }
+    await saveGameState(token, session, "yahtzee", state);
+    return respondWithState(200, "yahtzee", { state });
+  }
+
+  if (method === "POST" && path.endsWith("/games/yahtzee/score")) {
+    const { category } = parseJson(event);
+    const state = await getGameState(token, "yahtzee");
+    const { user, balance } = await resolveBalance(session);
+    const result = applyYahtzeeScore(state, category);
+    if (result?.error) {
+      return jsonResponse(400, { error: result.error }, CORS_ORIGIN);
+    }
+    let nextBalance = balance;
+    if (typeof result.payout === "number") {
+      nextBalance = await persistBalance(session, user, balance + result.payout);
+    }
+    if (result?.net !== undefined && user) {
+      user.stats = updateStats(user.stats, {
+        game: "yahtzee",
+        bet: state.bet,
+        net: result.net,
+        result: result.result,
+      });
+      await putUser(user);
+      nextBalance = user.balance;
+    }
+    await saveGameState(token, session, "yahtzee", state);
+    return respondWithState(200, "yahtzee", {
+      state,
+      balance: nextBalance,
+      messages: result.messages || [],
+      result: result.result,
+      playerTotal: result.playerTotal,
+      dealerTotal: result.dealerTotal,
+      payout: result.payout,
+    });
   }
 
   if (method === "POST" && path.endsWith("/games/blackjack/deal")) {

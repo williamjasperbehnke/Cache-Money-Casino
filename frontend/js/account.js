@@ -8,6 +8,7 @@ const gameLabels = {
   roulette: "Roulette",
   craps: "Craps",
   memory: "Memory",
+  yahtzee: "Yahtzee",
   slots: "Slots",
 };
 

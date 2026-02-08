@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Cache Money Casino - Account</title>
+    <title>Cache Money Casino - Yahtzee.exe</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -27,49 +27,45 @@
         <a class="tab" href="blackjack.html">Blackjack</a>
         <a class="tab" href="roulette.html">Roulette</a>
         <a class="tab" href="craps.html">Craps</a>
-        <a class="tab" href="yahtzee.html">Yahtzee</a>
+        <a class="tab active" href="yahtzee.html">Yahtzee</a>
         <a class="tab" href="memory.html">Memory</a>
         <a class="tab" href="slots.html">Slots</a>
       </nav>
 
-      <section class="panel" id="account">
-        <h2>Account</h2>
-        <div class="account-summary account-summary-top">
-          <div class="account-card account-wide">
-            <h3>Profile</h3>
-            <div class="profile-row">
-              <div>
-                <div id="accountName" class="account-value">Guest</div>
-                <div id="accountBalance" class="account-value">$0</div>
-              </div>
-              <div class="profile-actions">
-                <button id="freeCreditsBtn" class="btn ghost hidden">Free Credits</button>
-                <button id="signOutBtn" class="btn ghost hidden">Sign Out</button>
-              </div>
+      <section class="panel" id="yahtzee">
+        <h2>Yahtzee.exe</h2>
+        <div class="bet-row">
+          <label>Total Bet</label>
+          <div id="yahtzeeBet" class="total-bet">$0</div>
+          <button id="yahtzeeStart" class="btn">Start</button>
+          <button id="yahtzeeClear" class="btn ghost">Clear Bet</button>
+          <button id="yahtzeeRoll" class="btn">Roll</button>
+          <div class="yahtzee-rolls">Rolls Left: <span id="yahtzeeRollsLeft">—</span></div>
+        </div>
+        <div class="chips" data-target="yahtzeeBet" id="yahtzeeChips">
+          <button class="chip" data-amount="5">$5</button>
+          <button class="chip" data-amount="10">$10</button>
+          <button class="chip" data-amount="25">$25</button>
+          <button class="chip" data-amount="50">$50</button>
+          <button class="chip" data-amount="100">$100</button>
+        </div>
+        <div class="yahtzee-board">
+          <div class="yahtzee-dice" id="yahtzeeDice" aria-live="polite"></div>
+          <div class="yahtzee-scores">
+            <div class="yahtzee-score-head">
+              <span>Category</span>
+              <span>You</span>
+              <span>Dealer</span>
+              <span>Action</span>
+            </div>
+            <div id="yahtzeeScores" class="yahtzee-score-body"></div>
+            <div class="yahtzee-score-totals">
+              <span>Total</span>
+              <span id="yahtzeePlayerTotal">0</span>
+              <span id="yahtzeeDealerTotal">0</span>
+              <span></span>
             </div>
           </div>
-        </div>
-        <div class="account-summary account-summary-bottom">
-          <div class="account-card">
-            <h3>Totals</h3>
-            <div class="account-stat">Total Bets: <span id="statTotalBets">0</span></div>
-            <div class="account-stat">Wins: <span id="statWins">0</span></div>
-            <div class="account-stat">Losses: <span id="statLosses">0</span></div>
-            <div class="account-stat">Net Profit: <span id="statNet">0</span></div>
-          </div>
-          <div class="account-card">
-            <h3>Favorite Game</h3>
-            <div id="statFavorite" class="account-value">—</div>
-            <div class="account-stat">Best Win Rate: <span id="statWinRate">—</span></div>
-          </div>
-        </div>
-        <div class="account-card account-section-gap">
-          <h3>Per Game</h3>
-          <div id="gameStats" class="account-grid"></div>
-        </div>
-        <div class="account-card">
-          <h3>Recent Results</h3>
-          <div id="recentResults" class="account-list"></div>
         </div>
       </section>
     </main>
@@ -101,7 +97,6 @@
       </div>
     </div>
 
-    <script src="js/config.js"></script>
-    <script type="module" src="js/account.js"></script>
+    <script type="module" src="js/page-yahtzee.js"></script>
   </body>
 </html>

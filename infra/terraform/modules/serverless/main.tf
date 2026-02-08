@@ -362,6 +362,24 @@ resource "aws_apigatewayv2_route" "memory_flip" {
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
+resource "aws_apigatewayv2_route" "yahtzee_start" {
+  api_id    = aws_apigatewayv2_api.rest.id
+  route_key = "POST /api/games/yahtzee/start"
+  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
+}
+
+resource "aws_apigatewayv2_route" "yahtzee_roll" {
+  api_id    = aws_apigatewayv2_api.rest.id
+  route_key = "POST /api/games/yahtzee/roll"
+  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
+}
+
+resource "aws_apigatewayv2_route" "yahtzee_score" {
+  api_id    = aws_apigatewayv2_api.rest.id
+  route_key = "POST /api/games/yahtzee/score"
+  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
+}
+
 resource "aws_apigatewayv2_route" "blackjack_deal" {
   api_id    = aws_apigatewayv2_api.rest.id
   route_key = "POST /api/games/blackjack/deal"

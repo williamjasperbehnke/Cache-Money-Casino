@@ -95,6 +95,17 @@ export const state = {
   slots: {
     bet: 0,
   },
+  yahtzee: {
+    betAmount: 0,
+    bet: 0,
+    inRound: false,
+    phase: "idle",
+    rollsLeft: 0,
+    dice: [],
+    holds: [false, false, false, false, false],
+    playerScores: {},
+    dealerScores: {},
+  },
   holdem: {
     pot: 0,
     playerPaid: 0,
