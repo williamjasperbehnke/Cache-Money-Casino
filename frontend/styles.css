@@ -2978,7 +2978,7 @@ body.small-win .topbar {
 
   #memory .bet-row {
     display: grid;
-    grid-template-columns: 1.3fr 0.8fr 0.8fr 1.3fr;
+    grid-template-columns: 1.2fr 1.3fr 1fr 1.6fr;
     gap: 8px;
     align-items: center;
   }
@@ -2992,7 +2992,7 @@ body.small-win .topbar {
 
   #memory #memoryBet {
     text-align: center;
-    font-size: 17px;
+    font-size: 16px;
   }
 
   .memory-stats {
