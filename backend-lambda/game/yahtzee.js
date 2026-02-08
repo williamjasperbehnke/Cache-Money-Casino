@@ -97,6 +97,7 @@ const createYahtzeeState = ({ bet }) => ({
   rollsLeft: 3,
   dice: Array.from({ length: 5 }, () => rollDie()),
   holds: [false, false, false, false, false],
+  dealerDice: [],
   playerScores: emptyScorecard(),
   dealerScores: emptyScorecard(),
 });
@@ -150,6 +151,7 @@ const applyYahtzeeScore = (state, category) => {
   state.dice = Array.from({ length: 5 }, () => rollDie());
 
   const dealerResult = dealerTurn(state);
+  state.dealerDice = dealerResult.dice;
   const done =
     availableCategories(state.playerScores).length === 0 &&
     availableCategories(state.dealerScores).length === 0;
