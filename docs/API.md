@@ -352,6 +352,223 @@ Flip a card by index (0-23).
 }
 ```
 
+### Yahtzee
+
+#### POST /api/games/yahtzee/start
+Start a Yahtzee round with a flat bet.
+
+**Body**
+```
+{ "bet": 25 }
+```
+
+**Response 200**
+```
+{
+  "state": {
+    "bet": 25,
+    "inRound": true,
+    "phase": "player",
+    "rollsLeft": 3,
+    "dice": [3, 5, 2, 6, 1],
+    "holds": [false, false, false, false, false],
+    "playerScores": {
+      "ones": null,
+      "twos": null,
+      "threes": null,
+      "fours": null,
+      "fives": null,
+      "sixes": null,
+      "threeKind": null,
+      "fourKind": null,
+      "fullHouse": null,
+      "smallStraight": null,
+      "largeStraight": null,
+      "yahtzee": null,
+      "chance": null
+    },
+    "dealerScores": {
+      "ones": null,
+      "twos": null,
+      "threes": null,
+      "fours": null,
+      "fives": null,
+      "sixes": null,
+      "threeKind": null,
+      "fourKind": null,
+      "fullHouse": null,
+      "smallStraight": null,
+      "largeStraight": null,
+      "yahtzee": null,
+      "chance": null
+    }
+  },
+  "balance": 975
+}
+```
+
+#### POST /api/games/yahtzee/roll
+Roll the dice again, optionally holding some dice.
+
+**Body**
+```
+{ "holds": [true, false, false, true, false] }
+```
+
+**Response 200**
+```
+{
+  "state": {
+    "bet": 25,
+    "inRound": true,
+    "phase": "player",
+    "rollsLeft": 2,
+    "dice": [3, 1, 4, 6, 2],
+    "holds": [true, false, false, true, false],
+    "playerScores": {
+      "ones": null,
+      "twos": null,
+      "threes": null,
+      "fours": null,
+      "fives": null,
+      "sixes": null,
+      "threeKind": null,
+      "fourKind": null,
+      "fullHouse": null,
+      "smallStraight": null,
+      "largeStraight": null,
+      "yahtzee": null,
+      "chance": null
+    },
+    "dealerScores": {
+      "ones": null,
+      "twos": null,
+      "threes": null,
+      "fours": null,
+      "fives": null,
+      "sixes": null,
+      "threeKind": null,
+      "fourKind": null,
+      "fullHouse": null,
+      "smallStraight": null,
+      "largeStraight": null,
+      "yahtzee": null,
+      "chance": null
+    }
+  }
+}
+```
+
+#### POST /api/games/yahtzee/score
+Score a category for the player. Dealer will automatically score a category.
+
+**Body**
+```
+{ "category": "fours" }
+```
+
+**Response 200 (round continues)**
+```
+{
+  "state": {
+    "bet": 25,
+    "inRound": true,
+    "phase": "player",
+    "rollsLeft": 3,
+    "dice": [2, 5, 2, 3, 6],
+    "holds": [false, false, false, false, false],
+    "playerScores": {
+      "ones": null,
+      "twos": null,
+      "threes": null,
+      "fours": 8,
+      "fives": null,
+      "sixes": null,
+      "threeKind": null,
+      "fourKind": null,
+      "fullHouse": null,
+      "smallStraight": null,
+      "largeStraight": null,
+      "yahtzee": null,
+      "chance": null
+    },
+    "dealerScores": {
+      "ones": null,
+      "twos": null,
+      "threes": null,
+      "fours": null,
+      "fives": null,
+      "sixes": null,
+      "threeKind": null,
+      "fourKind": null,
+      "fullHouse": null,
+      "smallStraight": null,
+      "largeStraight": null,
+      "yahtzee": null,
+      "chance": 18
+    }
+  },
+  "messages": [
+    { "text": "You scored 8 on fours.", "tone": "win", "duration": 1600 },
+    { "text": "Dealer scored 18 on chance.", "tone": "danger", "duration": 1600 }
+  ]
+}
+```
+
+**Response 200 (final reveal)**
+```
+{
+  "state": {
+    "bet": 25,
+    "inRound": false,
+    "phase": "reveal",
+    "rollsLeft": 3,
+    "dice": [6, 6, 5, 2, 1],
+    "holds": [false, false, false, false, false],
+    "playerScores": {
+      "ones": 3,
+      "twos": 6,
+      "threes": 9,
+      "fours": 8,
+      "fives": 20,
+      "sixes": 12,
+      "threeKind": 0,
+      "fourKind": 0,
+      "fullHouse": 0,
+      "smallStraight": 30,
+      "largeStraight": 40,
+      "yahtzee": 0,
+      "chance": 22
+    },
+    "dealerScores": {
+      "ones": 1,
+      "twos": 4,
+      "threes": 12,
+      "fours": 4,
+      "fives": 10,
+      "sixes": 18,
+      "threeKind": 24,
+      "fourKind": 0,
+      "fullHouse": 25,
+      "smallStraight": 30,
+      "largeStraight": 0,
+      "yahtzee": 0,
+      "chance": 19
+    }
+  },
+  "balance": 1050,
+  "messages": [
+    { "text": "You scored 22 on chance.", "tone": "win", "duration": 1600 },
+    { "text": "Dealer scored 19 on chance.", "tone": "danger", "duration": 1600 },
+    { "text": "You win! 150 to 147.", "tone": "win", "duration": 2200 }
+  ],
+  "result": "win",
+  "playerTotal": 150,
+  "dealerTotal": 147,
+  "payout": 50
+}
+```
+
 ### Slots
 
 #### POST /api/games/slots/spin
