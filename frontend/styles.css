@@ -3017,6 +3017,12 @@ body.small-win .topbar {
     font-size: clamp(28px, 5vw, 40px);
   }
 
+  .memory-card:hover {
+    transform: none;
+    border-color: var(--card-border);
+    box-shadow: 0 6px 0 rgba(15, 23, 42, 0.5);
+  }
+
   #memory .bet-row {
     display: grid;
     grid-template-columns: 1.2fr 1.3fr 1fr 1.6fr;
