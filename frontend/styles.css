@@ -1572,6 +1572,40 @@ h3 {
   animation: tooltip-fadeout 0.2s ease 1.8s forwards;
 }
 
+#craps .bet-row [data-tooltip] {
+  position: relative;
+  z-index: 50;
+}
+
+#craps .bet-row [data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translate(-50%, 0);
+  background: rgba(15, 23, 42, 0.95);
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 0.65rem;
+  letter-spacing: 0.01em;
+  white-space: normal;
+  text-transform: none;
+  width: max-content;
+  max-width: 260px;
+  line-height: 1.2;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+#craps .bet-row [data-tooltip]:hover::after {
+  opacity: 1;
+  transform: translate(-50%, -6px);
+  animation: tooltip-fadeout 0.2s ease 1.8s forwards;
+}
+
 @keyframes tooltip-fadeout {
   to {
     opacity: 0;
@@ -2800,6 +2834,10 @@ body.small-win .topbar {
 
   .craps-table [data-tooltip]::after {
     max-width: 220px;
+  }
+
+  #craps .bet-row [data-tooltip]::after {
+    max-width: 130px;
   }
 
   #craps .bet-row {
