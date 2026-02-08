@@ -6,6 +6,7 @@ import {
   bindBetChips,
   lockPanel,
   playSfx,
+  clearGameState,
 } from "./core.js";
 import { auth } from "./auth.js";
 
@@ -355,6 +356,7 @@ export class MemoryGame {
       state.memory.completed = true;
       state.memory.awaitingClear = true;
       state.memory.multiplier = 0;
+      clearGameState("memory");
       showCenterToast("You gave up.", "danger");
       this.updateUI();
       this.scheduleFinishReset();
