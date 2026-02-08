@@ -184,7 +184,7 @@ export class YahtzeeGame {
     if (!this.ui.diceWrap) return;
     this.ui.diceWrap.innerHTML = "";
     let dice = state.yahtzee.dice || [];
-    if (!state.yahtzee.inRound && dice.length === 0) {
+    if (dice.length === 0) {
       dice = [1, 1, 1, 1, 1];
     }
     dice.forEach((die, index) => {
