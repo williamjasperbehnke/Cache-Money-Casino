@@ -40,6 +40,22 @@ const resolveField = (roll, fieldBet) => {
   return { payout: 0, win: false };
 };
 
+const createCrapsState = () => {
+  return {
+    point: 0,
+    bets: {
+      pass: 0,
+      dont: 0,
+      field: 0,
+      come: 0,
+      place: { 4: 0, 5: 0, 6: 0, 8: 0, 9: 0, 10: 0 },
+      hardways: { 4: 0, 6: 0, 8: 0, 10: 0 },
+      comePoints: { 4: 0, 5: 0, 6: 0, 8: 0, 9: 0, 10: 0 },
+    },
+    inRound: true,
+  }
+};
+
 const resolveCrapsRoll = (state, bets, balance, paid, tableOn = true, rng = Math.random) => {
   const cleanBets = normalizeBets(bets);
   const wager = totalBet(cleanBets);
@@ -190,7 +206,6 @@ const resolveCrapsRoll = (state, bets, balance, paid, tableOn = true, rng = Math
 };
 
 module.exports = {
-  normalizeBets,
-  totalBet,
+  createCrapsState,
   resolveCrapsRoll,
 };

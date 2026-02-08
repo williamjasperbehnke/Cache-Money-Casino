@@ -14,7 +14,7 @@ const {
   spinOutcome,
   computePayout,
 } = require("./game/roulette");
-const { resolveCrapsRoll } = require("./game/craps");
+const { createCrapsState, resolveCrapsRoll } = require("./game/craps");
 const { spinSlots } = require("./game/slots");
 const { sanitizeState } = require("./game/sanitize");
 const {
@@ -149,19 +149,7 @@ exports.handler = async (event) => {
     const body = parseJson(event);
     const bets = body.bets || {};
     const paid = Boolean(body.paid);
-    const state = (await getGameState(token, "craps")) || {
-      point: 0,
-      bets: {
-        pass: 0,
-        dont: 0,
-        field: 0,
-        come: 0,
-        place: { 4: 0, 5: 0, 6: 0, 8: 0, 9: 0, 10: 0 },
-        hardways: { 4: 0, 6: 0, 8: 0, 10: 0 },
-        comePoints: { 4: 0, 5: 0, 6: 0, 8: 0, 9: 0, 10: 0 },
-      },
-      inRound: true,
-    };
+    const state = (await getGameState(token, "craps")) || createCrapsState();
     const { user, balance } = await resolveBalance(session);
     const tableOn = body.tableOn !== false;
     const result = resolveCrapsRoll(state, bets, balance, paid, tableOn);

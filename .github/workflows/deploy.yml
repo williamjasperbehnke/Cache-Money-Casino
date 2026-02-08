@@ -48,7 +48,14 @@ jobs:
 
       - name: Terraform Apply
         working-directory: infra/terraform
-        run: terraform apply -auto-approve
+        run: |
+          terraform import 'module.serverless[0].aws_cloudwatch_log_group.lambda["auth"]' /aws/lambda/cache-money-casino-auth
+          terraform import 'module.serverless[0].aws_cloudwatch_log_group.lambda["account"]' /aws/lambda/cache-money-casino-account
+          terraform import 'module.serverless[0].aws_cloudwatch_log_group.lambda["game"]' /aws/lambda/cache-money-casino-game
+          terraform import 'module.serverless[0].aws_cloudwatch_log_group.lambda["ws_connect"]' /aws/lambda/cache-money-casino-ws-connect
+          terraform import 'module.serverless[0].aws_cloudwatch_log_group.lambda["ws_disconnect"]' /aws/lambda/cache-money-casino-ws-disconnect
+          terraform import 'module.serverless[0].aws_cloudwatch_log_group.lambda["ws_message"]' /aws/lambda/cache-money-casino-ws-message
+          terraform apply -auto-approve
 
       - name: Get bucket name
         id: bucket
