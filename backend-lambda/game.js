@@ -75,6 +75,7 @@ const respondWithState = (status, game, payload) =>
 
 exports.handler = async (event) => {
   const { method, path } = getRoute(event);
+  console.log("route", { method, path, rawPath: event?.rawPath, eventPath: event?.path });
   if (method === "OPTIONS") return jsonResponse(204, {}, CORS_ORIGIN);
 
   const token = getAuthToken(event);
