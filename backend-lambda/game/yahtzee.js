@@ -5,8 +5,8 @@ const CATEGORIES = [
   "fours",
   "fives",
   "sixes",
-  "threeKind",
-  "fourKind",
+  "threeOfAKind",
+  "fourOfAKind",
   "fullHouse",
   "smallStraight",
   "largeStraight",
@@ -59,9 +59,9 @@ const computeScore = (category, dice) => {
       return counts[5] * 5;
     case "sixes":
       return counts[6] * 6;
-    case "threeKind":
+    case "threeOfAKind":
       return counts.some((c) => c >= 3) ? total : 0;
-    case "fourKind":
+    case "fourOfAKind":
       return counts.some((c) => c >= 4) ? total : 0;
     case "fullHouse":
       return counts.some((c) => c === 3) && counts.some((c) => c === 2) ? 25 : 0;
@@ -156,9 +156,17 @@ const applyYahtzeeScore = (state, category) => {
     availableCategories(state.playerScores).length === 0 &&
     availableCategories(state.dealerScores).length === 0;
 
+  const categoryLabel = (key) =>
+    key
+      .replace(/([A-Z])/g, " $1")
+      .replace(/^./, (char) => char.toUpperCase());
   const messages = [
-    { text: `You scored ${score} on ${category}.`, tone: "win", duration: 1600 },
-    { text: `Dealer scored ${dealerResult.score} on ${dealerResult.category}.`, tone: "danger", duration: 1600 },
+    { text: `You scored ${score} on ${categoryLabel(category)}.`, tone: "win", duration: 1600 },
+    {
+      text: `Dealer scored ${dealerResult.score} on ${categoryLabel(dealerResult.category)}.`,
+      tone: "danger",
+      duration: 1600,
+    },
   ];
 
   if (!done) {

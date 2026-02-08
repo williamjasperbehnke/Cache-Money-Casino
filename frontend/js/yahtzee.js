@@ -17,8 +17,8 @@ const CATEGORIES = [
   { key: "fours", label: "Fours" },
   { key: "fives", label: "Fives" },
   { key: "sixes", label: "Sixes" },
-  { key: "threeKind", label: "Three of a Kind" },
-  { key: "fourKind", label: "Four of a Kind" },
+  { key: "threeOfAKind", label: "Three of a Kind" },
+  { key: "fourOfAKind", label: "Four of a Kind" },
   { key: "fullHouse", label: "Full House" },
   { key: "smallStraight", label: "Small Straight" },
   { key: "largeStraight", label: "Large Straight" },
@@ -66,9 +66,9 @@ const computeScore = (category, dice) => {
       return counts[5] * 5;
     case "sixes":
       return counts[6] * 6;
-    case "threeKind":
+    case "threeOfAKind":
       return counts.some((c) => c >= 3) ? total : 0;
-    case "fourKind":
+    case "fourOfAKind":
       return counts.some((c) => c >= 4) ? total : 0;
     case "fullHouse":
       return counts.some((c) => c === 3) && counts.some((c) => c === 2) ? 25 : 0;
