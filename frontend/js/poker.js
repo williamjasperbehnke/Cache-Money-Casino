@@ -210,6 +210,8 @@ export class PokerGame {
   }
 
   showResult(payload) {
+    if (!payload || typeof payload.result !== "number") return null;
+    if (!payload.playerLabel || !payload.dealerLabel) return null;
     const playerResult = document.getElementById("pokerPlayerResult");
     const dealerResult = document.getElementById("pokerDealerResult");
     if (playerResult) playerResult.textContent = `Player: ${payload.playerLabel}`;

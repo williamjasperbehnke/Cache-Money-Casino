@@ -3002,9 +3002,9 @@ body.small-win .topbar {
     text-align: center;
   }
 
-  #memory #memoryMovesWrap { min-width: 115px; }
+  #memory #memoryMovesWrap { min-width: 125px; }
   #memory #memoryMatchesWrap { min-width: 170px; }
-  #memory #memoryPayoutWrap { min-width: 168px; }
+  #memory #memoryPayoutWrap { min-width: 160px; }
 
   .memory-stat span {
     font-size: 0.6rem;
