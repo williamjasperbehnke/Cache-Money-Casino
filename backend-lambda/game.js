@@ -75,16 +75,6 @@ const respondWithState = (status, game, payload) =>
 
 exports.handler = async (event) => {
   const { method, path } = getRoute(event);
-  console.log("route", {
-    method,
-    path,
-    rawPath: event?.rawPath,
-    eventPath: event?.path,
-    pathJson: JSON.stringify(path),
-    pathLen: typeof path === "string" ? path.length : null,
-    endsHoldem: typeof path === "string" ? path.endsWith("/games/holdem/deal") : null,
-    endsPoker: typeof path === "string" ? path.endsWith("/games/poker/deal") : null,
-  });
   if (method === "OPTIONS") return jsonResponse(204, {}, CORS_ORIGIN);
 
   const token = getAuthToken(event);
@@ -448,6 +438,12 @@ exports.handler = async (event) => {
         showdown: showdownResult.showdown,
       });
     }
+    await saveGameState(token, session, "holdem", state);
+    return respondWithState(200, "holdem", {
+      state,
+      balance: nextBalance,
+      messages: [{ text: message, tone: "win", duration: 1600 }],
+    });
   }
 
   if (method === "POST" && path.endsWith("/games/holdem/action")) {
