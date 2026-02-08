@@ -21,6 +21,7 @@ export class MemoryGame {
     this.ui = {};
     this.flipResetTimer = null;
     this.finishTimer = null;
+    this.prevRevealed = new Set();
   }
 
   cacheElements() {
@@ -92,13 +93,20 @@ export class MemoryGame {
     const cards = Array.isArray(state.memory.cards) && state.memory.cards.length
       ? state.memory.cards
       : this.buildPlaceholderCards();
+    const nextRevealed = new Set();
     this.ui.grid.innerHTML = "";
     cards.forEach((card, index) => {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "memory-card";
       button.dataset.index = String(index);
-      if (card.revealed) button.classList.add("revealed");
+      if (card.revealed) {
+        button.classList.add("revealed");
+        nextRevealed.add(index);
+        if (!this.prevRevealed.has(index)) {
+          button.classList.add("just-revealed");
+        }
+      }
       if (card.matched) button.classList.add("matched");
       const face = document.createElement("span");
       face.className = "memory-face";
@@ -106,6 +114,7 @@ export class MemoryGame {
       button.appendChild(face);
       this.ui.grid.appendChild(button);
     });
+    this.prevRevealed = nextRevealed;
   }
 
   updateUI() {
@@ -271,6 +280,7 @@ export class MemoryGame {
     state.memory.cols = DEFAULT_COLS;
     state.memory.cards = this.buildPlaceholderCards();
     state.memory.multiplier = 0;
+    this.prevRevealed.clear();
     if (this.flipResetTimer) {
       clearTimeout(this.flipResetTimer);
       this.flipResetTimer = null;
