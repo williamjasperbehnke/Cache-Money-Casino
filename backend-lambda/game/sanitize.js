@@ -44,11 +44,27 @@ const sanitizeHoldemState = (state) => {
   return next;
 };
 
+const sanitizeMemoryState = (state) => {
+  if (!state) return state;
+  const next = { ...state };
+  const deck = Array.isArray(state.deck) ? state.deck : [];
+  const revealed = Array.isArray(state.revealed) ? state.revealed : [];
+  const matched = Array.isArray(state.matched) ? state.matched : [];
+  next.cards = deck.map((value, index) => ({
+    value: revealed[index] || matched[index] ? value : null,
+    revealed: Boolean(revealed[index]),
+    matched: Boolean(matched[index]),
+  }));
+  delete next.deck;
+  return next;
+};
+
 const sanitizeState = (game, state) => {
   if (!state) return state;
   if (game === "blackjack") return sanitizeBlackjackState(state);
   if (game === "poker") return sanitizePokerState(state);
   if (game === "holdem") return sanitizeHoldemState(state);
+  if (game === "memory") return sanitizeMemoryState(state);
   return state;
 };
 

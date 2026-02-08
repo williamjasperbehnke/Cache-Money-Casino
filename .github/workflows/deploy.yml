@@ -2,7 +2,7 @@ name: Terraform Deploy
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, memory ]
 
 permissions:
   id-token: write

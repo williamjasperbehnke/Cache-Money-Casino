@@ -79,6 +79,18 @@ export const state = {
     tableOn: true,
     autoBet: false,
   },
+  memory: {
+    betAmount: 0,
+    bet: 0,
+    inRound: false,
+    completed: false,
+    moves: 0,
+    matches: 0,
+    rows: 4,
+    cols: 6,
+    cards: [],
+    multiplier: 0,
+  },
   slots: {
     bet: 0,
   },

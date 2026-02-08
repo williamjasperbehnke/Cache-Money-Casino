@@ -1572,6 +1572,76 @@ h3 {
   animation: tooltip-fadeout 0.2s ease 1.8s forwards;
 }
 
+/* Memory */
+.memory-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+  justify-content: center;
+}
+
+.memory-stat {
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 211, 252, 0.55);
+  background: linear-gradient(180deg, rgba(8, 47, 73, 0.7), rgba(2, 6, 23, 0.9));
+  color: #e2e8f0;
+  font-size: 0.8rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  box-shadow: inset 0 0 12px rgba(2, 6, 23, 0.6), 0 6px 0 rgba(2, 6, 23, 0.5);
+}
+
+.memory-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 16px;
+  border: 2px solid rgba(148, 163, 184, 0.25);
+  background: radial-gradient(circle at 50% 0%, rgba(30, 58, 138, 0.18), rgba(2, 6, 23, 0.9));
+  box-shadow: inset 0 0 18px rgba(2, 6, 23, 0.6), 0 10px 24px rgba(2, 6, 23, 0.45);
+}
+
+.memory-card {
+  border-radius: 10px;
+  border: 2px solid rgba(148, 163, 184, 0.35);
+  background: linear-gradient(160deg, rgba(30, 41, 59, 0.95), rgba(2, 6, 23, 0.98));
+  color: #e2e8f0;
+  aspect-ratio: 1 / 1;
+  min-height: 62px;
+  display: grid;
+  place-items: center;
+  font-size: clamp(15px, 2.6vw, 22px);
+  text-shadow: 0 2px 0 rgba(2, 6, 23, 0.6);
+  box-shadow: inset 0 0 12px rgba(2, 6, 23, 0.6), 0 6px 0 rgba(2, 6, 23, 0.55);
+  transition: transform 0.15s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.memory-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(125, 211, 252, 0.7);
+  box-shadow: inset 0 0 10px rgba(2, 6, 23, 0.4), 0 8px 0 rgba(2, 6, 23, 0.6);
+}
+
+.memory-card.revealed {
+  background: linear-gradient(160deg, rgba(14, 116, 144, 0.6), rgba(2, 6, 23, 0.96));
+  border-color: rgba(125, 211, 252, 0.8);
+  color: #f8fafc;
+}
+
+.memory-card.matched {
+  background: linear-gradient(160deg, rgba(34, 197, 94, 0.55), rgba(2, 6, 23, 0.96));
+  border-color: rgba(34, 197, 94, 0.8);
+  color: #f8fafc;
+}
+
+.memory-face {
+  pointer-events: none;
+}
+
 #craps .bet-row [data-tooltip] {
   position: relative;
   z-index: 50;
@@ -2884,6 +2954,15 @@ body.small-win .topbar {
 
   .craps-meta {
     justify-content: flex-start;
+  }
+
+  .memory-grid {
+    gap: 6px;
+  }
+
+  .memory-card {
+    min-height: 44px;
+    font-size: clamp(12px, 3vw, 18px);
   }
 }
 

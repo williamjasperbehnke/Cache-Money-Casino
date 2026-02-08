@@ -289,6 +289,69 @@ Roll the dice with the current set of bets.
 }
 ```
 
+### Memory
+
+#### POST /api/games/memory/start
+Start a 6x4 memory round with a bet.
+
+**Body**
+```
+{ "bet": 25 }
+```
+
+**Response 200**
+```
+{
+  "state": {
+    "rows": 4,
+    "cols": 6,
+    "bet": 25,
+    "moves": 0,
+    "matches": 0,
+    "completed": false,
+    "inRound": true,
+    "cards": [
+      { "value": null, "revealed": false, "matched": false },
+      { "value": null, "revealed": false, "matched": false }
+    ]
+  },
+  "balance": 975
+}
+```
+
+#### POST /api/games/memory/flip
+Flip a card by index (0-23).
+
+**Body**
+```
+{ "index": 7 }
+```
+
+**Response 200**
+```
+{
+  "state": {
+    "rows": 4,
+    "cols": 6,
+    "bet": 25,
+    "moves": 3,
+    "matches": 2,
+    "completed": false,
+    "inRound": true,
+    "cards": [
+      { "value": "🍒", "revealed": true, "matched": true },
+      { "value": null, "revealed": false, "matched": false }
+    ]
+  },
+  "balance": 975,
+  "matched": true,
+  "completed": false,
+  "payout": 0,
+  "profit": 0,
+  "multiplier": 0
+}
+```
+
 ### Slots
 
 #### POST /api/games/slots/spin
