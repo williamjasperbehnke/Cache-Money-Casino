@@ -139,7 +139,7 @@ export class YahtzeeGame {
     }
     if (this.ui.rollsLeft) {
       this.ui.rollsLeft.textContent = state.yahtzee.inRound ? String(state.yahtzee.rollsLeft) : "—";
-      this.ui.rollsLeft.classList.toggle("hidden", !state.yahtzee.inRound);
+      this.ui.rollsLeft.parentElement?.classList.toggle("hidden", !state.yahtzee.inRound);
     }
     if (this.ui.chipsWrap) {
       this.ui.chipsWrap.classList.toggle("hidden", state.yahtzee.inRound);
@@ -287,6 +287,7 @@ export class YahtzeeGame {
         updateBalance();
       }
       state.yahtzee.betAmount = 0;
+      playSfx("spin");
       setTimeout(() => {
         state.yahtzee.rolling = false;
         this.applyServerState(payload);
@@ -327,7 +328,7 @@ export class YahtzeeGame {
   async scoreCategory(category) {
     if (!state.yahtzee.inRound) return;
     state.yahtzee.dealerRolling = true;
-    state.yahtzee.rolling = true;
+    state.yahtzee.rolling = false;
     this.updateUI();
     const unlock = lockPanel("yahtzee");
     try {
@@ -342,13 +343,18 @@ export class YahtzeeGame {
       }
       setTimeout(() => {
         state.yahtzee.dealerRolling = false;
-        state.yahtzee.rolling = false;
         this.applyServerState(payload);
+        state.yahtzee.rolling = true;
         this.updateUI();
-        if (payload?.messages?.length) {
-          payload.messages.forEach((msg) => showCenterToast(msg.text, msg.tone, msg.duration));
-        }
-      }, 350);
+        playSfx("spin");
+        setTimeout(() => {
+          state.yahtzee.rolling = false;
+          this.updateUI();
+          if (payload?.messages?.length) {
+            payload.messages.forEach((msg) => showCenterToast(msg.text, msg.tone, msg.duration));
+          }
+        }, 350);
+      }, 500);
     } catch (err) {
       state.yahtzee.dealerRolling = false;
       state.yahtzee.rolling = false;
