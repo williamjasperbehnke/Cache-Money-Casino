@@ -220,5 +220,6 @@ module.exports = {
   applyYahtzeeScore,
   scoreTotal,
   availableCategories,
+  computeScore,
   CATEGORIES,
 };

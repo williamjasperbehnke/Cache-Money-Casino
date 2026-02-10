@@ -203,6 +203,7 @@ const applySplit = (state) => {
 };
 
 module.exports = {
+  resolveBlackjack,
   createBlackjackState,
   applyBlackjackStats,
   applyHit,

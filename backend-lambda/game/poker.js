@@ -4,8 +4,8 @@ const pokerCompareHands = (player, dealer) => {
   if (player.rank !== dealer.rank) {
     return player.rank > dealer.rank ? 1 : -1;
   }
-  const dVals = [...dealer.values].sort((a, b) => b - a);
-  const pVals = [...player.values].sort((a, b) => b - a);
+  const dVals = dealer.values || [];
+  const pVals = player.values || [];
   for (let i = 0; i < pVals.length; i += 1) {
     if (pVals[i] !== dVals[i]) {
       return pVals[i] > dVals[i] ? 1 : -1;
@@ -24,12 +24,11 @@ const pokerWinningIndexes = (cards, evaluation) => {
     .map(([value, count]) => ({ value: Number(value), count }))
     .sort((a, b) => b.count - a.count || b.value - a.value);
 
-  if (evaluation.rank >= 4) return cards.map((_, idx) => idx);
   if (evaluation.rank === 7) {
     const target = byCount.find((entry) => entry.count === 4)?.value;
     return values.map((value, idx) => (value === target ? idx : null)).filter((idx) => idx !== null);
   }
-  if (evaluation.rank === 6) return cards.map((_, idx) => idx);
+  if (evaluation.rank >= 4) return cards.map((_, idx) => idx);
   if (evaluation.rank === 3) {
     const target = byCount.find((entry) => entry.count === 3)?.value;
     return values.map((value, idx) => (value === target ? idx : null)).filter((idx) => idx !== null);

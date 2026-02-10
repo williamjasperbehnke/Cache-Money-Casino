@@ -53,17 +53,19 @@ const evaluateFiveCardHand = (cards) => {
   const isStraight =
     values.every((value, index) => (index === 0 ? true : value === values[index - 1] + 1)) ||
     isWheel;
-  const straightValues = isWheel ? [5, 4, 3, 2, 1] : [...values];
+  const straightValues = isWheel ? [5, 4, 3, 2, 1] : [...values].sort((a, b) => b - a);
   const sortedCounts = Object.values(counts).sort((a, b) => b - a);
 
   const byCount = Object.entries(counts)
     .map(([value, count]) => ({ value: Number(value), count }))
     .sort((a, b) => b.count - a.count || b.value - a.value);
+  const valuesDesc = [...values].sort((a, b) => b - a);
 
   if (isStraight && isFlush) return { rank: 8, label: "Straight Flush", values: straightValues };
   if (sortedCounts[0] === 4) {
     const quad = byCount.find((entry) => entry.count === 4)?.value;
-    return { rank: 7, label: `Four of a Kind (${valueLabel(quad)})`, values };
+    const kicker = byCount.find((entry) => entry.count === 1)?.value;
+    return { rank: 7, label: `Four of a Kind (${valueLabel(quad)})`, values: [quad, kicker] };
   }
   if (sortedCounts[0] === 3 && sortedCounts[1] === 2) {
     const trips = byCount.find((entry) => entry.count === 3)?.value;
@@ -71,28 +73,34 @@ const evaluateFiveCardHand = (cards) => {
     return {
       rank: 6,
       label: `Full House (${valueLabel(trips)} over ${valueLabel(pair)})`,
-      values,
+      values: [trips, pair],
     };
   }
-  if (isFlush) return { rank: 5, label: "Flush", values };
+  if (isFlush) return { rank: 5, label: "Flush", values: valuesDesc };
   if (isStraight) return { rank: 4, label: "Straight", values: straightValues };
   if (sortedCounts[0] === 3) {
     const trips = byCount.find((entry) => entry.count === 3)?.value;
-    return { rank: 3, label: `Three of a Kind (${valueLabel(trips)})`, values };
+    const kickers = valuesDesc.filter((value) => value !== trips);
+    return { rank: 3, label: `Three of a Kind (${valueLabel(trips)})`, values: [trips, ...kickers] };
   }
   if (sortedCounts[0] === 2 && sortedCounts[1] === 2) {
-    const pairs = byCount.filter((entry) => entry.count === 2).map((entry) => entry.value);
+    const pairs = byCount
+      .filter((entry) => entry.count === 2)
+      .map((entry) => entry.value)
+      .sort((a, b) => b - a);
+    const kicker = byCount.find((entry) => entry.count === 1)?.value;
     return {
       rank: 2,
       label: `Two Pair (${valueLabel(pairs[0])} & ${valueLabel(pairs[1])})`,
-      values,
+      values: [...pairs, kicker],
     };
   }
   if (sortedCounts[0] === 2) {
     const pair = byCount.find((entry) => entry.count === 2)?.value;
-    return { rank: 1, label: `Pair of ${valueLabel(pair)}`, values };
+    const kickers = valuesDesc.filter((value) => value !== pair);
+    return { rank: 1, label: `Pair of ${valueLabel(pair)}`, values: [pair, ...kickers] };
   }
-  return { rank: 0, label: "High Card", values };
+  return { rank: 0, label: "High Card", values: valuesDesc };
 };
 
 module.exports = {

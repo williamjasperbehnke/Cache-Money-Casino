@@ -13,8 +13,8 @@ const holdemCompareHands = (player, dealer) => {
   if (player.rank !== dealer.rank) {
     return player.rank > dealer.rank ? 1 : -1;
   }
-  const dVals = [...dealer.values].sort((a, b) => b - a);
-  const pVals = [...player.values].sort((a, b) => b - a);
+  const dVals = dealer.values || [];
+  const pVals = player.values || [];
   for (let i = 0; i < pVals.length; i += 1) {
     if (pVals[i] !== dVals[i]) {
       return pVals[i] > dVals[i] ? 1 : -1;

@@ -1,0 +1,23 @@
+{
+  "name": "cache-money-casino",
+  "private": true,
+  "scripts": {
+    "test": "npm run test:unit && npm run test:e2e",
+    "test:unit": "npm run test:frontend && npm run test:backend",
+    "test:frontend": "vitest run --config vitest.frontend.config.js",
+    "test:backend": "vitest run --config vitest.backend.config.js",
+    "test:coverage": "npm run test:coverage:frontend && npm run test:coverage:backend",
+    "test:coverage:frontend": "vitest run --config vitest.frontend.config.js --coverage",
+    "test:coverage:backend": "vitest run --config vitest.backend.config.js --coverage",
+    "test:e2e": "playwright test",
+    "test:watch": "vitest",
+    "e2e:ui": "playwright test --ui"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^1.6.0",
+    "http-server": "^14.1.1",
+    "jsdom": "^24.0.0",
+    "playwright": "^1.44.0",
+    "vitest": "^1.6.0"
+  }
+}
