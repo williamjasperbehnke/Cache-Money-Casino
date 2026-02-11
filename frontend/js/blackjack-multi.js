@@ -1,4 +1,4 @@
-import { renderCards, handTotal, showCenterToast, playSfx } from "./core.js";
+import { renderCards, handTotal, showCenterToast, showCenterToasts, playSfx } from "./core.js";
 import { auth } from "./auth.js";
 
 const ROOM_POLL_INTERVAL = 8000;
@@ -79,11 +79,15 @@ export class BlackjackMultiGame {
     this.ui.betButtons?.forEach((btn) => {
       btn.addEventListener("click", () => {
         const amount = Number(btn.dataset.amount) || 0;
+        this.applyLocalBet(amount);
         this.sendAction("BET", { amount });
         playSfx("hit");
       });
     });
-    this.ui.betClear?.addEventListener("click", () => this.sendAction("BET", { amount: 0 }));
+    this.ui.betClear?.addEventListener("click", () => {
+      this.applyLocalBet(0);
+      this.sendAction("BET", { amount: 0 });
+    });
   }
 
   async loadLobby() {
@@ -234,6 +238,15 @@ export class BlackjackMultiGame {
     );
   }
 
+  applyLocalBet(amount) {
+    if (!this.state || this.state.inRound) return;
+    const me = this.state.players?.find((entry) => entry.id === this.playerId);
+    if (!me) return;
+    me.betAmount = Math.max(0, Number(amount) || 0);
+    this.updateBet(this.state);
+    this.renderPlayers(this.state, this.cleared && !this.state.inRound);
+  }
+
   applyState(state) {
     const prevInRound = this.lastInRound;
     this.state = state || null;
@@ -268,31 +281,32 @@ export class BlackjackMultiGame {
       }
     }
     if (prevInRound && !this.lastInRound) {
-      if (!this.sawBustThisRound && me) {
+      if (!this.sawBustThisRound && me && !me.busted?.some(Boolean)) {
         const outcomes = Array.isArray(me.lastOutcomes) ? me.lastOutcomes : [];
         if (outcomes.length > 0) {
           const multiple = outcomes.length > 1;
-          outcomes.forEach((outcome) => {
+          const messages = outcomes.map((outcome) => {
             const prefix = multiple ? `Hand ${outcome.index + 1} ` : "";
             if (outcome.result === "win") {
-              showCenterToast(multiple ? `${prefix}wins!` : "You win!", "win");
-            } else if (outcome.result === "push") {
-              showCenterToast(multiple ? `${prefix}pushes.` : "Push.", "win");
-            } else {
-              showCenterToast(multiple ? `${prefix}loses.` : "You lose.", "danger");
+              return { text: multiple ? `${prefix}wins!` : "You win!", tone: "win" };
             }
+            if (outcome.result === "push") {
+              return { text: multiple ? `${prefix}pushes.` : "Push.", tone: "win" };
+            }
+            return { text: multiple ? `${prefix}loses.` : "You lose.", tone: "danger" };
           });
+          showCenterToasts(messages);
           const hasWin = outcomes.some((o) => o.result === "win");
           const hasPush = outcomes.some((o) => o.result === "push");
           playSfx(hasWin || hasPush ? "win" : "lose");
         } else if (me.lastResult === "win") {
-          showCenterToast("You win!", "win");
+          showCenterToasts([{ text: "You win!", tone: "win" }]);
           playSfx("win");
         } else if (me.lastResult === "push") {
-          showCenterToast("Push.", "win");
+          showCenterToasts([{ text: "Push.", tone: "win" }]);
           playSfx("win");
         } else if (me.lastResult) {
-          showCenterToast("You lose.", "danger");
+          showCenterToasts([{ text: "You lose.", tone: "danger" }]);
           playSfx("lose");
         }
       }
@@ -367,6 +381,28 @@ export class BlackjackMultiGame {
       if (index === state.turnIndex && state.inRound) wrapper.classList.add("active");
       const header = document.createElement("div");
       header.className = "bjmulti-player-header";
+      if (!state.inRound && !hideHands) {
+        const results = document.createElement("div");
+        results.className = "bjmulti-results";
+        const outcomes = Array.isArray(player.lastOutcomes) ? player.lastOutcomes : [];
+        const busted = Array.isArray(player.busted) ? player.busted : [];
+        if (outcomes.length > 0) {
+          outcomes.forEach((outcome) => {
+            const label = busted[outcome.index]
+              ? "BUST"
+              : outcome.result === "win"
+                ? "WIN"
+                : outcome.result === "push"
+                  ? "PUSH"
+                  : "LOSS";
+            const tag = document.createElement("div");
+            tag.className = `bjmulti-result ${label.toLowerCase()}`;
+            tag.textContent = label;
+            results.appendChild(tag);
+          });
+        }
+        if (results.childNodes.length > 0) header.appendChild(results);
+      }
       const name = document.createElement("div");
       name.className = "name";
       const baseName =
@@ -378,7 +414,7 @@ export class BlackjackMultiGame {
       status.textContent = player.status || "waiting";
       const bet = document.createElement("div");
       bet.className = "status";
-      const betTotal = Array.isArray(player.bets)
+      const betTotal = Array.isArray(player.bets) && state.inRound
         ? player.bets.reduce((sum, val) => sum + Number(val || 0), 0)
         : Number(player.betAmount || 0);
       bet.textContent = betTotal > 0 ? `Bet $${betTotal}` : "No bet";
@@ -416,12 +452,6 @@ export class BlackjackMultiGame {
         empty.className = "total";
         empty.textContent = hideHands ? "Waiting for next round" : "Sitting out";
         cardsWrap.appendChild(empty);
-      }
-      if (!state.inRound && player.lastResult) {
-        const result = document.createElement("div");
-        result.className = `bjmulti-result ${player.lastResult}`;
-        result.textContent = player.lastResult.toUpperCase();
-        wrapper.appendChild(result);
       }
       wrapper.appendChild(header);
       wrapper.appendChild(cardsWrap);
