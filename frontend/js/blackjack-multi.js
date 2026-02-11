@@ -7,13 +7,24 @@ const getWsBase = () => {
   const fromStorage = localStorage.getItem("casino-ws-base");
   const fromWindow = window.WS_BASE || "";
   const base = (fromStorage || fromWindow || "").trim();
-  if (base) return base.replace(/\/+$/, "");
+  if (base) {
+    const cleaned = base.replace(/\/+$/, "");
+    return cleaned;
+  }
   const apiBase = (localStorage.getItem("casino-api-base") || window.API_BASE || "").trim();
   if (apiBase) {
-    return apiBase.replace(/^http/, "ws").replace(/\/api\/?$/, "");
+    const cleaned = apiBase.replace(/^http/, "ws").replace(/\/api\/?$/, "");
+    if (/execute-api\.amazonaws\.com$/.test(cleaned)) {
+      return `${cleaned}/prod`;
+    }
+    return cleaned;
   }
   const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-  return `${protocol}://${window.location.host}`;
+  const hostBase = `${protocol}://${window.location.host}`;
+  if (/execute-api\.amazonaws\.com$/.test(hostBase)) {
+    return `${hostBase}/prod`;
+  }
+  return hostBase;
 };
 
 export class BlackjackMultiGame {
