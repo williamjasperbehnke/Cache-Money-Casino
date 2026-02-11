@@ -113,6 +113,15 @@ resource "aws_iam_policy" "lambda_ddb" {
           aws_dynamodb_table.connections.arn,
           aws_dynamodb_table.game_sessions.arn
         ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "execute-api:ManageConnections"
+        ]
+        Resource = [
+          "${aws_apigatewayv2_api.ws.execution_arn}/*/*/@connections/*"
+        ]
       }
     ]
   })
