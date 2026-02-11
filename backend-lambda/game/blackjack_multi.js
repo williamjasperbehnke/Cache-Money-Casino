@@ -1,29 +1,25 @@
 const { buildDeck, shuffle, draw } = require("./cards");
-
-const handTotal = (hand = []) => {
-  let total = 0;
-  let aces = 0;
-  hand.forEach((card) => {
-    if (card.rank === "A") {
-      aces += 1;
-      total += 11;
-    } else if (["K", "Q", "J"].includes(card.rank)) {
-      total += 10;
-    } else {
-      total += Number(card.rank);
-    }
-  });
-  while (total > 21 && aces > 0) {
-    total -= 10;
-    aces -= 1;
-  }
-  return total;
-};
+const {
+  applyHit: applyCoreHit,
+  applyStand: applyCoreStand,
+  applyDouble: applyCoreDouble,
+  applySplit: applyCoreSplit,
+  resolveOutcomes,
+  handTotal,
+  playDealer,
+} = require("./blackjack_core");
 
 const normalizePlayer = (player) => ({
   id: player.id,
   username: player.username || "Guest",
-  hand: Array.isArray(player.hand) ? player.hand : [],
+  hands: Array.isArray(player.hands) ? player.hands : [],
+  bets: Array.isArray(player.bets) ? player.bets : [],
+  doubled: Array.isArray(player.doubled) ? player.doubled : [],
+  busted: Array.isArray(player.busted) ? player.busted : [],
+  activeHand: Number.isFinite(player.activeHand) ? player.activeHand : 0,
+  splitUsed: Boolean(player.splitUsed),
+  betAmount: Number(player.betAmount) || 0,
+  lastBet: Number(player.lastBet) || 0,
   status: player.status || "waiting",
   lastResult: player.lastResult || "",
   total: Number.isFinite(player.total) ? player.total : 0,
@@ -40,6 +36,7 @@ const createBlackjackMultiState = ({ roomId, host, hostId, maxPlayers = 5 }) => 
   deck: [],
   inRound: false,
   revealDealer: false,
+  settled: false,
   phase: "lobby",
   turnIndex: 0,
   updatedAt: new Date().toISOString(),
@@ -96,18 +93,40 @@ const resetForRound = (state) => {
   state.dealer = [draw(state.deck), draw(state.deck)];
   state.revealDealer = false;
   state.inRound = true;
+  state.settled = false;
   state.phase = "player";
   state.turnIndex = 0;
-  state.players = state.players.map((player) => ({
-    ...player,
-    hand: [draw(state.deck), draw(state.deck)],
-    status: "playing",
-    lastResult: "",
-    total: 0,
-  }));
-  state.players.forEach((player) => {
-    player.total = handTotal(player.hand);
+  state.players = state.players.map((player) => {
+    if (!player.betAmount || player.betAmount <= 0) {
+      return {
+        ...player,
+        status: "sitting",
+        hands: [],
+        bets: [],
+        doubled: [],
+        busted: [],
+        activeHand: 0,
+        splitUsed: false,
+        lastResult: "",
+        total: 0,
+      };
+    }
+    const hands = [[draw(state.deck), draw(state.deck)]];
+    return {
+      ...player,
+      hands,
+      bets: [player.betAmount],
+      doubled: [false],
+      busted: [false],
+      activeHand: 0,
+      splitUsed: false,
+      status: "playing",
+      lastResult: "",
+      total: handTotal(hands[0]),
+    };
   });
+  const nextIndex = findNextActiveIndex(state, 0);
+  state.turnIndex = nextIndex === -1 ? 0 : nextIndex;
   state.updatedAt = new Date().toISOString();
 };
 
@@ -131,27 +150,32 @@ const advanceTurn = (state) => {
 
 const resolveDealer = (state) => {
   if (!state.inRound) return;
-  while (handTotal(state.dealer) < 17) {
-    state.dealer.push(draw(state.deck));
-  }
+  const dealerTotal = playDealer(state.dealer, state.deck, draw);
   state.revealDealer = true;
-  const dealerTotal = handTotal(state.dealer);
   state.players.forEach((player) => {
-    const total = handTotal(player.hand);
-    player.total = total;
-    if (total > 21) {
-      player.lastResult = "bust";
+    if (!player.hands || player.hands.length === 0) {
+      player.lastResult = "";
       return;
     }
-    if (dealerTotal > 21 || total > dealerTotal) {
-      player.lastResult = "win";
-      return;
-    }
-    if (total === dealerTotal) {
-      player.lastResult = "push";
-      return;
-    }
-    player.lastResult = "loss";
+    const resolved = resolveOutcomes(
+      {
+        hands: player.hands,
+        bets: player.bets,
+        busted: player.busted,
+      },
+      dealerTotal
+    );
+    const results = resolved.outcomes.map((outcome) => outcome.result);
+    const summary = results.includes("win")
+      ? "win"
+      : results.includes("push")
+        ? "push"
+        : results.includes("loss")
+          ? "loss"
+          : "bust";
+    player.lastResult = summary;
+    const activeHand = player.hands[player.activeHand] || player.hands[0];
+    player.total = activeHand ? handTotal(activeHand) : 0;
   });
   state.inRound = false;
   state.phase = "complete";
@@ -166,40 +190,59 @@ const startRound = (state) => {
   return { state };
 };
 
-const applyHit = (state, playerId) => {
+const withTurnGuard = (state, playerId, fn) => {
   if (!state.inRound) return { error: "Round not active." };
   const player = currentPlayer(state);
   if (!player || player.id !== playerId) {
     return { error: "Not your turn." };
   }
-  player.hand.push(draw(state.deck));
-  player.total = handTotal(player.hand);
-  if (player.total > 21) {
-    player.status = "busted";
+  return fn(player);
+};
+
+const updateAfterAction = (state, player, finished) => {
+  const activeHand = player.hands[player.activeHand] || [];
+  player.total = handTotal(activeHand);
+  if (finished) {
+    player.status = "done";
     advanceTurn(state);
   }
   state.updatedAt = new Date().toISOString();
-  return { state };
 };
 
-const applyStand = (state, playerId) => {
-  if (!state.inRound) return { error: "Round not active." };
-  const player = currentPlayer(state);
-  if (!player || player.id !== playerId) {
-    return { error: "Not your turn." };
-  }
-  player.status = "stood";
-  advanceTurn(state);
-  state.updatedAt = new Date().toISOString();
-  return { state };
-};
+const applyPlayerAction = (state, playerId, actionFn, { forceNotFinished = false } = {}) =>
+  withTurnGuard(state, playerId, (player) => {
+    const result = actionFn(player);
+    if (result?.error) return result;
+    const finished = forceNotFinished ? false : Boolean(result?.finished);
+    const messages = result?.messages || [];
+    updateAfterAction(state, player, finished);
+  });
+
+const applyHit = (state, playerId) =>
+  applyPlayerAction(state, playerId, (player) => applyCoreHit(player, state.deck, draw));
+
+const applyStand = (state, playerId) =>
+  applyPlayerAction(state, playerId, (player) => applyCoreStand(player));
+
+const applyDouble = (state, playerId) =>
+  applyPlayerAction(state, playerId, (player) => applyCoreDouble(player, state.deck, draw));
+
+const applySplit = (state, playerId) =>
+  applyPlayerAction(
+    state,
+    playerId,
+    (player) => applyCoreSplit(player, state.deck, draw),
+    { forceNotFinished: true }
+  );
 
 module.exports = {
-  handTotal,
   createBlackjackMultiState,
   addPlayer,
   removePlayer,
   startRound,
   applyHit,
   applyStand,
+  applyDouble,
+  applySplit,
+  resolveDealer,
 };

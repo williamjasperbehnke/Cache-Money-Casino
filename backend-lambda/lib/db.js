@@ -37,10 +37,10 @@ const localPut = async ({ TableName, Item }) => {
   if (Item && Item.room_id && Item.player_id) {
     keyObj.room_id = Item.room_id;
     keyObj.player_id = Item.player_id;
-  } else if (Item && Item.token) {
-    keyObj.token = Item.token;
   } else if (Item && Item.connection_id) {
     keyObj.connection_id = Item.connection_id;
+  } else if (Item && Item.token) {
+    keyObj.token = Item.token;
   } else if (Item && Item.session_id) {
     keyObj.session_id = Item.session_id;
   } else if (Item && Item.username) {

@@ -57,7 +57,7 @@ const deleteConnection = async (connectionId) => {
   });
 };
 
-const saveConnection = async ({ connectionId, username, playerId }) => {
+const saveConnection = async ({ connectionId, username, playerId, token }) => {
   if (!CONNECTIONS_TABLE) return;
   await put({
     TableName: CONNECTIONS_TABLE,
@@ -65,6 +65,7 @@ const saveConnection = async ({ connectionId, username, playerId }) => {
       connection_id: connectionId,
       username: username || "guest",
       player_id: playerId || "",
+      token: token || "",
       room_id: null,
       connected_at: new Date().toISOString(),
     },
@@ -196,6 +197,7 @@ module.exports = {
   getRoomState,
   saveRoomState,
   updateRoomMeta,
+  listRoomConnections,
   broadcastRoomState,
   cleanupRoomForConnection,
 };

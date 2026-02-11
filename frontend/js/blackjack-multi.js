@@ -42,6 +42,11 @@ export class BlackjackMultiGame {
       startBtn: document.getElementById("bjMultiStart"),
       hitBtn: document.getElementById("bjMultiHit"),
       standBtn: document.getElementById("bjMultiStand"),
+      doubleBtn: document.getElementById("bjMultiDouble"),
+      splitBtn: document.getElementById("bjMultiSplit"),
+      betAmount: document.getElementById("bjMultiBetAmount"),
+      betButtons: document.querySelectorAll("#blackjack-multi .bjmulti-bet-buttons .chip"),
+      betClear: document.getElementById("bjMultiBetClear"),
       status: document.getElementById("bjMultiStatus"),
     };
   }
@@ -64,6 +69,15 @@ export class BlackjackMultiGame {
     this.ui.startBtn?.addEventListener("click", () => this.sendAction("START"));
     this.ui.hitBtn?.addEventListener("click", () => this.sendAction("HIT"));
     this.ui.standBtn?.addEventListener("click", () => this.sendAction("STAND"));
+    this.ui.doubleBtn?.addEventListener("click", () => this.sendAction("DOUBLE"));
+    this.ui.splitBtn?.addEventListener("click", () => this.sendAction("SPLIT"));
+    this.ui.betButtons?.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const amount = Number(btn.dataset.amount) || 0;
+        this.sendAction("BET", { amount });
+      });
+    });
+    this.ui.betClear?.addEventListener("click", () => this.sendAction("BET", { amount: 0 }));
   }
 
   async loadLobby() {
@@ -198,7 +212,7 @@ export class BlackjackMultiGame {
     this.socket = null;
   }
 
-  sendAction(type) {
+  sendAction(type, payload = {}) {
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
       showCenterToast("Connection not ready.", "danger");
       return;
@@ -206,7 +220,7 @@ export class BlackjackMultiGame {
     this.socket.send(
       JSON.stringify({
         action: "action",
-        payload: { game: "blackjack-multi", type, roomId: this.roomId },
+        payload: { game: "blackjack-multi", type, roomId: this.roomId, ...payload },
       })
     );
   }
@@ -263,6 +277,7 @@ export class BlackjackMultiGame {
     this.renderPlayers(state);
     this.updateControls(state);
     this.updateStatus(state);
+    this.updateBet(state);
   }
 
   renderPlayers(state) {
@@ -284,14 +299,45 @@ export class BlackjackMultiGame {
       const status = document.createElement("div");
       status.className = "status";
       status.textContent = player.status || "waiting";
+      const bet = document.createElement("div");
+      bet.className = "status";
+      const betTotal = Array.isArray(player.bets)
+        ? player.bets.reduce((sum, val) => sum + Number(val || 0), 0)
+        : Number(player.betAmount || 0);
+      bet.textContent = betTotal > 0 ? `Bet $${betTotal}` : "No bet";
       header.appendChild(name);
       header.appendChild(status);
-      const cards = document.createElement("div");
-      cards.className = "cards";
-      renderCards(cards, player.hand || []);
-      const total = document.createElement("div");
-      total.className = "total";
-      total.textContent = `Total: ${handTotal(player.hand || [])}`;
+      header.appendChild(bet);
+      const hands = Array.isArray(player.hands) ? player.hands : [];
+      const showLabels = hands.length > 1;
+      const cardsWrap = document.createElement("div");
+      cardsWrap.className = "bjmulti-hands";
+      hands.forEach((hand, idx) => {
+        const block = document.createElement("div");
+        block.className = "hand-block";
+        if (idx === player.activeHand) block.classList.add("active-hand");
+        if (showLabels) {
+          const label = document.createElement("div");
+          label.className = "hand-label";
+          label.textContent = `Hand ${idx + 1}`;
+          block.appendChild(label);
+        }
+        const cards = document.createElement("div");
+        cards.className = "cards";
+        renderCards(cards, hand);
+        const total = document.createElement("div");
+        total.className = "total";
+        total.textContent = `Total: ${handTotal(hand)}`;
+        block.appendChild(cards);
+        block.appendChild(total);
+        cardsWrap.appendChild(block);
+      });
+      if (!hands.length) {
+        const empty = document.createElement("div");
+        empty.className = "total";
+        empty.textContent = "Sitting out";
+        cardsWrap.appendChild(empty);
+      }
       if (!state.inRound && player.lastResult) {
         const result = document.createElement("div");
         result.className = `bjmulti-result ${player.lastResult}`;
@@ -299,8 +345,7 @@ export class BlackjackMultiGame {
         wrapper.appendChild(result);
       }
       wrapper.appendChild(header);
-      wrapper.appendChild(cards);
-      wrapper.appendChild(total);
+      wrapper.appendChild(cardsWrap);
       this.ui.players.appendChild(wrapper);
     });
   }
@@ -322,6 +367,33 @@ export class BlackjackMultiGame {
       this.ui.standBtn.disabled = !myTurn;
       this.ui.standBtn.classList.toggle("hidden", !myTurn);
     }
+    const canDouble =
+      myTurn &&
+      current &&
+      Array.isArray(current.hands) &&
+      current.hands[current.activeHand]?.length === 2 &&
+      !current.doubled?.[current.activeHand];
+    const canSplit =
+      myTurn &&
+      current &&
+      Array.isArray(current.hands) &&
+      !current.splitUsed &&
+      current.hands[current.activeHand]?.length === 2 &&
+      current.hands[current.activeHand]?.[0]?.rank === current.hands[current.activeHand]?.[1]?.rank;
+    if (this.ui.doubleBtn) {
+      this.ui.doubleBtn.disabled = !canDouble;
+      this.ui.doubleBtn.classList.toggle("hidden", !myTurn);
+    }
+    if (this.ui.splitBtn) {
+      this.ui.splitBtn.disabled = !canSplit;
+      this.ui.splitBtn.classList.toggle("hidden", !myTurn);
+    }
+    if (this.ui.betButtons) {
+      this.ui.betButtons.forEach((btn) => {
+        btn.disabled = state.inRound;
+      });
+    }
+    if (this.ui.betClear) this.ui.betClear.disabled = state.inRound;
   }
 
   updateStatus(state) {
@@ -334,5 +406,12 @@ export class BlackjackMultiGame {
     this.ui.status.textContent = current
       ? `Turn: ${current.username}`
       : "Round in progress.";
+  }
+
+  updateBet(state) {
+    const me = state.players?.find((entry) => entry.id === this.playerId);
+    if (this.ui.betAmount) {
+      this.ui.betAmount.textContent = `$${me?.betAmount || 0}`;
+    }
   }
 }

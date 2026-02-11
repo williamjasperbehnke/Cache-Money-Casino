@@ -15,6 +15,7 @@ exports.handler = async (event) => {
     connectionId,
     username: session ? session.username : "guest",
     playerId,
+    token,
   });
 
   return jsonResponse(200, { ok: true }, CORS_ORIGIN);

@@ -3339,6 +3339,22 @@ body.small-win .topbar {
   gap: 14px;
 }
 
+#blackjack-multi .bjmulti-hands {
+  display: grid;
+  gap: 8px;
+}
+
+#blackjack-multi .bjmulti-hands .hand-block {
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+#blackjack-multi .bjmulti-hands .hand-block.active-hand {
+  border-color: rgba(59, 130, 246, 0.7);
+}
+
 #blackjack-multi .bjmulti-player {
   padding: 12px;
   border-radius: 14px;
@@ -3381,6 +3397,27 @@ body.small-win .topbar {
   display: flex;
   gap: 8px;
   margin-top: 14px;
+}
+
+#blackjack-multi .bjmulti-bet-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+#blackjack-multi .bjmulti-bet-label {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+#blackjack-multi .bjmulti-bet-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 #blackjack-multi .bjmulti-status {
