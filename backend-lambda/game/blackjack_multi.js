@@ -150,7 +150,12 @@ const advanceTurn = (state) => {
 
 const resolveDealer = (state) => {
   if (!state.inRound) return;
-  const dealerTotal = playDealer(state.dealer, state.deck, draw);
+  const allBusted = state.players.every((player) =>
+    Array.isArray(player.busted) && player.busted.length > 0
+      ? player.busted.every(Boolean)
+      : true
+  );
+  const dealerTotal = allBusted ? handTotal(state.dealer) : playDealer(state.dealer, state.deck, draw);
   state.revealDealer = true;
   state.players.forEach((player) => {
     if (!player.hands || player.hands.length === 0) {

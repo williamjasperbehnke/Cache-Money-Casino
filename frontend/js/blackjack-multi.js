@@ -1,4 +1,4 @@
-import { renderCards, handTotal, showCenterToast } from "./core.js";
+import { renderCards, handTotal, showCenterToast, playSfx } from "./core.js";
 import { auth } from "./auth.js";
 
 const ROOM_POLL_INTERVAL = 8000;
@@ -21,6 +21,7 @@ export class BlackjackMultiGame {
     this.roomId = "";
     this.playerId = "";
     this.state = null;
+    this.lastInRound = false;
   }
 
   cacheElements() {
@@ -75,6 +76,7 @@ export class BlackjackMultiGame {
       btn.addEventListener("click", () => {
         const amount = Number(btn.dataset.amount) || 0;
         this.sendAction("BET", { amount });
+        playSfx("hit");
       });
     });
     this.ui.betClear?.addEventListener("click", () => this.sendAction("BET", { amount: 0 }));
@@ -192,7 +194,7 @@ export class BlackjackMultiGame {
       }
       if (msg.type === "BLACKJACK_MULTI_STATE" && msg.roomId === this.roomId) {
         this.applyState(msg.state);
-      } else if (msg.type === "ERROR" && msg.error) {
+      } else if (msg.error) {
         showCenterToast(msg.error, "danger");
       }
     });
@@ -217,6 +219,9 @@ export class BlackjackMultiGame {
       showCenterToast("Connection not ready.", "danger");
       return;
     }
+    if (type === "START") playSfx("deal");
+    if (type === "HIT" || type === "DOUBLE" || type === "SPLIT") playSfx("hit");
+    if (type === "STAND") playSfx("stop");
     this.socket.send(
       JSON.stringify({
         action: "action",
@@ -226,11 +231,26 @@ export class BlackjackMultiGame {
   }
 
   applyState(state) {
+    const prevInRound = this.lastInRound;
     this.state = state || null;
     if (!this.state) {
       this.showLobby();
       this.loadLobby();
       return;
+    }
+    this.lastInRound = Boolean(this.state.inRound);
+    if (prevInRound && !this.lastInRound) {
+      const me = this.state.players?.find((entry) => entry.id === this.playerId);
+      if (me?.lastResult === "win") {
+        showCenterToast("You win!", "win");
+        playSfx("win");
+      } else if (me?.lastResult === "push") {
+        showCenterToast("Push.", "win");
+        playSfx("win");
+      } else if (me?.lastResult) {
+        showCenterToast("You lose.", "danger");
+        playSfx("lose");
+      }
     }
     this.renderRoom();
   }
@@ -382,11 +402,11 @@ export class BlackjackMultiGame {
       current.hands[current.activeHand]?.[0]?.rank === current.hands[current.activeHand]?.[1]?.rank;
     if (this.ui.doubleBtn) {
       this.ui.doubleBtn.disabled = !canDouble;
-      this.ui.doubleBtn.classList.toggle("hidden", !myTurn);
+      this.ui.doubleBtn.classList.toggle("hidden", !canDouble);
     }
     if (this.ui.splitBtn) {
       this.ui.splitBtn.disabled = !canSplit;
-      this.ui.splitBtn.classList.toggle("hidden", !myTurn);
+      this.ui.splitBtn.classList.toggle("hidden", !canSplit);
     }
     if (this.ui.betButtons) {
       this.ui.betButtons.forEach((btn) => {

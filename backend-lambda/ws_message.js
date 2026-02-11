@@ -144,6 +144,13 @@ exports.handler = async (event) => {
           }
           context.balance -= entry.betAmount;
         });
+        if (!state.players.some((entry) => entry.betAmount > 0)) {
+          await sendToConnection(endpoint, connectionId, {
+            type: "ERROR",
+            error: "All players are sitting out. Place a bet to start.",
+          });
+          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+        }
         for (const [playerId, context] of sessionMap.entries()) {
           const entry = state.players.find((p) => p.id === playerId);
           if (!entry || !entry.betAmount) continue;
