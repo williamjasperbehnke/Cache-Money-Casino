@@ -1,3 +1,4 @@
 .vscode/
 frontend/js/config.js
 *node_modules/
+coverage/

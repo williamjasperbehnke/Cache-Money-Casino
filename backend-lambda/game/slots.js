@@ -5,7 +5,7 @@ const PAYOUTS = {
   "⭐": { multiplier: 10, key: "3-star" },
   "🔔": { multiplier: 8, key: "3-bell" },
   "🍇": { multiplier: 6, key: "3-grape" },
-  "🍒": { multiplier: 6, key: "3-cherry" },
+  "🍒": { multiplier: 5, key: "3-cherry" },
   "🍋": { multiplier: 4, key: "3-lemon" },
   any3: { multiplier: 3, key: "3-any" },
   any2: { multiplier: 1.5, key: "2-any" },

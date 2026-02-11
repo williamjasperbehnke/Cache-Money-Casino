@@ -111,6 +111,17 @@ export const state = {
     playerScores: {},
     dealerScores: {},
   },
+  pool: {
+    inRound: false,
+    turn: "player",
+    currentPlayer: 1,
+    player1Group: "",
+    player2Group: "",
+    winner: "",
+    ballInHand: false,
+    calledPocket: "",
+    balls: [],
+  },
   holdem: {
     pot: 0,
     playerPaid: 0,
