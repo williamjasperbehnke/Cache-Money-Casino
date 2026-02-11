@@ -179,6 +179,8 @@ const resolveDealer = (state) => {
           ? "loss"
           : "bust";
     player.lastResult = summary;
+    player.lastOutcomes = resolved.outcomes;
+    player.lastPayout = resolved.payoutTotal;
     const activeHand = player.hands[player.activeHand] || player.hands[0];
     player.total = activeHand ? handTotal(activeHand) : 0;
   });

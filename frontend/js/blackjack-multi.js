@@ -22,6 +22,10 @@ export class BlackjackMultiGame {
     this.playerId = "";
     this.state = null;
     this.lastInRound = false;
+    this.prevMe = null;
+    this.sawBustThisRound = false;
+    this.clearTimer = null;
+    this.cleared = false;
   }
 
   cacheElements() {
@@ -238,20 +242,67 @@ export class BlackjackMultiGame {
       this.loadLobby();
       return;
     }
+    const me = this.state.players?.find((entry) => entry.id === this.playerId) || null;
     this.lastInRound = Boolean(this.state.inRound);
-    if (prevInRound && !this.lastInRound) {
-      const me = this.state.players?.find((entry) => entry.id === this.playerId);
-      if (me?.lastResult === "win") {
-        showCenterToast("You win!", "win");
-        playSfx("win");
-      } else if (me?.lastResult === "push") {
-        showCenterToast("Push.", "win");
-        playSfx("win");
-      } else if (me?.lastResult) {
-        showCenterToast("You lose.", "danger");
-        playSfx("lose");
+    if (this.lastInRound) {
+      this.sawBustThisRound = false;
+      this.cleared = false;
+      if (this.clearTimer) {
+        clearTimeout(this.clearTimer);
+        this.clearTimer = null;
       }
     }
+    if (this.lastInRound && me) {
+      const prevBusted = Array.isArray(this.prevMe?.busted) ? this.prevMe.busted : [];
+      const nextBusted = Array.isArray(me.busted) ? me.busted : [];
+      const newBusts = nextBusted
+        .map((busted, index) => (busted && !prevBusted[index] ? index : -1))
+        .filter((index) => index >= 0);
+      if (newBusts.length > 0) {
+        const multiple = nextBusted.length > 1;
+        newBusts.forEach((index) => {
+          showCenterToast(multiple ? `Hand ${index + 1} busts.` : "You bust.", "danger");
+        });
+        playSfx("lose");
+        this.sawBustThisRound = true;
+      }
+    }
+    if (prevInRound && !this.lastInRound) {
+      if (!this.sawBustThisRound && me) {
+        const outcomes = Array.isArray(me.lastOutcomes) ? me.lastOutcomes : [];
+        if (outcomes.length > 0) {
+          const multiple = outcomes.length > 1;
+          outcomes.forEach((outcome) => {
+            const prefix = multiple ? `Hand ${outcome.index + 1} ` : "";
+            if (outcome.result === "win") {
+              showCenterToast(multiple ? `${prefix}wins!` : "You win!", "win");
+            } else if (outcome.result === "push") {
+              showCenterToast(multiple ? `${prefix}pushes.` : "Push.", "win");
+            } else {
+              showCenterToast(multiple ? `${prefix}loses.` : "You lose.", "danger");
+            }
+          });
+          const hasWin = outcomes.some((o) => o.result === "win");
+          const hasPush = outcomes.some((o) => o.result === "push");
+          playSfx(hasWin || hasPush ? "win" : "lose");
+        } else if (me.lastResult === "win") {
+          showCenterToast("You win!", "win");
+          playSfx("win");
+        } else if (me.lastResult === "push") {
+          showCenterToast("Push.", "win");
+          playSfx("win");
+        } else if (me.lastResult) {
+          showCenterToast("You lose.", "danger");
+          playSfx("lose");
+        }
+      }
+      if (this.clearTimer) clearTimeout(this.clearTimer);
+      this.clearTimer = setTimeout(() => {
+        this.cleared = true;
+        this.renderRoom();
+      }, 1800);
+    }
+    this.prevMe = me ? { busted: me.busted, hands: me.hands } : null;
     this.renderRoom();
   }
 
@@ -284,23 +335,29 @@ export class BlackjackMultiGame {
     if (!state) return;
     if (this.ui.roomId) this.ui.roomId.textContent = state.roomId || this.roomId;
     if (this.ui.dealer) {
-      const hideFirst = state.inRound && !state.revealDealer;
-      renderCards(this.ui.dealer, state.dealer || [], hideFirst);
+      if (this.cleared && !state.inRound) {
+        renderCards(this.ui.dealer, []);
+      } else {
+        const hideFirst = state.inRound && !state.revealDealer;
+        renderCards(this.ui.dealer, state.dealer || [], hideFirst);
+      }
     }
     if (this.ui.dealerTotal) {
-      if (state.inRound && !state.revealDealer) {
+      if (this.cleared && !state.inRound) {
+        this.ui.dealerTotal.textContent = "";
+      } else if (state.inRound && !state.revealDealer) {
         this.ui.dealerTotal.textContent = "Total: ?";
       } else {
         this.ui.dealerTotal.textContent = `Total: ${handTotal(state.dealer || [])}`;
       }
     }
-    this.renderPlayers(state);
+    this.renderPlayers(state, this.cleared && !state.inRound);
     this.updateControls(state);
     this.updateStatus(state);
     this.updateBet(state);
   }
 
-  renderPlayers(state) {
+  renderPlayers(state, hideHands = false) {
     if (!this.ui.players) return;
     this.ui.players.innerHTML = "";
     const players = Array.isArray(state.players) ? state.players : [];
@@ -332,30 +389,32 @@ export class BlackjackMultiGame {
       const showLabels = hands.length > 1;
       const cardsWrap = document.createElement("div");
       cardsWrap.className = "bjmulti-hands";
-      hands.forEach((hand, idx) => {
-        const block = document.createElement("div");
-        block.className = "hand-block";
-        if (idx === player.activeHand) block.classList.add("active-hand");
-        if (showLabels) {
-          const label = document.createElement("div");
-          label.className = "hand-label";
-          label.textContent = `Hand ${idx + 1}`;
-          block.appendChild(label);
-        }
-        const cards = document.createElement("div");
-        cards.className = "cards";
-        renderCards(cards, hand);
-        const total = document.createElement("div");
-        total.className = "total";
-        total.textContent = `Total: ${handTotal(hand)}`;
-        block.appendChild(cards);
-        block.appendChild(total);
-        cardsWrap.appendChild(block);
-      });
-      if (!hands.length) {
+      if (!hideHands) {
+        hands.forEach((hand, idx) => {
+          const block = document.createElement("div");
+          block.className = "hand-block";
+          if (idx === player.activeHand) block.classList.add("active-hand");
+          if (showLabels) {
+            const label = document.createElement("div");
+            label.className = "hand-label";
+            label.textContent = `Hand ${idx + 1}`;
+            block.appendChild(label);
+          }
+          const cards = document.createElement("div");
+          cards.className = "cards";
+          renderCards(cards, hand);
+          const total = document.createElement("div");
+          total.className = "total";
+          total.textContent = `Total: ${handTotal(hand)}`;
+          block.appendChild(cards);
+          block.appendChild(total);
+          cardsWrap.appendChild(block);
+        });
+      }
+      if (!hands.length || hideHands) {
         const empty = document.createElement("div");
         empty.className = "total";
-        empty.textContent = "Sitting out";
+        empty.textContent = hideHands ? "Waiting for next round" : "Sitting out";
         cardsWrap.appendChild(empty);
       }
       if (!state.inRound && player.lastResult) {
@@ -431,7 +490,11 @@ export class BlackjackMultiGame {
   updateBet(state) {
     const me = state.players?.find((entry) => entry.id === this.playerId);
     if (this.ui.betAmount) {
-      this.ui.betAmount.textContent = `$${me?.betAmount || 0}`;
+      const betTotal = Array.isArray(me?.bets)
+        ? me.bets.reduce((sum, val) => sum + Number(val || 0), 0)
+        : 0;
+      const next = state.inRound ? betTotal : Number(me?.betAmount || 0);
+      this.ui.betAmount.textContent = `$${next}`;
     }
   }
 }
