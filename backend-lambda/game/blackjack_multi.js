@@ -29,10 +29,11 @@ const normalizePlayer = (player) => ({
   total: Number.isFinite(player.total) ? player.total : 0,
 });
 
-const createBlackjackMultiState = ({ roomId, host, maxPlayers = 5 }) => ({
+const createBlackjackMultiState = ({ roomId, host, hostId, maxPlayers = 5 }) => ({
   game: "blackjack-multi",
   roomId,
   host: host || "host",
+  hostId: hostId || "",
   maxPlayers,
   players: [],
   dealer: [],
@@ -54,6 +55,12 @@ const addPlayer = (state, player) => {
     return { error: "Room is full." };
   }
   next.push(normalizePlayer({ ...player, hand: [], status: "waiting" }));
+  const hostMissing =
+    !state.hostId || !next.find((entry) => entry.id === state.hostId);
+  if (hostMissing && next.length === 1) {
+    state.hostId = player.id;
+    state.host = player.username || state.host;
+  }
   state.players = next;
   state.updatedAt = new Date().toISOString();
   return state;
@@ -62,10 +69,16 @@ const addPlayer = (state, player) => {
 const removePlayer = (state, playerId) => {
   const idx = state.players.findIndex((entry) => entry.id === playerId);
   if (idx === -1) return state;
+  const wasHost = state.hostId === playerId;
   const wasCurrent = idx === state.turnIndex;
   state.players.splice(idx, 1);
   if (state.turnIndex > idx) state.turnIndex -= 1;
   if (state.turnIndex >= state.players.length) state.turnIndex = 0;
+  if (wasHost) {
+    const nextHost = state.players[0];
+    state.hostId = nextHost ? nextHost.id : "";
+    state.host = nextHost ? nextHost.username : "";
+  }
   if (state.inRound && wasCurrent) {
     const nextIndex = findNextActiveIndex(state, idx);
     if (nextIndex === -1) {

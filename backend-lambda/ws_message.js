@@ -2,7 +2,7 @@ const { ApiGatewayManagementApiClient, PostToConnectionCommand } = require("@aws
 const { get, put, update, del, query } = require("./lib/db");
 const { jsonResponse, parseJson } = require("./lib/utils");
 const { sanitizeState } = require("./game/sanitize");
-const { startRound, applyHit, applyStand } = require("./game/blackjack_multi");
+const { startRound, applyHit, applyStand, removePlayer } = require("./game/blackjack_multi");
 
 const { CONNECTIONS_TABLE, ROOMS_TABLE, GAME_SESSIONS_TABLE, CORS_ORIGIN = "*" } = process.env;
 
@@ -22,11 +22,6 @@ const sendToConnection = async (endpoint, connectionId, payload) => {
       Data: JSON.stringify(payload),
     })
   );
-};
-
-const sendOrLog = async (endpoint, connectionId, payload) => {
-  if (process.env.LOCAL_DEV === "true") return;
-  await sendToConnection(endpoint, connectionId, payload);
 };
 
 const roomSessionId = (roomId) => `room:${roomId}`;
@@ -62,6 +57,7 @@ const updateRoomMeta = async (roomId, state) => {
     TableName: ROOMS_TABLE,
     Item: {
       ...meta,
+      host: state.host,
       player_count: Array.isArray(state.players) ? state.players.length : 0,
       in_round: Boolean(state.inRound),
       updated_at: new Date().toISOString(),
@@ -82,7 +78,7 @@ const broadcastRoomState = async (endpoint, roomId, state) => {
   const connections = await listRoomConnections(roomId);
   const payload = { type: "BLACKJACK_MULTI_STATE", roomId, state: sanitizeState("blackjack-multi", state) };
   await Promise.all(
-    connections.map((entry) => sendOrLog(endpoint, entry.player_id, payload))
+    connections.map((entry) => sendToConnection(endpoint, entry.player_id, payload))
   );
 };
 
@@ -114,15 +110,11 @@ exports.handler = async (event) => {
       UpdateExpression: "set room_id = :room",
       ExpressionAttributeValues: { ":room": roomId },
     });
-    await sendOrLog(endpoint, connectionId, { type: "ROOM_JOINED", roomId });
+    await sendToConnection(endpoint, connectionId, { type: "ROOM_JOINED", roomId });
     if (GAME_SESSIONS_TABLE) {
       const state = await getRoomState(roomId);
       if (state) {
-        await sendOrLog(endpoint, connectionId, {
-          type: "BLACKJACK_MULTI_STATE",
-          roomId,
-          state: sanitizeState("blackjack-multi", state),
-        });
+        await broadcastRoomState(endpoint, roomId, state);
       }
     }
     return jsonResponse(200, { ok: true }, CORS_ORIGIN);
@@ -141,7 +133,7 @@ exports.handler = async (event) => {
       UpdateExpression: "set room_id = :room",
       ExpressionAttributeValues: { ":room": null },
     });
-    await sendOrLog(endpoint, connectionId, { type: "ROOM_LEFT" });
+    await sendToConnection(endpoint, connectionId, { type: "ROOM_LEFT" });
     return jsonResponse(200, { ok: true }, CORS_ORIGIN);
   }
 
@@ -149,25 +141,32 @@ exports.handler = async (event) => {
     const payload = body.payload || {};
     if (payload.game === "blackjack-multi") {
       if (!ROOMS_TABLE || !GAME_SESSIONS_TABLE) {
-        await sendOrLog(endpoint, connectionId, { type: "ERROR", error: "Server not configured." });
+        await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Server not configured." });
         return jsonResponse(200, { ok: false }, CORS_ORIGIN);
       }
       const roomId = payload.roomId || connection.room_id;
       if (!roomId) {
-        await sendOrLog(endpoint, connectionId, { type: "ERROR", error: "Missing room." });
+        await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Missing room." });
         return jsonResponse(200, { ok: false }, CORS_ORIGIN);
       }
       if (connection.room_id && connection.room_id !== roomId) {
-        await sendOrLog(endpoint, connectionId, { type: "ERROR", error: "Not in this room." });
+        await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Not in this room." });
         return jsonResponse(200, { ok: false }, CORS_ORIGIN);
       }
       const state = await getRoomState(roomId);
       if (!state) {
-        await sendOrLog(endpoint, connectionId, { type: "ERROR", error: "Room not found." });
+        await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Room not found." });
         return jsonResponse(200, { ok: false }, CORS_ORIGIN);
       }
       let result = { state };
       if (payload.type === "START") {
+        if (state.hostId && state.hostId !== connection.player_id) {
+          await sendToConnection(endpoint, connectionId, {
+            type: "ERROR",
+            error: "Only the host can start the round.",
+          });
+          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+        }
         result = startRound(state);
       } else if (payload.type === "HIT") {
         result = applyHit(state, connection.player_id);
@@ -175,12 +174,12 @@ exports.handler = async (event) => {
         result = applyStand(state, connection.player_id);
       }
       if (result?.error) {
-        await sendOrLog(endpoint, connectionId, { type: "ERROR", error: result.error });
+        await sendToConnection(endpoint, connectionId, { type: "ERROR", error: result.error });
         return jsonResponse(200, { ok: false }, CORS_ORIGIN);
       }
       await saveRoomState(roomId, state);
       await updateRoomMeta(roomId, state);
-      await sendOrLog(endpoint, connectionId, {
+      await sendToConnection(endpoint, connectionId, {
         type: "BLACKJACK_MULTI_STATE",
         roomId,
         state: sanitizeState("blackjack-multi", state),
@@ -188,13 +187,13 @@ exports.handler = async (event) => {
       await broadcastRoomState(endpoint, roomId, state);
       return jsonResponse(200, { ok: true }, CORS_ORIGIN);
     }
-    await sendOrLog(endpoint, connectionId, {
+    await sendToConnection(endpoint, connectionId, {
       type: "ACTION_ACK",
       payload,
     });
     return jsonResponse(200, { ok: true }, CORS_ORIGIN);
   }
 
-  await sendOrLog(endpoint, connectionId, { type: "UNKNOWN_ACTION", action });
+  await sendToConnection(endpoint, connectionId, { type: "UNKNOWN_ACTION", action });
   return jsonResponse(200, { ok: true }, CORS_ORIGIN);
 };

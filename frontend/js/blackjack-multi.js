@@ -21,7 +21,6 @@ export class BlackjackMultiGame {
     this.roomId = "";
     this.playerId = "";
     this.state = null;
-    this.roomPoll = null;
   }
 
   cacheElements() {
@@ -132,7 +131,6 @@ export class BlackjackMultiGame {
       this.connectSocket();
       this.showRoom();
       this.setInviteLink(roomId);
-      this.startRoomPoll();
     } catch (err) {
       showCenterToast("Unable to join room.", "danger");
     }
@@ -148,37 +146,11 @@ export class BlackjackMultiGame {
       // ignore
     }
     this.closeSocket();
-    this.stopRoomPoll();
     this.roomId = "";
     this.playerId = "";
     this.state = null;
     this.showLobby();
     this.loadLobby();
-  }
-
-  startRoomPoll() {
-    this.stopRoomPoll();
-    this.roomPoll = setInterval(() => this.fetchRoomState(), ROOM_POLL_INTERVAL);
-  }
-
-  stopRoomPoll() {
-    if (this.roomPoll) {
-      clearInterval(this.roomPoll);
-      this.roomPoll = null;
-    }
-  }
-
-  async fetchRoomState() {
-    if (!this.roomId) return;
-    try {
-      const payload = await auth.request(
-        `/api/games/blackjack-multi/rooms/${this.roomId}/state`,
-        { method: "GET" }
-      );
-      if (payload.state) this.applyState(payload.state);
-    } catch (err) {
-      // ignore
-    }
   }
 
   connectSocket() {
@@ -238,11 +210,15 @@ export class BlackjackMultiGame {
         payload: { game: "blackjack-multi", type, roomId: this.roomId },
       })
     );
-    setTimeout(() => this.fetchRoomState(), 250);
   }
 
   applyState(state) {
     this.state = state || null;
+    if (!this.state) {
+      this.showLobby();
+      this.loadLobby();
+      return;
+    }
     this.renderRoom();
   }
 
@@ -331,9 +307,19 @@ export class BlackjackMultiGame {
     const players = Array.isArray(state.players) ? state.players : [];
     const current = players[state.turnIndex] || null;
     const myTurn = Boolean(state.inRound && current && current.id === this.playerId);
-    if (this.ui.startBtn) this.ui.startBtn.disabled = state.inRound || players.length === 0;
-    if (this.ui.hitBtn) this.ui.hitBtn.disabled = !myTurn;
-    if (this.ui.standBtn) this.ui.standBtn.disabled = !myTurn;
+    const isHost = state.hostId ? state.hostId === this.playerId : false;
+    if (this.ui.startBtn) {
+      this.ui.startBtn.disabled = state.inRound || players.length === 0 || !isHost;
+      this.ui.startBtn.classList.toggle("hidden", state.inRound);
+    }
+    if (this.ui.hitBtn) {
+      this.ui.hitBtn.disabled = !myTurn;
+      this.ui.hitBtn.classList.toggle("hidden", !myTurn);
+    }
+    if (this.ui.standBtn) {
+      this.ui.standBtn.disabled = !myTurn;
+      this.ui.standBtn.classList.toggle("hidden", !myTurn);
+    }
   }
 
   updateStatus(state) {

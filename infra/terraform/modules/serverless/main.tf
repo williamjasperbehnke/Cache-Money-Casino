@@ -219,6 +219,7 @@ resource "aws_lambda_function" "ws_disconnect" {
     variables = {
       CONNECTIONS_TABLE = aws_dynamodb_table.connections.name
       ROOMS_TABLE       = aws_dynamodb_table.rooms.name
+      GAME_SESSIONS_TABLE = aws_dynamodb_table.game_sessions.name
       CORS_ORIGIN       = var.cors_origin
     }
   }

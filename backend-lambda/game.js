@@ -1,5 +1,5 @@
 const crypto = require("crypto");
-const { get, put, scan } = require("./lib/db");
+const { get, put, scan, del } = require("./lib/db");
 const { jsonResponse, parseJson, getRoute, getAuthToken } = require("./lib/utils");
 const { updateStats } = require("./lib/stats");
 const { 
@@ -186,8 +186,9 @@ exports.handler = async (event) => {
     const body = parseJson(event);
     const roomId = crypto.randomUUID().slice(0, 8);
     const host = session.username || "Guest";
+    const hostId = playerIdFromToken(token);
     const maxPlayers = Number(body.maxPlayers || 5);
-    const state = createBlackjackMultiState({ roomId, host, maxPlayers });
+    const state = createBlackjackMultiState({ roomId, host, hostId, maxPlayers });
     await saveRoomState(roomId, state);
     await saveRoomMeta({
       room_id: roomId,
@@ -230,6 +231,7 @@ exports.handler = async (event) => {
         ...meta,
         room_id: roomId,
         player_id: "meta",
+        host: state.host,
         player_count: state.players.length,
         in_round: Boolean(state.inRound),
         updated_at: new Date().toISOString(),
@@ -241,12 +243,18 @@ exports.handler = async (event) => {
       if (!state) return jsonResponse(404, { error: "Room not found." }, CORS_ORIGIN);
       const playerId = playerIdFromToken(token);
       removeBlackjackMultiPlayer(state, playerId);
+      if (state.players.length === 0) {
+        await del({ TableName: GAME_SESSIONS_TABLE, Key: { session_id: roomSessionId(roomId) } });
+        await del({ TableName: ROOMS_TABLE, Key: { room_id: roomId, player_id: "meta" } });
+        return respondWithState(200, "blackjack-multi", { state: null, playerId, closed: true });
+      }
       await saveRoomState(roomId, state);
       const meta = (await getRoomMeta(roomId)) || {};
       await saveRoomMeta({
         ...meta,
         room_id: roomId,
         player_id: "meta",
+        host: state.host,
         player_count: state.players.length,
         in_round: Boolean(state.inRound),
         updated_at: new Date().toISOString(),
