@@ -83,8 +83,9 @@ jobs:
       - name: Sync site to S3
         run: |
           API_BASE="${{ needs.terraform.outputs.rest_api }}"
+          WS_BASE="${{ needs.terraform.outputs.ws_api }}/dev"
           echo "window.API_BASE=\"${API_BASE}\";" > frontend/js/config.js
-          echo "window.WS_BASE=\"${{ needs.terraform.outputs.ws_api }}\";" >> frontend/js/config.js
+          echo "window.WS_BASE=\"${WS_BASE}\";" >> frontend/js/config.js
           aws s3 sync frontend "s3://${{ needs.terraform.outputs.bucket }}" --delete
 
       - name: Invalidate CloudFront cache

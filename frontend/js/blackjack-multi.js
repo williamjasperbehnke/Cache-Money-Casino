@@ -11,13 +11,7 @@ const getWsBase = () => {
     const cleaned = base.replace(/\/+$/, "");
     return cleaned;
   }
-  const apiBase = (localStorage.getItem("casino-api-base") || window.API_BASE || "").trim();
-  if (apiBase) {
-    const cleaned = apiBase.replace(/^http/, "ws").replace(/\/api\/?$/, "");
-    return cleaned;
-  }
-  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-  return `${protocol}://${window.location.host}`;
+  return "";
 };
 
 export class BlackjackMultiGame {
@@ -190,6 +184,10 @@ export class BlackjackMultiGame {
   connectSocket() {
     if (this.socket || !this.roomId) return;
     const base = getWsBase();
+    if (!base) {
+      showCenterToast("Missing WebSocket endpoint.", "danger");
+      return;
+    }
     const token = encodeURIComponent(auth.apiToken || "");
     const ws = new WebSocket(`${base}?token=${token}`);
     this.socket = ws;
