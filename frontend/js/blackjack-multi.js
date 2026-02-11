@@ -201,6 +201,10 @@ export class BlackjackMultiGame {
       } catch (err) {
         return;
       }
+      if (msg.type === "ROOM_JOINED") {
+        this.fetchRoomState();
+        return;
+      }
       if (msg.type === "BLACKJACK_MULTI_STATE" && msg.roomId === this.roomId) {
         this.applyState(msg.state);
       } else if (msg.type === "ERROR" && msg.error) {
@@ -234,6 +238,7 @@ export class BlackjackMultiGame {
         payload: { game: "blackjack-multi", type, roomId: this.roomId },
       })
     );
+    setTimeout(() => this.fetchRoomState(), 250);
   }
 
   applyState(state) {

@@ -115,6 +115,16 @@ exports.handler = async (event) => {
       ExpressionAttributeValues: { ":room": roomId },
     });
     await sendOrLog(endpoint, connectionId, { type: "ROOM_JOINED", roomId });
+    if (GAME_SESSIONS_TABLE) {
+      const state = await getRoomState(roomId);
+      if (state) {
+        await sendOrLog(endpoint, connectionId, {
+          type: "BLACKJACK_MULTI_STATE",
+          roomId,
+          state: sanitizeState("blackjack-multi", state),
+        });
+      }
+    }
     return jsonResponse(200, { ok: true }, CORS_ORIGIN);
   }
 
@@ -170,6 +180,11 @@ exports.handler = async (event) => {
       }
       await saveRoomState(roomId, state);
       await updateRoomMeta(roomId, state);
+      await sendOrLog(endpoint, connectionId, {
+        type: "BLACKJACK_MULTI_STATE",
+        roomId,
+        state: sanitizeState("blackjack-multi", state),
+      });
       await broadcastRoomState(endpoint, roomId, state);
       return jsonResponse(200, { ok: true }, CORS_ORIGIN);
     }
