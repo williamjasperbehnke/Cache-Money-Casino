@@ -174,7 +174,6 @@ export class BlackjackMultiGame {
         return;
       }
       if (msg.type === "ROOM_JOINED") {
-        this.fetchRoomState();
         return;
       }
       if (msg.type === "BLACKJACK_MULTI_STATE" && msg.roomId === this.roomId) {
@@ -278,7 +277,10 @@ export class BlackjackMultiGame {
       header.className = "bjmulti-player-header";
       const name = document.createElement("div");
       name.className = "name";
-      name.textContent = player.id === this.playerId ? `${player.username} (You)` : player.username;
+      const baseName =
+        player.id === this.playerId ? `${player.username} (You)` : player.username;
+      name.textContent =
+        state.hostId && player.id === state.hostId ? `${baseName} (Host)` : baseName;
       const status = document.createElement("div");
       status.className = "status";
       status.textContent = player.status || "waiting";
@@ -310,7 +312,7 @@ export class BlackjackMultiGame {
     const isHost = state.hostId ? state.hostId === this.playerId : false;
     if (this.ui.startBtn) {
       this.ui.startBtn.disabled = state.inRound || players.length === 0 || !isHost;
-      this.ui.startBtn.classList.toggle("hidden", state.inRound);
+      this.ui.startBtn.classList.toggle("hidden", state.inRound || !isHost);
     }
     if (this.ui.hitBtn) {
       this.ui.hitBtn.disabled = !myTurn;
