@@ -185,11 +185,6 @@ exports.handler = async (event) => {
       }
       await saveRoomState(roomId, state);
       await updateRoomMeta(roomId, state);
-      await sendToConnection(endpoint, connectionId, {
-        type: "BLACKJACK_MULTI_STATE",
-        roomId,
-        state: sanitizeState("blackjack-multi", state),
-      });
       await broadcastRoomState(endpoint, roomId, state);
       return jsonResponse(200, { ok: true }, CORS_ORIGIN);
     }
