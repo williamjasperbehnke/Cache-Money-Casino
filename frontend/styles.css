@@ -3388,6 +3388,13 @@ body.small-win .topbar {
   letter-spacing: 0.08em;
 }
 
+#blackjack-multi .bjmulti-results {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
 #blackjack-multi .bjmulti-result.win { color: #22c55e; }
 #blackjack-multi .bjmulti-result.loss,
 #blackjack-multi .bjmulti-result.bust { color: #ef4444; }

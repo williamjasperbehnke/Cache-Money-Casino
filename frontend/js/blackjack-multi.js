@@ -24,8 +24,6 @@ export class BlackjackMultiGame {
     this.lastInRound = false;
     this.prevMe = null;
     this.sawBustThisRound = false;
-    this.clearTimer = null;
-    this.cleared = false;
   }
 
   cacheElements() {
@@ -244,7 +242,7 @@ export class BlackjackMultiGame {
     if (!me) return;
     me.betAmount = Math.max(0, Number(amount) || 0);
     this.updateBet(this.state);
-    this.renderPlayers(this.state, this.cleared && !this.state.inRound);
+    this.renderPlayers(this.state, false);
   }
 
   applyState(state) {
@@ -259,11 +257,6 @@ export class BlackjackMultiGame {
     this.lastInRound = Boolean(this.state.inRound);
     if (this.lastInRound) {
       this.sawBustThisRound = false;
-      this.cleared = false;
-      if (this.clearTimer) {
-        clearTimeout(this.clearTimer);
-        this.clearTimer = null;
-      }
     }
     if (this.lastInRound && me) {
       const prevBusted = Array.isArray(this.prevMe?.busted) ? this.prevMe.busted : [];
@@ -273,48 +266,60 @@ export class BlackjackMultiGame {
         .filter((index) => index >= 0);
       if (newBusts.length > 0) {
         const multiple = nextBusted.length > 1;
-        newBusts.forEach((index) => {
-          showCenterToast(multiple ? `Hand ${index + 1} busts.` : "You bust.", "danger");
-        });
+        const messages = newBusts.map((index) => ({
+          text: multiple ? `Hand ${index + 1} busts.` : "You bust.",
+          tone: "danger",
+        }));
+        showCenterToasts(messages);
         playSfx("lose");
         this.sawBustThisRound = true;
       }
     }
     if (prevInRound && !this.lastInRound) {
-      if (!this.sawBustThisRound && me && !me.busted?.some(Boolean)) {
-        const outcomes = Array.isArray(me.lastOutcomes) ? me.lastOutcomes : [];
-        if (outcomes.length > 0) {
-          const multiple = outcomes.length > 1;
-          const messages = outcomes.map((outcome) => {
-            const prefix = multiple ? `Hand ${outcome.index + 1} ` : "";
-            if (outcome.result === "win") {
-              return { text: multiple ? `${prefix}wins!` : "You win!", tone: "win" };
-            }
-            if (outcome.result === "push") {
-              return { text: multiple ? `${prefix}pushes.` : "Push.", tone: "win" };
-            }
-            return { text: multiple ? `${prefix}loses.` : "You lose.", tone: "danger" };
-          });
-          showCenterToasts(messages);
-          const hasWin = outcomes.some((o) => o.result === "win");
-          const hasPush = outcomes.some((o) => o.result === "push");
-          playSfx(hasWin || hasPush ? "win" : "lose");
-        } else if (me.lastResult === "win") {
-          showCenterToasts([{ text: "You win!", tone: "win" }]);
-          playSfx("win");
-        } else if (me.lastResult === "push") {
-          showCenterToasts([{ text: "Push.", tone: "win" }]);
-          playSfx("win");
-        } else if (me.lastResult) {
-          showCenterToasts([{ text: "You lose.", tone: "danger" }]);
-          playSfx("lose");
+      if (!this.sawBustThisRound && me) {
+        if (Array.isArray(me.busted) && me.busted.some(Boolean)) {
+          const multiple = me.busted.length > 1;
+          const messages = me.busted
+            .map((busted, index) => (busted ? index : -1))
+            .filter((index) => index >= 0)
+            .map((index) => ({
+              text: multiple ? `Hand ${index + 1} busts.` : "You bust.",
+              tone: "danger",
+            }));
+          if (messages.length > 0) {
+            showCenterToasts(messages);
+            playSfx("lose");
+          }
+        } else if (!me.busted?.some(Boolean)) {
+          const outcomes = Array.isArray(me.lastOutcomes) ? me.lastOutcomes : [];
+          if (outcomes.length > 0) {
+            const multiple = outcomes.length > 1;
+            const messages = outcomes.map((outcome) => {
+              const prefix = multiple ? `Hand ${outcome.index + 1} ` : "";
+              if (outcome.result === "win") {
+                return { text: multiple ? `${prefix}wins!` : "You win!", tone: "win" };
+              }
+              if (outcome.result === "push") {
+                return { text: multiple ? `${prefix}pushes.` : "Push.", tone: "win" };
+              }
+              return { text: multiple ? `${prefix}loses.` : "You lose.", tone: "danger" };
+            });
+            showCenterToasts(messages);
+            const hasWin = outcomes.some((o) => o.result === "win");
+            const hasPush = outcomes.some((o) => o.result === "push");
+            playSfx(hasWin || hasPush ? "win" : "lose");
+          } else if (me.lastResult === "win") {
+            showCenterToasts([{ text: "You win!", tone: "win" }]);
+            playSfx("win");
+          } else if (me.lastResult === "push") {
+            showCenterToasts([{ text: "Push.", tone: "win" }]);
+            playSfx("win");
+          } else if (me.lastResult) {
+            showCenterToasts([{ text: "You lose.", tone: "danger" }]);
+            playSfx("lose");
+          }
         }
       }
-      if (this.clearTimer) clearTimeout(this.clearTimer);
-      this.clearTimer = setTimeout(() => {
-        this.cleared = true;
-        this.renderRoom();
-      }, 1800);
     }
     this.prevMe = me ? { busted: me.busted, hands: me.hands } : null;
     this.renderRoom();
@@ -349,23 +354,17 @@ export class BlackjackMultiGame {
     if (!state) return;
     if (this.ui.roomId) this.ui.roomId.textContent = state.roomId || this.roomId;
     if (this.ui.dealer) {
-      if (this.cleared && !state.inRound) {
-        renderCards(this.ui.dealer, []);
-      } else {
-        const hideFirst = state.inRound && !state.revealDealer;
-        renderCards(this.ui.dealer, state.dealer || [], hideFirst);
-      }
+      const hideFirst = state.inRound && !state.revealDealer;
+      renderCards(this.ui.dealer, state.dealer || [], hideFirst);
     }
     if (this.ui.dealerTotal) {
-      if (this.cleared && !state.inRound) {
-        this.ui.dealerTotal.textContent = "";
-      } else if (state.inRound && !state.revealDealer) {
+      if (state.inRound && !state.revealDealer) {
         this.ui.dealerTotal.textContent = "Total: ?";
       } else {
         this.ui.dealerTotal.textContent = `Total: ${handTotal(state.dealer || [])}`;
       }
     }
-    this.renderPlayers(state, this.cleared && !state.inRound);
+    this.renderPlayers(state, false);
     this.updateControls(state);
     this.updateStatus(state);
     this.updateBet(state);
@@ -427,15 +426,15 @@ export class BlackjackMultiGame {
       cardsWrap.className = "bjmulti-hands";
       if (!hideHands) {
         hands.forEach((hand, idx) => {
-          const block = document.createElement("div");
-          block.className = "hand-block";
-          if (idx === player.activeHand) block.classList.add("active-hand");
           if (showLabels) {
             const label = document.createElement("div");
             label.className = "hand-label";
             label.textContent = `Hand ${idx + 1}`;
-            block.appendChild(label);
+            cardsWrap.appendChild(label);
           }
+          const block = document.createElement("div");
+          block.className = "hand-block";
+          if (idx === player.activeHand) block.classList.add("active-hand");
           const cards = document.createElement("div");
           cards.className = "cards";
           renderCards(cards, hand);
