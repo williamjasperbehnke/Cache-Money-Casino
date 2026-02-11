@@ -199,9 +199,12 @@ resource "aws_lambda_function" "ws_connect" {
 
   environment {
     variables = {
-      CONNECTIONS_TABLE = aws_dynamodb_table.connections.name
-      SESSIONS_TABLE    = aws_dynamodb_table.sessions.name
-      CORS_ORIGIN       = var.cors_origin
+      CONNECTIONS_TABLE   = aws_dynamodb_table.connections.name
+      ROOMS_TABLE         = aws_dynamodb_table.rooms.name
+      GAME_SESSIONS_TABLE = aws_dynamodb_table.game_sessions.name
+      USERS_TABLE         = aws_dynamodb_table.users.name
+      SESSIONS_TABLE      = aws_dynamodb_table.sessions.name
+      CORS_ORIGIN         = var.cors_origin
     }
   }
 }
@@ -238,10 +241,12 @@ resource "aws_lambda_function" "ws_message" {
 
   environment {
     variables = {
-      CONNECTIONS_TABLE = aws_dynamodb_table.connections.name
-      ROOMS_TABLE       = aws_dynamodb_table.rooms.name
+      CONNECTIONS_TABLE   = aws_dynamodb_table.connections.name
+      ROOMS_TABLE         = aws_dynamodb_table.rooms.name
       GAME_SESSIONS_TABLE = aws_dynamodb_table.game_sessions.name
-      CORS_ORIGIN       = var.cors_origin
+      USERS_TABLE         = aws_dynamodb_table.users.name
+      SESSIONS_TABLE      = aws_dynamodb_table.sessions.name
+      CORS_ORIGIN         = var.cors_origin
     }
   }
 }
