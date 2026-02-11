@@ -134,6 +134,12 @@ exports.handler = async (event) => {
       ExpressionAttributeValues: { ":room": null },
     });
     await sendToConnection(endpoint, connectionId, { type: "ROOM_LEFT" });
+    if (GAME_SESSIONS_TABLE && connection.room_id) {
+      const state = await getRoomState(connection.room_id);
+      if (state) {
+        await broadcastRoomState(endpoint, connection.room_id, state);
+      }
+    }
     return jsonResponse(200, { ok: true }, CORS_ORIGIN);
   }
 
