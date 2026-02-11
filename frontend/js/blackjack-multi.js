@@ -14,17 +14,10 @@ const getWsBase = () => {
   const apiBase = (localStorage.getItem("casino-api-base") || window.API_BASE || "").trim();
   if (apiBase) {
     const cleaned = apiBase.replace(/^http/, "ws").replace(/\/api\/?$/, "");
-    if (/execute-api\.amazonaws\.com$/.test(cleaned)) {
-      return `${cleaned}/prod`;
-    }
     return cleaned;
   }
   const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-  const hostBase = `${protocol}://${window.location.host}`;
-  if (/execute-api\.amazonaws\.com$/.test(hostBase)) {
-    return `${hostBase}/prod`;
-  }
-  return hostBase;
+  return `${protocol}://${window.location.host}`;
 };
 
 export class BlackjackMultiGame {

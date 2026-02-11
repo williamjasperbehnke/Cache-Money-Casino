@@ -577,7 +577,7 @@ resource "aws_apigatewayv2_route" "ws_action" {
 
 resource "aws_apigatewayv2_stage" "ws" {
   api_id      = aws_apigatewayv2_api.ws.id
-  name        = "prod"
+  name        = "$default"
   auto_deploy = true
 }
 
