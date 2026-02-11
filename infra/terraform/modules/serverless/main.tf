@@ -413,6 +413,36 @@ resource "aws_apigatewayv2_route" "blackjack_split" {
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
+resource "aws_apigatewayv2_route" "blackjack_multi_rooms_get" {
+  api_id    = aws_apigatewayv2_api.rest.id
+  route_key = "GET /api/games/blackjack-multi/rooms"
+  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
+}
+
+resource "aws_apigatewayv2_route" "blackjack_multi_rooms_post" {
+  api_id    = aws_apigatewayv2_api.rest.id
+  route_key = "POST /api/games/blackjack-multi/rooms"
+  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
+}
+
+resource "aws_apigatewayv2_route" "blackjack_multi_state" {
+  api_id    = aws_apigatewayv2_api.rest.id
+  route_key = "GET /api/games/blackjack-multi/rooms/{roomId}/state"
+  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
+}
+
+resource "aws_apigatewayv2_route" "blackjack_multi_join" {
+  api_id    = aws_apigatewayv2_api.rest.id
+  route_key = "POST /api/games/blackjack-multi/rooms/{roomId}/join"
+  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
+}
+
+resource "aws_apigatewayv2_route" "blackjack_multi_leave" {
+  api_id    = aws_apigatewayv2_api.rest.id
+  route_key = "POST /api/games/blackjack-multi/rooms/{roomId}/leave"
+  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
+}
+
 resource "aws_apigatewayv2_route" "holdem_deal" {
   api_id    = aws_apigatewayv2_api.rest.id
   route_key = "POST /api/games/holdem/deal"
