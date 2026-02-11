@@ -277,7 +277,10 @@ export class BlackjackMultiGame {
     }
     if (prevInRound && !this.lastInRound) {
       if (!this.sawBustThisRound && me) {
-        if (Array.isArray(me.busted) && me.busted.some(Boolean)) {
+        const hasHands = Array.isArray(me.hands) && me.hands.length > 0;
+        if (!hasHands) {
+          // Player sat out; no outcome toasts or sounds.
+        } else if (Array.isArray(me.busted) && me.busted.some(Boolean)) {
           const multiple = me.busted.length > 1;
           const messages = me.busted
             .map((busted, index) => (busted ? index : -1))
@@ -380,7 +383,7 @@ export class BlackjackMultiGame {
       if (index === state.turnIndex && state.inRound) wrapper.classList.add("active");
       const header = document.createElement("div");
       header.className = "bjmulti-player-header";
-      if (!state.inRound && !hideHands) {
+      if (!state.inRound && !hideHands && hands.length > 0) {
         const results = document.createElement("div");
         results.className = "bjmulti-results";
         const outcomes = Array.isArray(player.lastOutcomes) ? player.lastOutcomes : [];
@@ -408,9 +411,6 @@ export class BlackjackMultiGame {
         player.id === this.playerId ? `${player.username} (You)` : player.username;
       name.textContent =
         state.hostId && player.id === state.hostId ? `${baseName} (Host)` : baseName;
-      const status = document.createElement("div");
-      status.className = "status";
-      status.textContent = player.status || "waiting";
       const bet = document.createElement("div");
       bet.className = "status";
       const betTotal = Array.isArray(player.bets) && state.inRound
@@ -418,7 +418,6 @@ export class BlackjackMultiGame {
         : Number(player.betAmount || 0);
       bet.textContent = betTotal > 0 ? `Bet $${betTotal}` : "No bet";
       header.appendChild(name);
-      header.appendChild(status);
       header.appendChild(bet);
       const hands = Array.isArray(player.hands) ? player.hands : [];
       const showLabels = hands.length > 1;
@@ -426,15 +425,20 @@ export class BlackjackMultiGame {
       cardsWrap.className = "bjmulti-hands";
       if (!hideHands) {
         hands.forEach((hand, idx) => {
-          if (showLabels) {
-            const label = document.createElement("div");
-            label.className = "hand-label";
-            label.textContent = `Hand ${idx + 1}`;
-            cardsWrap.appendChild(label);
-          }
           const block = document.createElement("div");
           block.className = "hand-block";
           if (idx === player.activeHand) block.classList.add("active-hand");
+          if (showLabels) {
+            const label = document.createElement("div");
+            label.className = "hand-label";
+            if (Array.isArray(player.busted) && player.busted[idx]) {
+              label.textContent = "BUST";
+              label.classList.add("bust");
+            } else {
+              label.textContent = `Hand ${idx + 1}`;
+            }
+            block.appendChild(label);
+          }
           const cards = document.createElement("div");
           cards.className = "cards";
           renderCards(cards, hand);

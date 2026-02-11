@@ -615,6 +615,10 @@ h3 {
   margin-bottom: 6px;
 }
 
+.hand-label.bust {
+  color: #f87171;
+}
+
 .hand-stack {
   margin-top: 6px;
 }
