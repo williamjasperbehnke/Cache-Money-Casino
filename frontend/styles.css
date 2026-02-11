@@ -3256,3 +3256,141 @@ body.small-win .topbar {
   align-items: center;
   gap: 10px;
 }
+
+#blackjack-multi .bjmulti-grid {
+  display: grid;
+  gap: 22px;
+}
+
+#blackjack-multi .bjmulti-card {
+  background: rgba(10, 12, 20, 0.7);
+  border-radius: 16px;
+  padding: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: inset 0 0 18px rgba(15, 23, 42, 0.35);
+  margin-bottom: 16px;
+}
+
+#blackjack-multi .bjmulti-create {
+  display: grid;
+  gap: 10px;
+}
+
+#blackjack-multi .bjmulti-room-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 12px 0 16px;
+}
+
+#blackjack-multi .bjmulti-room-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(15, 23, 42, 0.6);
+}
+
+#blackjack-multi .bjmulti-room-card .title {
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+#blackjack-multi .bjmulti-room-card .details {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+#blackjack-multi .bjmulti-empty {
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+#blackjack-multi .bjmulti-room-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+#blackjack-multi .bjmulti-room-title {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+#blackjack-multi .bjmulti-invite {
+  margin-bottom: 16px;
+}
+
+#blackjack-multi .bjmulti-invite-row {
+  display: flex;
+  gap: 8px;
+}
+
+#blackjack-multi .bjmulti-table {
+  display: grid;
+  gap: 18px;
+}
+
+#blackjack-multi .bjmulti-players {
+  display: grid;
+  gap: 14px;
+}
+
+#blackjack-multi .bjmulti-player {
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.55);
+}
+
+#blackjack-multi .bjmulti-player.active {
+  border-color: rgba(59, 130, 246, 0.9);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+#blackjack-multi .bjmulti-player-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  color: #e2e8f0;
+}
+
+#blackjack-multi .bjmulti-player-header .status {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+}
+
+#blackjack-multi .bjmulti-result {
+  margin-bottom: 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+#blackjack-multi .bjmulti-result.win { color: #22c55e; }
+#blackjack-multi .bjmulti-result.loss,
+#blackjack-multi .bjmulti-result.bust { color: #ef4444; }
+#blackjack-multi .bjmulti-result.push { color: #f59e0b; }
+
+#blackjack-multi .bjmulti-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+#blackjack-multi .bjmulti-status {
+  margin-top: 10px;
+  color: #94a3b8;
+}
+
+@media (min-width: 960px) {
+  #blackjack-multi .bjmulti-grid {
+    grid-template-columns: 1fr 2fr;
+    align-items: start;
+  }
+}

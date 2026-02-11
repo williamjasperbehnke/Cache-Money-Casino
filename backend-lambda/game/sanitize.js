@@ -18,6 +18,20 @@ const sanitizeBlackjackState = (state) => {
   return next;
 };
 
+const sanitizeBlackjackMultiState = (state) => {
+  if (!state) return state;
+  const next = { ...state };
+  delete next.deck;
+  if (Array.isArray(next.dealer)) {
+    if (!next.revealDealer && next.dealer.length > 0) {
+      next.dealer = next.dealer.map((card, index) => (index === 0 ? maskCard() : card));
+    } else {
+      next.dealer = next.dealer.slice();
+    }
+  }
+  return next;
+};
+
 const sanitizePokerState = (state) => {
   if (!state) return state;
   const next = { ...state };
@@ -62,6 +76,7 @@ const sanitizeMemoryState = (state) => {
 const sanitizeState = (game, state) => {
   if (!state) return state;
   if (game === "blackjack") return sanitizeBlackjackState(state);
+  if (game === "blackjack-multi") return sanitizeBlackjackMultiState(state);
   if (game === "poker") return sanitizePokerState(state);
   if (game === "holdem") return sanitizeHoldemState(state);
   if (game === "memory") return sanitizeMemoryState(state);

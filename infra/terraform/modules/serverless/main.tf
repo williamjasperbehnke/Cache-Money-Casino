@@ -171,6 +171,7 @@ resource "aws_lambda_function" "game" {
   environment {
     variables = {
       GAME_SESSIONS_TABLE = aws_dynamodb_table.game_sessions.name
+      ROOMS_TABLE         = aws_dynamodb_table.rooms.name
       USERS_TABLE         = aws_dynamodb_table.users.name
       SESSIONS_TABLE      = aws_dynamodb_table.sessions.name
       CORS_ORIGIN         = var.cors_origin
@@ -208,6 +209,7 @@ resource "aws_lambda_function" "ws_disconnect" {
   environment {
     variables = {
       CONNECTIONS_TABLE = aws_dynamodb_table.connections.name
+      ROOMS_TABLE       = aws_dynamodb_table.rooms.name
       CORS_ORIGIN       = var.cors_origin
     }
   }
@@ -226,6 +228,7 @@ resource "aws_lambda_function" "ws_message" {
     variables = {
       CONNECTIONS_TABLE = aws_dynamodb_table.connections.name
       ROOMS_TABLE       = aws_dynamodb_table.rooms.name
+      GAME_SESSIONS_TABLE = aws_dynamodb_table.game_sessions.name
       CORS_ORIGIN       = var.cors_origin
     }
   }

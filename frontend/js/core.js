@@ -54,6 +54,16 @@ export const state = {
     revealDealer: false,
     awaitingClear: false,
   },
+  blackjackMulti: {
+    roomId: "",
+    playerId: "",
+    players: [],
+    dealer: [],
+    inRound: false,
+    revealDealer: false,
+    phase: "lobby",
+    turnIndex: 0,
+  },
   roulette: {
     bets: {
       numbers: {},
