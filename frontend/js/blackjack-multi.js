@@ -620,19 +620,22 @@ export class BlackjackMultiGame {
           const block = document.createElement("div");
           block.className = "hand-block";
           if (idx === player.activeHand) block.classList.add("active-hand");
-          const showHandLabel = showLabels || Boolean(busted[idx]);
+          const appendResultTag = (label) => {
+            const result = document.createElement("div");
+            result.className = `bjmulti-result ${resultLabel.toLowerCase()}`;
+            result.textContent = label;
+            block.appendChild(result);
+          };
+          const showHandLabel = showLabels;
           if (showHandLabel) {
             const label = document.createElement("div");
             label.className = "hand-label";
-            if (busted[idx]) {
-              label.textContent = "BUST";
-              label.classList.add("bust");
-            } else {
-              label.textContent = `Hand ${idx + 1}`;
-            }
+            label.textContent = `Hand ${idx + 1}`;
             block.appendChild(label);
           }
-          if (!state.inRound) {
+          if (busted[idx]) {
+            appendResultTag("BUST");
+          } else if (!state.inRound) {
             const outcome = outcomes.find((entry) => Number(entry?.index) === idx) || null;
             let resultLabel = "";
             if (outcome?.result === "win") {
@@ -643,10 +646,7 @@ export class BlackjackMultiGame {
               resultLabel = "LOSS";
             }
             if (resultLabel) {
-              const result = document.createElement("div");
-              result.className = `bjmulti-result ${resultLabel.toLowerCase()}`;
-              result.textContent = resultLabel;
-              block.appendChild(result);
+              appendResultTag(resultLabel);
             }
           }
           const cards = document.createElement("div");
