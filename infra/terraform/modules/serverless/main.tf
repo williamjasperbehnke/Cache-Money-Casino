@@ -184,6 +184,7 @@ resource "aws_lambda_function" "game" {
       USERS_TABLE         = aws_dynamodb_table.users.name
       SESSIONS_TABLE      = aws_dynamodb_table.sessions.name
       CORS_ORIGIN         = var.cors_origin
+      BLACKJACK_MULTI_ROOM_IDLE_TIMEOUT_SECONDS = tostring(var.blackjack_multi_room_idle_timeout_seconds)
     }
   }
 }
@@ -205,6 +206,7 @@ resource "aws_lambda_function" "ws_connect" {
       USERS_TABLE         = aws_dynamodb_table.users.name
       SESSIONS_TABLE      = aws_dynamodb_table.sessions.name
       CORS_ORIGIN         = var.cors_origin
+      BLACKJACK_MULTI_ROOM_IDLE_TIMEOUT_SECONDS = tostring(var.blackjack_multi_room_idle_timeout_seconds)
     }
   }
 }
@@ -226,6 +228,7 @@ resource "aws_lambda_function" "ws_disconnect" {
       USERS_TABLE         = aws_dynamodb_table.users.name
       SESSIONS_TABLE      = aws_dynamodb_table.sessions.name
       CORS_ORIGIN         = var.cors_origin
+      BLACKJACK_MULTI_ROOM_IDLE_TIMEOUT_SECONDS = tostring(var.blackjack_multi_room_idle_timeout_seconds)
     }
   }
 }
@@ -247,6 +250,7 @@ resource "aws_lambda_function" "ws_message" {
       USERS_TABLE         = aws_dynamodb_table.users.name
       SESSIONS_TABLE      = aws_dynamodb_table.sessions.name
       CORS_ORIGIN         = var.cors_origin
+      BLACKJACK_MULTI_ROOM_IDLE_TIMEOUT_SECONDS = tostring(var.blackjack_multi_room_idle_timeout_seconds)
     }
   }
 }

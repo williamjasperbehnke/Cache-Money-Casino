@@ -2,6 +2,7 @@ const { ApiGatewayManagementApiClient, PostToConnectionCommand } = require("@aws
 const { get, put, del, query, update } = require("./db");
 const { sanitizeState } = require("../game/sanitize");
 const { removePlayer } = require("../game/blackjack_multi");
+const { isRoomExpired } = require("./room_expiration");
 
 const { CONNECTIONS_TABLE, ROOMS_TABLE, GAME_SESSIONS_TABLE } = process.env;
 
@@ -136,9 +137,40 @@ const updateRoomMeta = async (roomId, state) => {
       host: state.host,
       player_count: Array.isArray(state.players) ? state.players.length : 0,
       in_round: Boolean(state.inRound),
+      last_activity_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     },
   });
+};
+
+const closeRoom = async (roomId) => {
+  if (!roomId || !hasRoomsConfig()) return;
+  const entries = await query({
+    TableName: ROOMS_TABLE,
+    KeyConditionExpression: "room_id = :room",
+    ExpressionAttributeValues: { ":room": roomId },
+  });
+  await Promise.all(
+    (entries.Items || []).map((item) =>
+      del({
+        TableName: ROOMS_TABLE,
+        Key: { room_id: roomId, player_id: item.player_id },
+      })
+    )
+  );
+  await del({
+    TableName: GAME_SESSIONS_TABLE,
+    Key: { session_id: roomSessionId(roomId) },
+  });
+};
+
+const closeRoomIfExpired = async (roomId) => {
+  if (!roomId || !hasRoomsConfig()) return false;
+  const [meta, state] = await Promise.all([getRoomMeta(roomId), getRoomState(roomId)]);
+  if (!state) return false;
+  if (!isRoomExpired({ meta, state })) return false;
+  await closeRoom(roomId);
+  return true;
 };
 
 const listRoomConnections = async (roomId) => {
@@ -197,6 +229,8 @@ module.exports = {
   getRoomState,
   saveRoomState,
   updateRoomMeta,
+  closeRoom,
+  closeRoomIfExpired,
   listRoomConnections,
   broadcastRoomState,
   cleanupRoomForConnection,

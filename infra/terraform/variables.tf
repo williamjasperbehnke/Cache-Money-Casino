@@ -21,6 +21,12 @@ variable "cors_origin" {
   default     = "*"
 }
 
+variable "blackjack_multi_room_idle_timeout_seconds" {
+  type        = number
+  description = "Seconds of inactivity before a multiplayer blackjack room expires."
+  default     = 3600
+}
+
 variable "enable_serverless" {
   type        = bool
   description = "Create the serverless API Gateway + Lambda stack."

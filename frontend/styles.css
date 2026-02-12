@@ -3438,7 +3438,7 @@ body.small-win .topbar {
 
 @media (min-width: 960px) {
   #blackjack-multi .bjmulti-grid {
-    grid-template-columns: 1fr 2fr;
+    grid-template-columns: 1fr;
     align-items: start;
   }
 }

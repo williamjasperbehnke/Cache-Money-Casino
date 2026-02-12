@@ -2,6 +2,8 @@ const crypto = require("crypto");
 const { get, put, scan, del } = require("./lib/db");
 const { jsonResponse, parseJson, getRoute, getAuthToken } = require("./lib/utils");
 const { updateStats } = require("./lib/stats");
+const { isRoomExpired } = require("./lib/room_expiration");
+const { closeRoom } = require("./lib/ws_rooms");
 const { 
   getSession,
   putUser, 
@@ -165,9 +167,17 @@ exports.handler = async (event) => {
       return jsonResponse(500, { error: "Rooms table not configured." }, CORS_ORIGIN);
     }
     const resp = await scan({ TableName: ROOMS_TABLE });
-    const rooms = (resp.Items || [])
-      .filter((item) => item.player_id === "meta" && item.is_public)
-      .map((item) => ({
+    const publicMeta = (resp.Items || []).filter(
+      (item) => item.player_id === "meta" && item.is_public
+    );
+    const rooms = [];
+    for (const item of publicMeta) {
+      const state = await getRoomState(item.room_id);
+      if (!state || isRoomExpired({ meta: item, state })) {
+        await closeRoom(item.room_id);
+        continue;
+      }
+      rooms.push({
         roomId: item.room_id,
         name: item.name || "Blackjack Table",
         host: item.host || "host",
@@ -175,7 +185,8 @@ exports.handler = async (event) => {
         maxPlayers: Number(item.max_players || 0) || 5,
         inRound: Boolean(item.in_round),
         createdAt: item.created_at,
-      }));
+      });
+    }
     return jsonResponse(200, { rooms }, CORS_ORIGIN);
   }
 
@@ -200,6 +211,7 @@ exports.handler = async (event) => {
       player_count: 0,
       in_round: false,
       created_at: new Date().toISOString(),
+      last_activity_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     });
     return jsonResponse(200, { roomId }, CORS_ORIGIN);
@@ -216,24 +228,34 @@ exports.handler = async (event) => {
     const action = bjMultiMatch[2] || "";
     if (method === "GET" && action === "state") {
       const state = await getRoomState(roomId);
+      const meta = await getRoomMeta(roomId);
+      if (state && isRoomExpired({ meta, state })) {
+        await closeRoom(roomId);
+        return jsonResponse(404, { error: "Room expired due to inactivity." }, CORS_ORIGIN);
+      }
       return respondWithState(200, "blackjack-multi", { state });
     }
     if (method === "POST" && action === "join") {
       const state = await getRoomState(roomId);
       if (!state) return jsonResponse(404, { error: "Room not found." }, CORS_ORIGIN);
+      const meta = await getRoomMeta(roomId);
+      if (isRoomExpired({ meta, state })) {
+        await closeRoom(roomId);
+        return jsonResponse(404, { error: "Room expired due to inactivity." }, CORS_ORIGIN);
+      }
       const playerId = playerIdFromToken(token);
       const username = session.username || `Guest ${playerId.slice(0, 4)}`;
       const result = addBlackjackMultiPlayer(state, { id: playerId, username });
       if (result?.error) return jsonResponse(400, { error: result.error }, CORS_ORIGIN);
       await saveRoomState(roomId, state);
-      const meta = (await getRoomMeta(roomId)) || {};
       await saveRoomMeta({
-        ...meta,
+        ...(meta || {}),
         room_id: roomId,
         player_id: "meta",
         host: state.host,
         player_count: state.players.length,
         in_round: Boolean(state.inRound),
+        last_activity_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
       return respondWithState(200, "blackjack-multi", { state, playerId });
@@ -241,6 +263,11 @@ exports.handler = async (event) => {
     if (method === "POST" && action === "leave") {
       const state = await getRoomState(roomId);
       if (!state) return jsonResponse(404, { error: "Room not found." }, CORS_ORIGIN);
+      const meta = await getRoomMeta(roomId);
+      if (isRoomExpired({ meta, state })) {
+        await closeRoom(roomId);
+        return jsonResponse(404, { error: "Room expired due to inactivity." }, CORS_ORIGIN);
+      }
       const playerId = playerIdFromToken(token);
       removeBlackjackMultiPlayer(state, playerId);
       if (state.players.length === 0) {
@@ -249,14 +276,14 @@ exports.handler = async (event) => {
         return respondWithState(200, "blackjack-multi", { state: null, playerId, closed: true });
       }
       await saveRoomState(roomId, state);
-      const meta = (await getRoomMeta(roomId)) || {};
       await saveRoomMeta({
-        ...meta,
+        ...(meta || {}),
         room_id: roomId,
         player_id: "meta",
         host: state.host,
         player_count: state.players.length,
         in_round: Boolean(state.inRound),
+        last_activity_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
       return respondWithState(200, "blackjack-multi", { state, playerId });

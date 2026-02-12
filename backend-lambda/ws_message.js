@@ -6,13 +6,17 @@ const {
   setConnectionRoom,
   addRoomMember,
   removeRoomMember,
+  getRoomMeta,
   getRoomState,
   saveRoomState,
   updateRoomMeta,
+  closeRoom,
+  closeRoomIfExpired,
   listRoomConnections,
   broadcastRoomState,
   cleanupRoomForConnection,
 } = require("./lib/ws_rooms");
+const { isRoomExpired } = require("./lib/room_expiration");
 const { startRound, applyHit, applyStand, applyDouble, applySplit } = require("./game/blackjack_multi");
 const { handTotal, resolveOutcomes } = require("./game/blackjack_core");
 const { updateStats } = require("./lib/stats");
@@ -50,12 +54,24 @@ exports.handler = async (event) => {
 
   if (action === "join") {
     const roomId = body.roomId || "lobby";
+    if (hasRoomsConfig()) {
+      const [meta, state] = await Promise.all([getRoomMeta(roomId), getRoomState(roomId)]);
+      if (state && isRoomExpired({ meta, state })) {
+        await closeRoom(roomId);
+        await sendToConnection(endpoint, connectionId, {
+          type: "ERROR",
+          error: "Room expired due to inactivity.",
+        });
+        return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+      }
+    }
     await addRoomMember({ roomId, connectionId, username: connection.username });
     await setConnectionRoom(connectionId, roomId);
     await sendToConnection(endpoint, connectionId, { type: "ROOM_JOINED", roomId });
     if (hasRoomsConfig()) {
       const state = await getRoomState(roomId);
       if (state) {
+        await updateRoomMeta(roomId, state);
         await broadcastRoomState(endpoint, roomId, state);
       }
     }
@@ -90,6 +106,13 @@ exports.handler = async (event) => {
       }
       if (connection.room_id && connection.room_id !== roomId) {
         await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Not in this room." });
+        return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+      }
+      if (await closeRoomIfExpired(roomId)) {
+        await sendToConnection(endpoint, connectionId, {
+          type: "ERROR",
+          error: "Room expired due to inactivity.",
+        });
         return jsonResponse(200, { ok: false }, CORS_ORIGIN);
       }
       const state = await getRoomState(roomId);
