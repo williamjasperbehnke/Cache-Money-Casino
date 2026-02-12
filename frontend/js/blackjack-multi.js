@@ -405,6 +405,7 @@ export class BlackjackMultiGame {
       if (index === state.turnIndex && state.inRound) wrapper.classList.add("active");
       const header = document.createElement("div");
       header.className = "bjmulti-player-header";
+      const hands = Array.isArray(player.hands) ? player.hands : [];
       if (!state.inRound && !hideHands && hands.length > 0) {
         const results = document.createElement("div");
         results.className = "bjmulti-results";
@@ -441,7 +442,6 @@ export class BlackjackMultiGame {
       bet.textContent = betTotal > 0 ? `Bet $${betTotal}` : "No bet";
       header.appendChild(name);
       header.appendChild(bet);
-      const hands = Array.isArray(player.hands) ? player.hands : [];
       const showLabels = hands.length > 1;
       const cardsWrap = document.createElement("div");
       cardsWrap.className = "bjmulti-hands";
