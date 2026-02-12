@@ -164,10 +164,42 @@ exports.handler = async (event) => {
       const player = state.players.find((entry) => entry.id === connection.player_id);
       let result = { state };
       if (payload.type === "BET") {
-        await sendToConnection(endpoint, connectionId, {
-          type: "ERROR",
-          error: "Pre-deal staking is disabled. Bets happen during the hand.",
-        });
+        if (!player) {
+          await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Player not found." });
+          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+        }
+        if (state.inRound) {
+          await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Round already in progress." });
+          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+        }
+        if (cooldownPending) {
+          await sendToConnection(endpoint, connectionId, {
+            type: "ERROR",
+            error: "Round settling. Wait a moment.",
+          });
+          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+        }
+        if (!connection.token) {
+          await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Session missing." });
+          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+        }
+        const session = await getSession(connection.token);
+        if (!session) {
+          await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Session missing." });
+          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+        }
+        const amount = Math.max(0, Number(payload.amount) || 0);
+        const { balance } = await resolveBalance(session);
+        if (amount > balance) {
+          await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Not enough credits." });
+          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+        }
+        player.betAmount = amount;
+        if (amount > 0) player.lastBet = amount;
+        player.status = amount > 0 ? "waiting" : "sitting";
+        await saveRoomState(roomId, state);
+        await updateRoomMeta(roomId, state);
+        await broadcastRoomState(endpoint, roomId, state);
         return jsonResponse(200, { ok: true }, CORS_ORIGIN);
       }
       if (!player && !["START", "BET"].includes(payload.type)) {
@@ -385,42 +417,10 @@ exports.handler = async (event) => {
       let result = { state };
 
       if (payload.type === "BET") {
-        if (!player) {
-          await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Player not found." });
-          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
-        }
-        if (state.inRound) {
-          await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Round already in progress." });
-          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
-        }
-        if (cooldownPending) {
-          await sendToConnection(endpoint, connectionId, {
-            type: "ERROR",
-            error: "Round settling. Wait a moment.",
-          });
-          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
-        }
-        if (!connection.token) {
-          await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Session missing." });
-          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
-        }
-        const session = await getSession(connection.token);
-        if (!session) {
-          await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Session missing." });
-          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
-        }
-        const amount = Math.max(0, Number(payload.amount) || 0);
-        const { balance } = await resolveBalance(session);
-        if (amount > balance) {
-          await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Not enough credits." });
-          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
-        }
-        player.betAmount = amount;
-        if (amount > 0) player.lastBet = amount;
-        player.status = amount > 0 ? "waiting" : "sitting";
-        await saveRoomState(roomId, state);
-        await updateRoomMeta(roomId, state);
-        await broadcastRoomState(endpoint, roomId, state);
+        await sendToConnection(endpoint, connectionId, {
+          type: "ERROR",
+          error: "Pre-deal staking is disabled. Bets happen during the hand.",
+        });
         return jsonResponse(200, { ok: true }, CORS_ORIGIN);
       }
 

@@ -392,6 +392,8 @@ export class HoldemMultiGame {
     if (!this.ui.players || !this.state) return;
     this.ui.players.innerHTML = "";
     const players = Array.isArray(this.state.players) ? this.state.players : [];
+    const me = players.find((entry) => entry.id === this.playerId) || null;
+    const toneClass = me?.lastResult === "loss" ? "lose" : "win";
     players.forEach((player, index) => {
       const wrapper = document.createElement("div");
       wrapper.className = "bjmulti-player";
@@ -466,7 +468,8 @@ export class HoldemMultiGame {
         const winnerIndexes = Array.isArray(player.bestIndexes) ? player.bestIndexes : [];
         const holeSet = new Set(winnerIndexes.filter((idx) => idx < 2));
         cards.querySelectorAll(".card").forEach((cardEl, cardIdx) => {
-          cardEl.classList.toggle("win", holeSet.has(cardIdx));
+          cardEl.classList.remove("win", "lose");
+          if (holeSet.has(cardIdx)) cardEl.classList.add(toneClass);
         });
       }
       block.appendChild(cards);
@@ -483,10 +486,10 @@ export class HoldemMultiGame {
         allWinningSets.filter((idx) => idx >= 2).map((idx) => idx - 2)
       );
       this.ui.community.querySelectorAll(".card").forEach((cardEl, idx) => {
-        cardEl.classList.toggle(
-          "win",
-          this.state.phase === "showdown" && communitySet.has(idx)
-        );
+        cardEl.classList.remove("win", "lose");
+        if (this.state.phase === "showdown" && communitySet.has(idx)) {
+          cardEl.classList.add(toneClass);
+        }
       });
     }
   }

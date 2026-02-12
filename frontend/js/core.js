@@ -657,7 +657,8 @@ export function buildCardEl(card, hidden = false) {
 }
 
 export function renderHiddenCards(containerId, count) {
-  const container = document.getElementById(containerId);
+  const container =
+    typeof containerId === "string" ? document.getElementById(containerId) : containerId;
   if (!container) return;
   container.classList.remove("reveal");
   container.innerHTML = "";
