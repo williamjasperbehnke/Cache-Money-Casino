@@ -17,7 +17,15 @@ const {
   cleanupRoomForConnection,
 } = require("./lib/ws_rooms");
 const { isRoomExpired } = require("./lib/room_expiration");
-const { startRound, applyHit, applyStand, applyDouble, applySplit } = require("./game/blackjack_multi");
+const {
+  startRound,
+  applyHit,
+  applyStand,
+  applyDouble,
+  applySplit,
+  isRoundClearPending,
+  clearCompletedRound,
+} = require("./game/blackjack_multi");
 const { handTotal, resolveOutcomes } = require("./game/blackjack_core");
 const { updateStats } = require("./lib/stats");
 const { getSession, resolveBalance, persistBalance, putUser } = require("./lib/session");
@@ -136,6 +144,12 @@ exports.handler = async (event) => {
         await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Room not found." });
         return jsonResponse(200, { ok: false }, CORS_ORIGIN);
       }
+      let autoClearedRound = false;
+      const cooldownPending = isRoundClearPending(state);
+      if (state.phase === "complete" && !cooldownPending) {
+        clearCompletedRound(state);
+        autoClearedRound = true;
+      }
       const player = state.players.find((entry) => entry.id === connection.player_id);
       let result = { state };
       if (payload.type === "BET") {
@@ -145,6 +159,13 @@ exports.handler = async (event) => {
         }
         if (state.inRound) {
           await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Round already in progress." });
+          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+        }
+        if (cooldownPending) {
+          await sendToConnection(endpoint, connectionId, {
+            type: "ERROR",
+            error: "Round settling. Wait a moment.",
+          });
           return jsonResponse(200, { ok: false }, CORS_ORIGIN);
         }
         if (!connection.token) {
@@ -179,6 +200,13 @@ exports.handler = async (event) => {
           await sendToConnection(endpoint, connectionId, {
             type: "ERROR",
             error: "Only the host can start the round.",
+          });
+          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+        }
+        if (cooldownPending) {
+          await sendToConnection(endpoint, connectionId, {
+            type: "ERROR",
+            error: "Round settling. Wait a moment.",
           });
           return jsonResponse(200, { ok: false }, CORS_ORIGIN);
         }
@@ -240,10 +268,10 @@ exports.handler = async (event) => {
           return jsonResponse(200, { ok: false }, CORS_ORIGIN);
         }
         const nextBalance = await persistBalance(session, user, balance - currentBet);
-        if (user) {
-          user.balance = nextBalance;
-          await putUser(user);
-        }
+        await sendToConnection(endpoint, connectionId, {
+          type: "BALANCE_UPDATE",
+          balance: nextBalance,
+        });
         result = applyDouble(state, connection.player_id);
       } else if (payload.type === "SPLIT") {
         if (!connection.token) {
@@ -262,13 +290,18 @@ exports.handler = async (event) => {
           return jsonResponse(200, { ok: false }, CORS_ORIGIN);
         }
         const nextBalance = await persistBalance(session, user, balance - currentBet);
-        if (user) {
-          user.balance = nextBalance;
-          await putUser(user);
-        }
+        await sendToConnection(endpoint, connectionId, {
+          type: "BALANCE_UPDATE",
+          balance: nextBalance,
+        });
         result = applySplit(state, connection.player_id);
       }
       if (result?.error) {
+        if (autoClearedRound) {
+          await saveRoomState(roomId, state);
+          await updateRoomMeta(roomId, state);
+          await broadcastRoomState(endpoint, roomId, state);
+        }
         await sendToConnection(endpoint, connectionId, { type: "ERROR", error: result.error });
         return jsonResponse(200, { ok: false }, CORS_ORIGIN);
       }
@@ -296,6 +329,10 @@ exports.handler = async (event) => {
             dealerTotal
           );
           const nextBalance = await persistBalance(context.session, context.user, context.balance);
+          await sendToConnection(endpoint, context.connectionId, {
+            type: "BALANCE_UPDATE",
+            balance: nextBalance,
+          });
           if (context.user) {
             resolved.outcomes.forEach((outcome) => {
               const bet = entry.bets[outcome.index] || 0;

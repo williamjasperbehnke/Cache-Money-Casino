@@ -9,6 +9,8 @@ const {
   playDealer,
 } = require("./blackjack_core");
 
+const ROUND_CLEAR_DELAY_MS = 3000;
+
 const normalizePlayer = (player) => ({
   id: player.id,
   username: player.username || "Guest",
@@ -39,6 +41,7 @@ const createBlackjackMultiState = ({ roomId, host, hostId, maxPlayers = 5 }) => 
   settled: false,
   phase: "lobby",
   turnIndex: 0,
+  roundClearAt: null,
   updatedAt: new Date().toISOString(),
 });
 
@@ -95,6 +98,7 @@ const resetForRound = (state) => {
   state.inRound = true;
   state.settled = false;
   state.phase = "player";
+  state.roundClearAt = null;
   state.turnIndex = 0;
   state.players = state.players.map((player) => {
     if (!player.betAmount || player.betAmount <= 0) {
@@ -186,7 +190,42 @@ const resolveDealer = (state) => {
   });
   state.inRound = false;
   state.phase = "complete";
+  state.roundClearAt = new Date(Date.now() + ROUND_CLEAR_DELAY_MS).toISOString();
   state.updatedAt = new Date().toISOString();
+};
+
+const getRoundClearAtMs = (state) => {
+  const ms = Date.parse(state?.roundClearAt || "");
+  return Number.isFinite(ms) ? ms : 0;
+};
+
+const isRoundClearPending = (state, nowMs = Date.now()) =>
+  Boolean(state?.phase === "complete" && getRoundClearAtMs(state) > nowMs);
+
+const clearCompletedRound = (state) => {
+  if (!state || state.phase !== "complete") return false;
+  state.dealer = [];
+  state.revealDealer = false;
+  state.settled = false;
+  state.phase = "lobby";
+  state.roundClearAt = null;
+  state.turnIndex = 0;
+  state.players = (state.players || []).map((player) => ({
+    ...player,
+    hands: [],
+    bets: [],
+    doubled: [],
+    busted: [],
+    activeHand: 0,
+    splitUsed: false,
+    total: 0,
+    lastResult: "",
+    lastOutcomes: [],
+    lastPayout: 0,
+    status: player.betAmount > 0 ? "waiting" : "sitting",
+  }));
+  state.updatedAt = new Date().toISOString();
+  return true;
 };
 
 const startRound = (state) => {
@@ -243,6 +282,7 @@ const applySplit = (state, playerId) =>
   );
 
 module.exports = {
+  ROUND_CLEAR_DELAY_MS,
   createBlackjackMultiState,
   addPlayer,
   removePlayer,
@@ -252,4 +292,7 @@ module.exports = {
   applyDouble,
   applySplit,
   resolveDealer,
+  getRoundClearAtMs,
+  isRoundClearPending,
+  clearCompletedRound,
 };

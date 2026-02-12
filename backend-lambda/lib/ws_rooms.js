@@ -1,7 +1,7 @@
 const { ApiGatewayManagementApiClient, PostToConnectionCommand } = require("@aws-sdk/client-apigatewaymanagementapi");
 const { get, put, del, query, update } = require("./db");
 const { sanitizeState } = require("../game/sanitize");
-const { removePlayer } = require("../game/blackjack_multi");
+const { removePlayer, applyStand } = require("../game/blackjack_multi");
 const { isRoomExpired } = require("./room_expiration");
 
 const { CONNECTIONS_TABLE, ROOMS_TABLE, GAME_SESSIONS_TABLE } = process.env;
@@ -215,6 +215,20 @@ const cleanupRoomForConnection = async ({ roomId, playerId, connectionId, endpoi
     excludeConnectionId: connectionId,
   });
   if (hasOtherConnection) return;
+  const disconnectedPlayer = state.players.find((entry) => entry.id === playerId);
+  if (reason === "disconnect" && state.inRound && disconnectedPlayer) {
+    const current = state.players[state.turnIndex] || null;
+    if (current && current.id === playerId) {
+      const result = applyStand(state, playerId);
+      if (result?.error) {
+        // If auto-stand fails, still preserve the player state for reconnect.
+      }
+    }
+    await saveRoomState(roomId, state);
+    await updateRoomMeta(roomId, state);
+    await broadcastRoomState(endpoint, roomId, state);
+    return;
+  }
   const players = Array.isArray(state.players) ? state.players : [];
   const isSoloPlayerRoom =
     players.length === 1 &&

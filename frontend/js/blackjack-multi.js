@@ -37,6 +37,7 @@ export class BlackjackMultiGame {
     this.localBetDraft = null;
     this.betCommitTimer = null;
     this.connectionReady = false;
+    this.roundClearTimer = null;
   }
 
   cacheElements() {
@@ -274,6 +275,7 @@ export class BlackjackMultiGame {
     }
     this.closeSocket(true);
     this.clearLocalBetDraft();
+    this.clearRoundClearTimer();
     this.setConnectionReady(false);
     this.roomId = "";
     this.syncRoomQuery("");
@@ -334,6 +336,7 @@ export class BlackjackMultiGame {
 
   closeSocket(sendLeave = true) {
     this.clearLocalBetDraft();
+    this.clearRoundClearTimer();
     this.setConnectionReady(false);
     if (!this.socket) return;
     if (sendLeave) {
@@ -407,6 +410,44 @@ export class BlackjackMultiGame {
     }
   }
 
+  clearRoundClearTimer() {
+    if (this.roundClearTimer) {
+      clearTimeout(this.roundClearTimer);
+      this.roundClearTimer = null;
+    }
+  }
+
+  getRoundClearAtMs(state) {
+    const ms = Date.parse(state?.roundClearAt || "");
+    return Number.isFinite(ms) ? ms : 0;
+  }
+
+  isRoundCooldownActive(state) {
+    if (!state || state.phase !== "complete") return false;
+    const clearAtMs = this.getRoundClearAtMs(state);
+    return clearAtMs > Date.now();
+  }
+
+  shouldHideCompletedHands(state) {
+    if (!state || state.phase !== "complete") return false;
+    const clearAtMs = this.getRoundClearAtMs(state);
+    return clearAtMs > 0 && clearAtMs <= Date.now();
+  }
+
+  scheduleRoundClearRefresh(state) {
+    this.clearRoundClearTimer();
+    if (!state || state.phase !== "complete") return;
+    const clearAtMs = this.getRoundClearAtMs(state);
+    if (!clearAtMs) return;
+    const waitMs = clearAtMs - Date.now();
+    if (waitMs <= 0) return;
+    this.roundClearTimer = setTimeout(() => {
+      this.roundClearTimer = null;
+      if (!this.state || this.state.phase !== "complete") return;
+      this.renderRoom();
+    }, waitMs + 20);
+  }
+
   setConnectionReady(ready) {
     this.connectionReady = Boolean(ready);
     if (this.ui.connecting) {
@@ -442,6 +483,7 @@ export class BlackjackMultiGame {
       this.loadLobby();
       return;
     }
+    this.scheduleRoundClearRefresh(this.state);
     const me = this.state.players?.find((entry) => entry.id === this.playerId) || null;
     this.lastInRound = Boolean(this.state.inRound);
     if (this.lastInRound) {
@@ -556,7 +598,7 @@ export class BlackjackMultiGame {
         this.ui.dealerTotal.textContent = `Total: ${handTotal(state.dealer || [])}`;
       }
     }
-    this.renderPlayers(state, false);
+    this.renderPlayers(state, this.shouldHideCompletedHands(state));
     this.updateControls(state);
     this.updateStatus(state);
     this.updateBet(state);
@@ -615,10 +657,16 @@ export class BlackjackMultiGame {
           const block = document.createElement("div");
           block.className = "hand-block";
           if (idx === player.activeHand) block.classList.add("active-hand");
-          if (showLabels) {
+          const showHandLabel = showLabels || Boolean(busted[idx]);
+          if (showHandLabel) {
             const label = document.createElement("div");
             label.className = "hand-label";
-            label.textContent = `Hand ${idx + 1}`;
+            if (busted[idx]) {
+              label.textContent = "BUST";
+              label.classList.add("bust");
+            } else {
+              label.textContent = `Hand ${idx + 1}`;
+            }
             block.appendChild(label);
           }
           if (!state.inRound) {
@@ -675,9 +723,11 @@ export class BlackjackMultiGame {
     const current = players[state.turnIndex] || null;
     const myTurn = Boolean(state.inRound && current && current.id === this.playerId);
     const isHost = state.hostId ? state.hostId === this.playerId : false;
+    const roundCooldown = this.isRoundCooldownActive(state);
     const controlsEnabled = this.connectionReady;
     if (this.ui.startBtn) {
-      this.ui.startBtn.disabled = !controlsEnabled || state.inRound || players.length === 0 || !isHost;
+      this.ui.startBtn.disabled =
+        !controlsEnabled || roundCooldown || state.inRound || players.length === 0 || !isHost;
       this.ui.startBtn.classList.toggle("hidden", state.inRound || !isHost);
     }
     if (this.ui.hitBtn) {
@@ -711,16 +761,20 @@ export class BlackjackMultiGame {
     }
     if (this.ui.betButtons) {
       this.ui.betButtons.forEach((btn) => {
-        btn.disabled = !controlsEnabled || state.inRound;
+        btn.disabled = !controlsEnabled || roundCooldown || state.inRound;
       });
     }
-    if (this.ui.betClear) this.ui.betClear.disabled = !controlsEnabled || state.inRound;
+    if (this.ui.betClear) this.ui.betClear.disabled = !controlsEnabled || roundCooldown || state.inRound;
   }
 
   updateStatus(state) {
     if (!this.ui.status) return;
     if (!this.connectionReady) {
       this.ui.status.textContent = "Connecting to table...";
+      return;
+    }
+    if (this.isRoundCooldownActive(state)) {
+      this.ui.status.textContent = "Round complete. Next hand in a moment...";
       return;
     }
     if (!state.inRound) {
