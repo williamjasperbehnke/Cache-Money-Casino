@@ -577,8 +577,7 @@ const applyRaise = (state, playerId, raiseByAmount) =>
 
     // Minimum legal raise is at least the last raise increment.
     if (raiseBy > 0 && raiseBy < minRaise && !isAllIn) {
-      const requiredTotal = toCall + minRaise;
-      return { error: `Minimum raise is $${requiredTotal}.` };
+      return { error: `Minimum raise is $${minRaise}.` };
     }
 
     const actualPaid = applyBet(player, pay, state);

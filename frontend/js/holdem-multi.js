@@ -342,19 +342,29 @@ export class HoldemMultiGame {
       `${prevState.roomId || this.roomId}:${prevState.roundClearAt || ""}:${me.lastResult || ""}:${Number(me.lastPayout || 0)}` === roundKey;
     if (wasAlreadyShowdown) return;
 
-    const committed = Math.max(0, Number(me.lastCommitted || 0));
-    const payout = Math.max(0, Number(me.lastPayout || 0));
-    const net = payout - committed;
+    const myLabel = String(me.bestLabel || "").trim();
+    const winningEntry =
+      Array.isArray(nextState.players)
+        ? nextState.players.find((entry) => entry.lastResult === "win" && entry.bestLabel)
+        : null;
+    const winningLabel = String(winningEntry?.bestLabel || "").trim();
     if (me.lastResult === "win") {
       playSfx("win");
-      const label = String(me.bestLabel || "").trim();
-      showCenterToast(label ? `You win with ${label}!` : `You win +$${Math.max(0, net)}`, "win");
+      showCenterToast(myLabel ? `You win with ${myLabel}!` : "You win!", "win");
     } else if (me.lastResult === "loss") {
       playSfx("lose");
-      showCenterToast(`You lose -$${Math.max(0, -net)}`, "danger");
+      if (String(me.lastAction || "").toLowerCase() === "fold") {
+        showCenterToast("You folded.", "danger");
+      } else if (winningLabel) {
+        showCenterToast(`You lose. Winning hand: ${winningLabel}.`, "danger");
+      } else if (myLabel) {
+        showCenterToast(`You lose with ${myLabel}.`, "danger");
+      } else {
+        showCenterToast("You lose.", "danger");
+      }
     } else if (me.lastResult === "push") {
       playSfx("win");
-      showCenterToast("Push. Pot split.", "win");
+      showCenterToast(myLabel ? `Push with ${myLabel}. Pot split.` : "Push. Pot split.", "win");
     }
     this.lastOutcomeToastKey = roundKey;
   }
@@ -391,7 +401,15 @@ export class HoldemMultiGame {
 
   updateBet() {
     if (this.ui.betAmount) {
-      this.ui.betAmount.textContent = `+$${Math.max(0, Number(this.raiseAmount || 0))}`;
+      if (!this.state || !this.state.inRound) {
+        this.ui.betAmount.textContent = "+$0";
+        return;
+      }
+      const players = Array.isArray(this.state.players) ? this.state.players : [];
+      const me = players.find((entry) => entry.id === this.playerId) || null;
+      const toCall = Math.max(0, Number(this.state.currentBet || 0) - Number(me?.roundBet || 0));
+      const effectiveRaiseBy = Math.max(0, Number(this.raiseAmount || 0));
+      this.ui.betAmount.textContent = `+$${toCall + effectiveRaiseBy}`;
     }
   }
 
@@ -551,7 +569,7 @@ export class HoldemMultiGame {
       const maxRaiseBy = Math.max(0, Number(me?.stack || 0) - toCall);
       const effectiveRaiseBy = Math.min(Math.max(0, Number(this.raiseAmount || 0)), maxRaiseBy);
       if (effectiveRaiseBy > 0 && canRaise) {
-        this.ui.betBtn.textContent = `Raise $${toCall + effectiveRaiseBy}`;
+        this.ui.betBtn.textContent = `Raise $${effectiveRaiseBy}`;
       } else if (toCall > 0) {
         this.ui.betBtn.textContent = `Call $${toCall}`;
       } else {
@@ -586,9 +604,6 @@ export class HoldemMultiGame {
     } else {
       this.sendAction("CHECK");
     }
-    this.raiseAmount = 0;
-    this.updateBet();
-    this.updateControls();
   }
 
   updateStatus() {

@@ -149,7 +149,7 @@ describe("holdem_multi", () => {
     expect(state.turnIndex).toBe(0);
 
     const invalid = applyRaise(state, "p1", 5);
-    expect(invalid.error).toBe("Minimum raise is $20.");
+    expect(invalid.error).toBe("Minimum raise is $10.");
 
     const raised = applyRaise(state, "p1", 10);
     expect(raised.error).toBeUndefined();
@@ -170,7 +170,7 @@ describe("holdem_multi", () => {
 
     expect(state.turnIndex).toBe(1);
     const badReRaise = applyRaise(state, "p2", 5);
-    expect(badReRaise.error).toBe("Minimum raise is $25.");
+    expect(badReRaise.error).toBe("Minimum raise is $10.");
 
     const goodReRaise = applyRaise(state, "p2", 10);
     expect(goodReRaise.error).toBeUndefined();
