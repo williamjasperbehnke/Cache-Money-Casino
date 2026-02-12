@@ -3,5 +3,5 @@ import { BlackjackMultiGame } from "./blackjack-multi.js";
 
 const game = new BlackjackMultiGame();
 
-game.init();
 initCore();
+game.init();

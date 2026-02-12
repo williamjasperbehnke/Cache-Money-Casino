@@ -68,6 +68,13 @@ exports.handler = async (event) => {
     await addRoomMember({ roomId, connectionId, username: connection.username });
     await setConnectionRoom(connectionId, roomId);
     await sendToConnection(endpoint, connectionId, { type: "ROOM_JOINED", roomId });
+    if (connection.token) {
+      const session = await getSession(connection.token);
+      if (session) {
+        const { balance } = await resolveBalance(session);
+        await sendToConnection(endpoint, connectionId, { type: "BALANCE_UPDATE", balance });
+      }
+    }
     if (hasRoomsConfig()) {
       const state = await getRoomState(roomId);
       if (state) {
