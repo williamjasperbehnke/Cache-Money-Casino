@@ -59,4 +59,41 @@ describe("ws_disconnect", () => {
     expect(stateResp.Item?.state?.players?.[0]?.id).toBe("p1");
   });
 
+  it("keeps player when same player reconnects before cleanup finishes", async () => {
+    await put({
+      TableName: "Connections",
+      Item: { connection_id: "c1", player_id: "p1", room_id: "r1" },
+    });
+    await put({
+      TableName: "Rooms",
+      Item: { room_id: "r1", player_id: "c1", username: "alice" },
+    });
+    await put({
+      TableName: "Rooms",
+      Item: { room_id: "r1", player_id: "meta", host: "alice", player_count: 1 },
+    });
+    await put({
+      TableName: "GameSessions",
+      Item: {
+        session_id: "room:r1",
+        game: "blackjack-multi",
+        state: { roomId: "r1", hostId: "p1", players: [{ id: "p1", username: "alice" }] },
+      },
+    });
+
+    const pending = handler({ requestContext: { connectionId: "c1" } });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    await put({
+      TableName: "Connections",
+      Item: { connection_id: "c2", player_id: "p1", room_id: null },
+    });
+
+    const resp = await pending;
+    expect(parseResponse(resp).statusCode).toBe(200);
+
+    const stateResp = await get({ TableName: "GameSessions", Key: { session_id: "room:r1" } });
+    expect(stateResp.Item?.state?.players?.length).toBe(1);
+    expect(stateResp.Item?.state?.players?.[0]?.id).toBe("p1");
+  });
+
 });

@@ -1,10 +1,11 @@
 const { ApiGatewayManagementApiClient, PostToConnectionCommand } = require("@aws-sdk/client-apigatewaymanagementapi");
-const { get, put, del, query, update } = require("./db");
+const { get, put, del, query, scan, update } = require("./db");
 const { sanitizeState } = require("../game/sanitize");
 const { removePlayer } = require("../game/blackjack_multi");
 const { isRoomExpired } = require("./room_expiration");
 
 const { CONNECTIONS_TABLE, ROOMS_TABLE, GAME_SESSIONS_TABLE } = process.env;
+const DISCONNECT_REJOIN_GRACE_MS = 1200;
 
 const hasRoomsConfig = () => Boolean(ROOMS_TABLE && GAME_SESSIONS_TABLE);
 
@@ -195,6 +196,16 @@ const hasOtherRoomConnectionForPlayer = async ({ roomId, playerId, excludeConnec
   return false;
 };
 
+const hasOtherActiveConnectionForPlayer = async ({ playerId, excludeConnectionId }) => {
+  if (!playerId || !CONNECTIONS_TABLE) return false;
+  const resp = await scan({ TableName: CONNECTIONS_TABLE });
+  const items = resp.Items || [];
+  return items.some((item) => {
+    if (!item?.connection_id || item.connection_id === excludeConnectionId) return false;
+    return item.player_id === playerId;
+  });
+};
+
 const broadcastRoomState = async (endpoint, roomId, state) => {
   const connections = await listRoomConnections(roomId);
   const payload = {
@@ -205,7 +216,13 @@ const broadcastRoomState = async (endpoint, roomId, state) => {
   await Promise.all(connections.map((entry) => sendToConnection(endpoint, entry.player_id, payload)));
 };
 
-const cleanupRoomForConnection = async ({ roomId, playerId, connectionId, endpoint }) => {
+const cleanupRoomForConnection = async ({
+  roomId,
+  playerId,
+  connectionId,
+  endpoint,
+  reason = "leave",
+}) => {
   if (!roomId || !playerId || !hasRoomsConfig()) return;
   const state = await getRoomState(roomId);
   if (!state) return;
@@ -215,6 +232,14 @@ const cleanupRoomForConnection = async ({ roomId, playerId, connectionId, endpoi
     excludeConnectionId: connectionId,
   });
   if (hasOtherConnection) return;
+  if (reason === "disconnect") {
+    await new Promise((resolve) => setTimeout(resolve, DISCONNECT_REJOIN_GRACE_MS));
+    const stillHasOtherConnection = await hasOtherActiveConnectionForPlayer({
+      playerId,
+      excludeConnectionId: connectionId,
+    });
+    if (stillHasOtherConnection) return;
+  }
   removePlayer(state, playerId);
   if (state.players.length === 0) {
     await del({

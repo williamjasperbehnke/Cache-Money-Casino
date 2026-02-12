@@ -72,7 +72,7 @@ export class BlackjackMultiGame {
   init() {
     this.cacheElements();
     this.bindControls();
-    window.addEventListener("beforeunload", () => this.closeSocket(true));
+    window.addEventListener("beforeunload", () => this.closeSocket(false));
     const params = new URLSearchParams(window.location.search);
     const room = params.get("room");
     if (room) {
@@ -635,9 +635,7 @@ export class BlackjackMultiGame {
           if (!state.inRound) {
             const outcome = outcomes.find((entry) => Number(entry?.index) === idx) || null;
             let resultLabel = "";
-            if (busted[idx]) {
-              resultLabel = "BUST";
-            } else if (outcome?.result === "win") {
+            if (outcome?.result === "win") {
               resultLabel = "WIN";
             } else if (outcome?.result === "push") {
               resultLabel = "PUSH";
