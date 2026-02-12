@@ -3833,37 +3833,22 @@ body.small-win .topbar {
   background: rgba(127, 29, 29, 0.28);
 }
 
-:is(#blackjack-multi, #holdem-multi) .blind-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 22px;
-  height: 22px;
-  border-radius: 999px;
-  font-size: 9px;
-  letter-spacing: 0.08em;
-  font-weight: 700;
-  line-height: 1;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(15, 23, 42, 0.5);
+:is(#blackjack-multi, #holdem-multi) .player-role-tag.is-dealer {
+  color: #f5d0fe;
+  border: 1px solid rgba(217, 70, 239, 0.45);
+  background: rgba(112, 26, 117, 0.28);
 }
 
-:is(#blackjack-multi, #holdem-multi) .blind-chip.is-button {
-  color: #93c5fd;
-  border-color: rgba(96, 165, 250, 0.5);
-  background: rgba(30, 64, 175, 0.25);
-}
-
-:is(#blackjack-multi, #holdem-multi) .blind-chip.is-sb {
-  color: #fde68a;
-  border-color: rgba(251, 191, 36, 0.5);
-  background: rgba(120, 53, 15, 0.25);
-}
-
-:is(#blackjack-multi, #holdem-multi) .blind-chip.is-bb {
+:is(#blackjack-multi, #holdem-multi) .player-role-tag.is-big-blind {
   color: #86efac;
-  border-color: rgba(34, 197, 94, 0.5);
-  background: rgba(22, 101, 52, 0.3);
+  border: 1px solid rgba(34, 197, 94, 0.45);
+  background: rgba(22, 101, 52, 0.28);
+}
+
+:is(#blackjack-multi, #holdem-multi) .player-role-tag.is-small-blind {
+  color: #fde68a;
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  background: rgba(120, 53, 15, 0.26);
 }
 
 :is(#blackjack-multi, #holdem-multi) .bjmulti-player-header .status {
@@ -3907,6 +3892,13 @@ body.small-win .topbar {
 :is(#blackjack-multi, #holdem-multi) .bjmulti-result.loss,
 :is(#blackjack-multi, #holdem-multi) .bjmulti-result.bust { color: #ef4444; }
 :is(#blackjack-multi, #holdem-multi) .bjmulti-result.push { color: #f59e0b; }
+
+#holdem-multi .he-result-hand {
+  margin-top: 2px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: #cbd5e1;
+}
 
 :is(#blackjack-multi, #holdem-multi) .bjmulti-actions {
   display: grid;

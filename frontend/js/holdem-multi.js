@@ -51,6 +51,7 @@ export class HoldemMultiGame {
       startBtn: document.getElementById("heMultiStart"),
       betBtn: document.getElementById("heMultiBet"),
       foldBtn: document.getElementById("heMultiFold"),
+      betRow: document.querySelector("#heMultiRoom .bjmulti-bet-row"),
       betAmount: document.getElementById("heMultiBetAmount"),
       betButtons: document.querySelectorAll("#heMultiBetButtons .chip"),
       betClear: document.getElementById("heMultiBetClear"),
@@ -350,21 +351,21 @@ export class HoldemMultiGame {
     const winningLabel = String(winningEntry?.bestLabel || "").trim();
     if (me.lastResult === "win") {
       playSfx("win");
-      showCenterToast(myLabel ? `You win with ${myLabel}!` : "You win!", "win");
+      showCenterToast(myLabel ? `You win with ${myLabel}!` : "You win!", "win", 3000);
     } else if (me.lastResult === "loss") {
       playSfx("lose");
       if (String(me.lastAction || "").toLowerCase() === "fold") {
-        showCenterToast("You folded.", "danger");
+        showCenterToast("You folded.", "danger", 3000);
       } else if (winningLabel) {
-        showCenterToast(`You lose. Winning hand: ${winningLabel}.`, "danger");
+        showCenterToast(`You lose. Winning hand: ${winningLabel}.`, "danger", 3000);
       } else if (myLabel) {
-        showCenterToast(`You lose with ${myLabel}.`, "danger");
+        showCenterToast(`You lose with ${myLabel}.`, "danger", 3000);
       } else {
-        showCenterToast("You lose.", "danger");
+        showCenterToast("You lose.", "danger", 3000);
       }
     } else if (me.lastResult === "push") {
       playSfx("win");
-      showCenterToast(myLabel ? `Push with ${myLabel}. Pot split.` : "Push. Pot split.", "win");
+      showCenterToast(myLabel ? `Push with ${myLabel}. Pot split.` : "Push. Pot split.", "win", 3000);
     }
     this.lastOutcomeToastKey = roundKey;
   }
@@ -446,6 +447,7 @@ export class HoldemMultiGame {
     if (!this.ui.players || !this.state) return;
     this.ui.players.innerHTML = "";
     const players = Array.isArray(this.state.players) ? this.state.players : [];
+    const blindPositions = this.getBlindPositions(players);
     const me = players.find((entry) => entry.id === this.playerId) || null;
     const toneClass = me?.lastResult === "loss" ? "lose" : "win";
     players.forEach((player, index) => {
@@ -473,22 +475,22 @@ export class HoldemMultiGame {
         hostTag.textContent = "Host";
         name.appendChild(hostTag);
       }
-      if (index === this.state.buttonIndex) {
+      if (index === blindPositions.buttonIndex) {
         const dTag = document.createElement("span");
-        dTag.className = "blind-chip is-button";
-        dTag.textContent = "D";
+        dTag.className = "player-role-tag is-dealer";
+        dTag.textContent = "Dealer";
         name.appendChild(dTag);
       }
-      if (index === this.state.smallBlindIndex) {
+      if (index === blindPositions.smallBlindIndex) {
         const sbTag = document.createElement("span");
-        sbTag.className = "blind-chip is-sb";
-        sbTag.textContent = "SB";
+        sbTag.className = "player-role-tag is-small-blind";
+        sbTag.textContent = "Small Blind";
         name.appendChild(sbTag);
       }
-      if (index === this.state.bigBlindIndex) {
+      if (index === blindPositions.bigBlindIndex) {
         const bbTag = document.createElement("span");
-        bbTag.className = "blind-chip is-bb";
-        bbTag.textContent = "BB";
+        bbTag.className = "player-role-tag is-big-blind";
+        bbTag.textContent = "Big Blind";
         name.appendChild(bbTag);
       }
       const status = document.createElement("div");
@@ -498,8 +500,10 @@ export class HoldemMultiGame {
       } else if (this.state.inRound && player.status === "playing") {
         const action = player.lastAction ? ` ${String(player.lastAction).toUpperCase()}` : "";
         status.textContent = `Stack $${Number(player.stack || 0)} • In $${Number(player.committed || 0)}${action}`;
+      } else if (this.state.phase === "showdown" && player.lastResult) {
+        status.textContent = "Showdown";
       } else if (player.lastResult) {
-        status.textContent = `${player.lastResult.toUpperCase()}${player.bestLabel ? ` (${player.bestLabel})` : ""}`;
+        status.textContent = player.lastResult.toUpperCase();
       } else {
         status.textContent = "Waiting";
       }
@@ -527,6 +531,18 @@ export class HoldemMultiGame {
         });
       }
       block.appendChild(cards);
+      if (this.state.phase === "showdown" && player.lastResult) {
+        const result = document.createElement("div");
+        result.className = `bjmulti-result ${String(player.lastResult).toLowerCase()}`;
+        result.textContent = String(player.lastResult).toUpperCase();
+        block.appendChild(result);
+        if (player.bestLabel) {
+          const hand = document.createElement("div");
+          hand.className = "he-result-hand";
+          hand.textContent = player.bestLabel;
+          block.appendChild(hand);
+        }
+      }
       wrapper.appendChild(header);
       wrapper.appendChild(block);
       this.ui.players.appendChild(wrapper);
@@ -563,6 +579,9 @@ export class HoldemMultiGame {
       this.ui.startBtn.disabled = !this.connectionReady || inCooldown || this.state.inRound || !isHost;
       this.ui.startBtn.classList.toggle("hidden", inCooldown || this.state.inRound || !isHost);
     }
+    if (this.ui.betRow) {
+      this.ui.betRow.classList.toggle("hidden", !this.state.inRound || inCooldown);
+    }
     if (this.ui.betBtn) {
       this.ui.betBtn.disabled = !this.connectionReady || !myTurn;
       this.ui.betBtn.classList.toggle("hidden", !myTurn);
@@ -586,6 +605,35 @@ export class HoldemMultiGame {
     if (this.ui.betClear) {
       this.ui.betClear.disabled = !this.connectionReady || inCooldown || !myTurn;
     }
+  }
+
+  getBlindPositions(players) {
+    const list = Array.isArray(players) ? players : [];
+    if (!list.length) {
+      return { buttonIndex: -1, smallBlindIndex: -1, bigBlindIndex: -1 };
+    }
+
+    if (this.state?.inRound) {
+      return {
+        buttonIndex: Number(this.state.buttonIndex ?? -1),
+        smallBlindIndex: Number(this.state.smallBlindIndex ?? -1),
+        bigBlindIndex: Number(this.state.bigBlindIndex ?? -1),
+      };
+    }
+
+    const nextSeat = (start) => {
+      for (let step = 0; step < list.length; step += 1) {
+        const idx = (start + step + list.length) % list.length;
+        if (list[idx]) return idx;
+      }
+      return -1;
+    };
+
+    const currentButton = Number(this.state?.buttonIndex ?? -1);
+    const buttonIndex = nextSeat(currentButton + 1);
+    const smallBlindIndex = nextSeat(buttonIndex + 1);
+    const bigBlindIndex = nextSeat(smallBlindIndex + 1);
+    return { buttonIndex, smallBlindIndex, bigBlindIndex };
   }
 
   handleBetAction() {
