@@ -1,7 +1,7 @@
 const { ApiGatewayManagementApiClient, PostToConnectionCommand } = require("@aws-sdk/client-apigatewaymanagementapi");
 const { get, put, del, query, update } = require("./db");
 const { sanitizeState } = require("../game/sanitize");
-const { removePlayer, applyStand } = require("../game/blackjack_multi");
+const { removePlayer } = require("../game/blackjack_multi");
 const { isRoomExpired } = require("./room_expiration");
 
 const { CONNECTIONS_TABLE, ROOMS_TABLE, GAME_SESSIONS_TABLE } = process.env;
@@ -205,7 +205,7 @@ const broadcastRoomState = async (endpoint, roomId, state) => {
   await Promise.all(connections.map((entry) => sendToConnection(endpoint, entry.player_id, payload)));
 };
 
-const cleanupRoomForConnection = async ({ roomId, playerId, connectionId, endpoint, reason = "disconnect" }) => {
+const cleanupRoomForConnection = async ({ roomId, playerId, connectionId, endpoint }) => {
   if (!roomId || !playerId || !hasRoomsConfig()) return;
   const state = await getRoomState(roomId);
   if (!state) return;
@@ -215,26 +215,6 @@ const cleanupRoomForConnection = async ({ roomId, playerId, connectionId, endpoi
     excludeConnectionId: connectionId,
   });
   if (hasOtherConnection) return;
-  const disconnectedPlayer = state.players.find((entry) => entry.id === playerId);
-  if (reason === "disconnect" && state.inRound && disconnectedPlayer) {
-    const current = state.players[state.turnIndex] || null;
-    if (current && current.id === playerId) {
-      const result = applyStand(state, playerId);
-      if (result?.error) {
-        // If auto-stand fails, still preserve the player state for reconnect.
-      }
-    }
-    await saveRoomState(roomId, state);
-    await updateRoomMeta(roomId, state);
-    await broadcastRoomState(endpoint, roomId, state);
-    return;
-  }
-  const players = Array.isArray(state.players) ? state.players : [];
-  const isSoloPlayerRoom =
-    players.length === 1 &&
-    players[0]?.id === playerId;
-  // Preserve solo rooms on transient disconnect (refresh/reconnect path).
-  if (reason === "disconnect" && isSoloPlayerRoom) return;
   removePlayer(state, playerId);
   if (state.players.length === 0) {
     await del({

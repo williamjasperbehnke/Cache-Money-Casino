@@ -37,7 +37,6 @@ export class BlackjackMultiGame {
     this.localBetDraft = null;
     this.betCommitTimer = null;
     this.connectionReady = false;
-    this.roundClearTimer = null;
   }
 
   cacheElements() {
@@ -73,7 +72,7 @@ export class BlackjackMultiGame {
   init() {
     this.cacheElements();
     this.bindControls();
-    window.addEventListener("beforeunload", () => this.closeSocket(false));
+    window.addEventListener("beforeunload", () => this.closeSocket(true));
     const params = new URLSearchParams(window.location.search);
     const room = params.get("room");
     if (room) {
@@ -275,7 +274,6 @@ export class BlackjackMultiGame {
     }
     this.closeSocket(true);
     this.clearLocalBetDraft();
-    this.clearRoundClearTimer();
     this.setConnectionReady(false);
     this.roomId = "";
     this.syncRoomQuery("");
@@ -336,7 +334,6 @@ export class BlackjackMultiGame {
 
   closeSocket(sendLeave = true) {
     this.clearLocalBetDraft();
-    this.clearRoundClearTimer();
     this.setConnectionReady(false);
     if (!this.socket) return;
     if (sendLeave) {
@@ -410,42 +407,8 @@ export class BlackjackMultiGame {
     }
   }
 
-  clearRoundClearTimer() {
-    if (this.roundClearTimer) {
-      clearTimeout(this.roundClearTimer);
-      this.roundClearTimer = null;
-    }
-  }
-
-  getRoundClearAtMs(state) {
-    const ms = Date.parse(state?.roundClearAt || "");
-    return Number.isFinite(ms) ? ms : 0;
-  }
-
   isRoundCooldownActive(state) {
-    if (!state || state.phase !== "complete") return false;
-    const clearAtMs = this.getRoundClearAtMs(state);
-    return clearAtMs > Date.now();
-  }
-
-  shouldHideCompletedHands(state) {
-    if (!state || state.phase !== "complete") return false;
-    const clearAtMs = this.getRoundClearAtMs(state);
-    return clearAtMs > 0 && clearAtMs <= Date.now();
-  }
-
-  scheduleRoundClearRefresh(state) {
-    this.clearRoundClearTimer();
-    if (!state || state.phase !== "complete") return;
-    const clearAtMs = this.getRoundClearAtMs(state);
-    if (!clearAtMs) return;
-    const waitMs = clearAtMs - Date.now();
-    if (waitMs <= 0) return;
-    this.roundClearTimer = setTimeout(() => {
-      this.roundClearTimer = null;
-      if (!this.state || this.state.phase !== "complete") return;
-      this.renderRoom();
-    }, waitMs + 20);
+    return Boolean(state && state.phase === "complete");
   }
 
   setConnectionReady(ready) {
@@ -483,7 +446,6 @@ export class BlackjackMultiGame {
       this.loadLobby();
       return;
     }
-    this.scheduleRoundClearRefresh(this.state);
     const me = this.state.players?.find((entry) => entry.id === this.playerId) || null;
     this.lastInRound = Boolean(this.state.inRound);
     if (this.lastInRound) {
@@ -598,7 +560,7 @@ export class BlackjackMultiGame {
         this.ui.dealerTotal.textContent = `Total: ${handTotal(state.dealer || [])}`;
       }
     }
-    this.renderPlayers(state, this.shouldHideCompletedHands(state));
+    this.renderPlayers(state, false);
     this.updateControls(state);
     this.updateStatus(state);
     this.updateBet(state);
@@ -637,7 +599,8 @@ export class BlackjackMultiGame {
       }
       const bet = document.createElement("div");
       bet.className = "status";
-      const betTotal = Array.isArray(player.bets) && state.inRound
+      const showHandBets = state.inRound || state.phase === "complete";
+      const betTotal = Array.isArray(player.bets) && showHandBets
         ? player.bets.reduce((sum, val) => sum + Number(val || 0), 0)
         : Number(player.betAmount || 0);
       const isSittingOut =
@@ -778,7 +741,10 @@ export class BlackjackMultiGame {
       return;
     }
     if (!state.inRound) {
-      this.ui.status.textContent = "Waiting for the next round.";
+      const isHost = state.hostId ? state.hostId === this.playerId : false;
+      this.ui.status.textContent = isHost
+        ? "PRESS START ROUND TO BEGIN NEXT ROUND"
+        : "WAITING FOR HOST TO START NEXT ROUND";
       return;
     }
     const current = state.players?.[state.turnIndex];
@@ -793,7 +759,8 @@ export class BlackjackMultiGame {
       const betTotal = Array.isArray(me?.bets)
         ? me.bets.reduce((sum, val) => sum + Number(val || 0), 0)
         : 0;
-      const next = state.inRound ? betTotal : Number(me?.betAmount || 0);
+      const showHandBets = state.inRound || state.phase === "complete";
+      const next = showHandBets ? betTotal : Number(me?.betAmount || 0);
       this.ui.betAmount.textContent = `$${next}`;
     }
   }

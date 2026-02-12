@@ -31,6 +31,27 @@ const { updateStats } = require("./lib/stats");
 const { getSession, resolveBalance, persistBalance, putUser } = require("./lib/session");
 
 const { CORS_ORIGIN = "*" } = process.env;
+const ROUND_CLEAR_DELAY_MS = 3000;
+const scheduledRoundClears = new Map();
+
+const scheduleRoundClear = (endpoint, roomId) => {
+  if (!roomId || scheduledRoundClears.has(roomId)) return;
+  const timer = setTimeout(async () => {
+    scheduledRoundClears.delete(roomId);
+    try {
+      const state = await getRoomState(roomId);
+      if (!state || state.phase !== "complete") return;
+      if (isRoundClearPending(state)) return;
+      if (!clearCompletedRound(state)) return;
+      await saveRoomState(roomId, state);
+      await updateRoomMeta(roomId, state);
+      await broadcastRoomState(endpoint, roomId, state);
+    } catch (err) {
+      console.error("failed to clear completed blackjack round", { roomId, err });
+    }
+  }, ROUND_CLEAR_DELAY_MS + 50);
+  scheduledRoundClears.set(roomId, timer);
+};
 
 const buildPlayerSessionMap = async (roomId) => {
   const entries = await listRoomConnections(roomId);
@@ -110,7 +131,6 @@ exports.handler = async (event) => {
       playerId: connection.player_id,
       connectionId,
       endpoint,
-      reason: "leave",
     });
     await sendToConnection(endpoint, connectionId, { type: "ROOM_LEFT" });
     return jsonResponse(200, { ok: true }, CORS_ORIGIN);
@@ -350,6 +370,7 @@ exports.handler = async (event) => {
           entry.total = handTotal(entry.hands[entry.activeHand] || entry.hands[0] || []);
         }
         state.settled = true;
+        scheduleRoundClear(endpoint, roomId);
       }
       await saveRoomState(roomId, state);
       await updateRoomMeta(roomId, state);

@@ -22,7 +22,6 @@ exports.handler = async (event) => {
       playerId: connection.player_id,
       connectionId,
       endpoint,
-      reason: "disconnect",
     });
   }
   await deleteConnection(connectionId);
