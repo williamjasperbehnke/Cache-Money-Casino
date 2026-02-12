@@ -1,8 +1,16 @@
 const { ApiGatewayManagementApiClient, PostToConnectionCommand } = require("@aws-sdk/client-apigatewaymanagementapi");
 const { get, put, del, query, scan, update } = require("./db");
 const { sanitizeState } = require("../game/sanitize");
-const { removePlayer: removeBlackjackMultiPlayer } = require("../game/blackjack_multi");
-const { removePlayer: removeHoldemMultiPlayer } = require("../game/holdem_multi");
+const {
+  removePlayer: removeBlackjackMultiPlayer,
+  isRoundClearPending: isBlackjackRoundClearPending,
+  clearCompletedRound: clearBlackjackCompletedRound,
+} = require("../game/blackjack_multi");
+const {
+  removePlayer: removeHoldemMultiPlayer,
+  isRoundClearPending: isHoldemRoundClearPending,
+  clearCompletedRound: clearHoldemCompletedRound,
+} = require("../game/holdem_multi");
 const { isRoomExpired } = require("./room_expiration");
 
 const { CONNECTIONS_TABLE, ROOMS_TABLE, GAME_SESSIONS_TABLE } = process.env;
@@ -232,6 +240,40 @@ const removeRoomPlayerByGame = (state, playerId) => {
   return removeBlackjackMultiPlayer(state, playerId);
 };
 
+const maybeClearRoundAfterCooldown = async ({ roomId, state, endpoint }) => {
+  if (!roomId || !state) return;
+  const gameKey = state.game || "blackjack-multi";
+  const isHoldem = gameKey === "holdem-multi";
+  const phaseDone = isHoldem ? state.phase === "showdown" : state.phase === "complete";
+  if (!phaseDone || !state.settled) return;
+
+  const clearAtMs = Date.parse(state.roundClearAt || "");
+  if (!Number.isFinite(clearAtMs)) return;
+  const waitMs = Math.max(0, clearAtMs - Date.now() + 30);
+  await new Promise((resolve) => setTimeout(resolve, waitMs));
+
+  const latest = await getRoomState(roomId);
+  if (!latest) return;
+  const latestGame = latest.game || "blackjack-multi";
+  const latestIsHoldem = latestGame === "holdem-multi";
+  const latestPhaseDone = latestIsHoldem ? latest.phase === "showdown" : latest.phase === "complete";
+  if (!latestPhaseDone) return;
+
+  const pending = latestIsHoldem
+    ? isHoldemRoundClearPending(latest)
+    : isBlackjackRoundClearPending(latest);
+  if (pending) return;
+
+  const cleared = latestIsHoldem
+    ? clearHoldemCompletedRound(latest)
+    : clearBlackjackCompletedRound(latest);
+  if (!cleared) return;
+
+  await saveRoomState(roomId, latest);
+  await updateRoomMeta(roomId, latest);
+  await broadcastRoomState(endpoint, roomId, latest);
+};
+
 const cleanupRoomForConnection = async ({
   roomId,
   playerId,
@@ -280,6 +322,7 @@ const cleanupRoomForConnection = async ({
   await saveRoomState(roomId, state);
   await updateRoomMeta(roomId, state);
   await broadcastRoomState(endpoint, roomId, state);
+  await maybeClearRoundAfterCooldown({ roomId, state, endpoint });
 };
 
 module.exports = {

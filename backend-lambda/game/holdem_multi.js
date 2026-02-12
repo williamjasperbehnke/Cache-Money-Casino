@@ -575,8 +575,10 @@ const applyRaise = (state, playerId, raiseByAmount) =>
       return { error: "Invalid raise." };
     }
 
-    if (raiseSize < minRaise && !isAllIn) {
-      return { error: `Minimum raise is $${minRaise}.` };
+    // Treat forced call as part of the action threshold so "call + small add" is valid.
+    const requiredRaiseBy = Math.max(1, minRaise - toCall);
+    if (raiseBy > 0 && raiseBy < requiredRaiseBy && !isAllIn) {
+      return { error: `Minimum raise is $${requiredRaiseBy}.` };
     }
 
     const actualPaid = applyBet(player, pay, state);

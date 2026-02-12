@@ -4,6 +4,7 @@ const {
   startRound,
   applyCheck,
   applyCall,
+  applyRaise,
   clearCompletedRound,
 } = require("../../game/holdem_multi");
 
@@ -135,5 +136,20 @@ describe("holdem_multi", () => {
     const acted = applyCall(state, "p1");
     expect(acted.error).toBeUndefined();
     expect(state.turnIndex).toBe(1);
+  });
+
+  it("allows raise when call portion already satisfies most of minimum", () => {
+    const state = createHoldemMultiState({ roomId: "r4", host: "Host", hostId: "p1" });
+    addPlayer(state, { id: "p1", username: "A" });
+    addPlayer(state, { id: "p2", username: "B" });
+    addPlayer(state, { id: "p3", username: "C" });
+    const started = startRound(state, { p1: 100, p2: 100, p3: 100 });
+    expect(started.error).toBeUndefined();
+    expect(state.currentBet).toBe(10);
+    expect(state.turnIndex).toBe(0);
+
+    const raised = applyRaise(state, "p1", 5);
+    expect(raised.error).toBeUndefined();
+    expect(state.currentBet).toBe(15);
   });
 });

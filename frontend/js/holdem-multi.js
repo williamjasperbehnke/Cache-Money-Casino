@@ -299,9 +299,12 @@ export class HoldemMultiGame {
     if (!this.state || this.state.phase === "showdown") return;
     if (!this.state.inRound) return;
     const players = Array.isArray(this.state.players) ? this.state.players : [];
+    const me = players.find((entry) => entry.id === this.playerId) || null;
     const current = players[this.state.turnIndex] || null;
-    if (!current || current.id !== this.playerId) return;
-    this.raiseAmount = Math.max(0, Number(amount) || 0);
+    if (!me || !current || current.id !== this.playerId) return;
+    const toCall = Math.max(0, Number(this.state.currentBet || 0) - Number(me.roundBet || 0));
+    const maxRaiseBy = Math.max(0, Number(me.stack || 0) - toCall);
+    this.raiseAmount = Math.min(Math.max(0, Number(amount) || 0), maxRaiseBy);
     this.updateBet();
     this.updateControls();
   }
