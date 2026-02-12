@@ -622,7 +622,7 @@ export class BlackjackMultiGame {
           if (idx === player.activeHand) block.classList.add("active-hand");
           const appendResultTag = (label) => {
             const result = document.createElement("div");
-            result.className = `bjmulti-result ${resultLabel.toLowerCase()}`;
+            result.className = `bjmulti-result ${label.toLowerCase()}`;
             result.textContent = label;
             block.appendChild(result);
           };
