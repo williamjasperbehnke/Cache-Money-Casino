@@ -29,6 +29,8 @@ const {
 const {
   startRound: startHoldemRound,
   applyCheck: applyHoldemCheck,
+  applyCall: applyHoldemCall,
+  applyRaise: applyHoldemRaise,
   applyFold: applyHoldemFold,
   isRoundClearPending: isHoldemRoundClearPending,
   clearCompletedRound: clearHoldemCompletedRound,
@@ -506,6 +508,10 @@ exports.handler = async (event) => {
         result = startHoldemRound(state);
       } else if (payload.type === "CHECK") {
         result = applyHoldemCheck(state, connection.player_id);
+      } else if (payload.type === "CALL") {
+        result = applyHoldemCall(state, connection.player_id);
+      } else if (payload.type === "RAISE") {
+        result = applyHoldemRaise(state, connection.player_id, Number(payload.amount) || 0);
       } else if (payload.type === "FOLD") {
         result = applyHoldemFold(state, connection.player_id);
       } else {

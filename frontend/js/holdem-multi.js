@@ -24,6 +24,7 @@ export class HoldemMultiGame {
     this.connectionReady = false;
     this.rooms = [];
     this.authReadyPromise = null;
+    this.raiseAmount = 0;
   }
 
   cacheElements() {
@@ -43,9 +44,12 @@ export class HoldemMultiGame {
       leaveBtn: document.getElementById("heMultiLeave"),
       community: document.getElementById("heMultiCommunity"),
       pot: document.getElementById("heMultiPot"),
+      potBreakdown: document.getElementById("heMultiPotBreakdown"),
       players: document.getElementById("heMultiPlayers"),
       startBtn: document.getElementById("heMultiStart"),
       checkBtn: document.getElementById("heMultiCheck"),
+      callBtn: document.getElementById("heMultiCall"),
+      raiseBtn: document.getElementById("heMultiRaise"),
       foldBtn: document.getElementById("heMultiFold"),
       betAmount: document.getElementById("heMultiBetAmount"),
       betButtons: document.querySelectorAll("#heMultiBetButtons .chip"),
@@ -98,6 +102,11 @@ export class HoldemMultiGame {
     this.ui.copyInvite?.addEventListener("click", () => this.copyInvite());
     this.ui.startBtn?.addEventListener("click", () => this.sendAction("START"));
     this.ui.checkBtn?.addEventListener("click", () => this.sendAction("CHECK"));
+    this.ui.callBtn?.addEventListener("click", () => this.sendAction("CALL"));
+    this.ui.raiseBtn?.addEventListener("click", () => {
+      const amount = Math.max(0, Number(this.raiseAmount) || 0);
+      this.sendAction("RAISE", { amount });
+    });
     this.ui.foldBtn?.addEventListener("click", () => this.sendAction("FOLD"));
     this.ui.betButtons?.forEach((btn) => {
       const amount = Number(btn.dataset.amount) || 0;
@@ -283,7 +292,7 @@ export class HoldemMultiGame {
   sendAction(type, payload = {}) {
     if (!this.connectionReady || !this.socket || this.socket.readyState !== WebSocket.OPEN) return;
     if (type === "START") playSfx("deal");
-    if (type === "CHECK" || type === "FOLD") playSfx("hit");
+    if (type === "CHECK" || type === "CALL" || type === "RAISE" || type === "FOLD") playSfx("hit");
     this.socket.send(
       JSON.stringify({
         action: "action",
@@ -293,15 +302,22 @@ export class HoldemMultiGame {
   }
 
   setBet(amount) {
-    if (!this.state || this.state.inRound || this.state.phase === "showdown") return;
+    if (!this.state || this.state.phase === "showdown") return;
     const me = this.state.players?.find((entry) => entry.id === this.playerId);
     if (!me) return;
+    const next = Math.max(0, Number(amount) || 0);
+    if (this.state.inRound) {
+      this.raiseAmount = next;
+      this.updateBet();
+      return;
+    }
     const bank = Math.max(0, Number(coreState.balance || 0));
-    const next = Math.min(bank, Math.max(0, Number(amount) || 0));
-    me.betAmount = next;
-    me.status = next > 0 ? "waiting" : "sitting";
+    const stake = Math.min(bank, next);
+    me.betAmount = stake;
+    me.status = stake > 0 ? "waiting" : "sitting";
+    this.raiseAmount = 0;
     this.updateBet();
-    this.sendAction("BET", { amount: next });
+    this.sendAction("BET", { amount: stake });
   }
 
   adjustBet(delta) {
@@ -316,6 +332,7 @@ export class HoldemMultiGame {
       this.showLobby();
       return;
     }
+    if (!this.state.inRound) this.raiseAmount = 0;
     this.renderRoom();
   }
 
@@ -352,7 +369,11 @@ export class HoldemMultiGame {
   updateBet() {
     const me = this.state?.players?.find((entry) => entry.id === this.playerId);
     if (this.ui.betAmount) {
-      this.ui.betAmount.textContent = `$${Math.max(0, Number(me?.betAmount || 0))}`;
+      if (this.state?.inRound) {
+        this.ui.betAmount.textContent = `Raise +$${Math.max(0, Number(this.raiseAmount || 0))}`;
+      } else {
+        this.ui.betAmount.textContent = `$${Math.max(0, Number(me?.betAmount || 0))}`;
+      }
     }
   }
 
@@ -362,10 +383,27 @@ export class HoldemMultiGame {
     if (this.ui.roomId) this.ui.roomId.textContent = state.roomId || this.roomId;
     renderCards(this.ui.community, state.community || []);
     if (this.ui.pot) this.ui.pot.textContent = `Pot: $${Number(state.pot || 0)}`;
+    this.renderPotBreakdown();
     this.renderPlayers();
     this.updateBet();
     this.updateControls();
     this.updateStatus();
+  }
+
+  renderPotBreakdown() {
+    if (!this.ui.potBreakdown || !this.state) return;
+    const segments = Array.isArray(this.state.potBreakdown) ? this.state.potBreakdown : [];
+    this.ui.potBreakdown.innerHTML = "";
+    if (!segments.length) return;
+    segments.forEach((segment) => {
+      const row = document.createElement("div");
+      row.className = "he-pot-row";
+      const winners = Array.isArray(segment.winnerNames) ? segment.winnerNames.filter(Boolean) : [];
+      row.textContent = winners.length
+        ? `${segment.label}: $${Number(segment.amount || 0)} • Winner: ${winners.join(", ")}`
+        : `${segment.label}: $${Number(segment.amount || 0)}`;
+      this.ui.potBreakdown.appendChild(row);
+    });
   }
 
   renderPlayers() {
@@ -397,16 +435,35 @@ export class HoldemMultiGame {
         hostTag.textContent = "Host";
         name.appendChild(hostTag);
       }
+      if (index === this.state.buttonIndex) {
+        const dTag = document.createElement("span");
+        dTag.className = "blind-chip is-button";
+        dTag.textContent = "D";
+        name.appendChild(dTag);
+      }
+      if (index === this.state.smallBlindIndex) {
+        const sbTag = document.createElement("span");
+        sbTag.className = "blind-chip is-sb";
+        sbTag.textContent = "SB";
+        name.appendChild(sbTag);
+      }
+      if (index === this.state.bigBlindIndex) {
+        const bbTag = document.createElement("span");
+        bbTag.className = "blind-chip is-bb";
+        bbTag.textContent = "BB";
+        name.appendChild(bbTag);
+      }
       const status = document.createElement("div");
       status.className = "status";
       if (player.folded) {
         status.textContent = "Folded";
       } else if (this.state.inRound && player.status === "playing") {
-        status.textContent = "In hand";
+        const action = player.lastAction ? ` ${String(player.lastAction).toUpperCase()}` : "";
+        status.textContent = `Stack $${Number(player.stack || 0)} • In $${Number(player.committed || 0)}${action}`;
       } else if (player.lastResult) {
         status.textContent = `${player.lastResult.toUpperCase()}${player.bestLabel ? ` (${player.bestLabel})` : ""}`;
       } else {
-        status.textContent = `Bet $${Number(player.betAmount || 0)}`;
+        status.textContent = `Stake $${Number(player.betAmount || 0)}`;
       }
       header.appendChild(name);
       header.appendChild(status);
@@ -430,24 +487,39 @@ export class HoldemMultiGame {
     const myTurn = Boolean(this.state.inRound && current && current.id === this.playerId);
     const isHost = this.state.hostId ? this.state.hostId === this.playerId : false;
     const inCooldown = this.state.phase === "showdown";
+    const me = players.find((entry) => entry.id === this.playerId) || null;
+    const toCall = Math.max(0, Number(this.state.currentBet || 0) - Number(me?.roundBet || 0));
+    const canCheck = myTurn && toCall <= 0;
+    const canCall = myTurn && toCall > 0;
+    const canRaise = myTurn && Number(me?.stack || 0) > toCall;
 
     if (this.ui.startBtn) {
       this.ui.startBtn.disabled = !this.connectionReady || inCooldown || this.state.inRound || !isHost;
       this.ui.startBtn.classList.toggle("hidden", inCooldown || this.state.inRound || !isHost);
     }
     if (this.ui.checkBtn) {
-      this.ui.checkBtn.disabled = !this.connectionReady || !myTurn;
-      this.ui.checkBtn.classList.toggle("hidden", !myTurn);
+      this.ui.checkBtn.disabled = !this.connectionReady || !canCheck;
+      this.ui.checkBtn.classList.toggle("hidden", !canCheck);
+    }
+    if (this.ui.callBtn) {
+      this.ui.callBtn.disabled = !this.connectionReady || !canCall;
+      this.ui.callBtn.classList.toggle("hidden", !canCall);
+      this.ui.callBtn.textContent = `Call $${toCall}`;
+    }
+    if (this.ui.raiseBtn) {
+      this.ui.raiseBtn.disabled = !this.connectionReady || !canRaise;
+      this.ui.raiseBtn.classList.toggle("hidden", !myTurn);
+      this.ui.raiseBtn.textContent = `Raise +$${Math.max(0, Number(this.raiseAmount || 0))}`;
     }
     if (this.ui.foldBtn) {
       this.ui.foldBtn.disabled = !this.connectionReady || !myTurn;
       this.ui.foldBtn.classList.toggle("hidden", !myTurn);
     }
     this.ui.betButtons?.forEach((btn) => {
-      btn.disabled = !this.connectionReady || this.state.inRound || inCooldown;
+      btn.disabled = !this.connectionReady || inCooldown;
     });
     if (this.ui.betClear) {
-      this.ui.betClear.disabled = !this.connectionReady || this.state.inRound || inCooldown;
+      this.ui.betClear.disabled = !this.connectionReady || inCooldown;
     }
   }
 
@@ -469,6 +541,10 @@ export class HoldemMultiGame {
       return;
     }
     const current = this.state.players?.[this.state.turnIndex];
-    this.ui.status.textContent = current ? `Turn: ${current.username}` : "Round in progress.";
+    const phase = String(this.state.phase || "preflop").toUpperCase();
+    const bet = Number(this.state.currentBet || 0);
+    this.ui.status.textContent = current
+      ? `${phase} • Bet $${bet} • Turn: ${current.username}`
+      : `${phase} • Round in progress.`;
   }
 }
