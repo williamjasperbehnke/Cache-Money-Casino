@@ -263,7 +263,7 @@ const finalizeRound = (state) => {
   state.payoutApplied = false;
   state.roundClearAt = new Date(Date.now() + ROUND_CLEAR_DELAY_MS).toISOString();
   state.players.forEach((entry) => {
-    entry.status = entry.betAmount > 0 ? "waiting" : "sitting";
+    entry.status = Number(entry.lastPayout || 0) > 0 ? "waiting" : "sitting";
     entry.lastCommitted = Number(entry.committed || 0);
   });
 };
@@ -346,7 +346,7 @@ const settleShowdown = (state) => {
     const refund = Number(entry.stack || 0);
     const committed = Number(entry.committed || 0);
     entry.lastPayout = winnings + refund;
-    const net = entry.lastPayout - Number(entry.betAmount || 0);
+    const net = entry.lastPayout - committed;
     entry.lastResult = net > 0 ? "win" : net < 0 ? "loss" : "push";
     const best = rankedById.get(entry.id);
     entry.bestLabel = best?.eval?.label || "";
@@ -409,17 +409,25 @@ function progressState(state) {
   }
 }
 
-const startRound = (state) => {
+const startRound = (state, stackByPlayerId = {}) => {
   if (!Array.isArray(state.players) || state.players.length === 0) {
     return { error: "No players in the room." };
   }
 
   const readyIndexes = [];
   state.players.forEach((entry, index) => {
-    if (Number(entry.betAmount || 0) > 0) readyIndexes.push(index);
+    const available = Math.max(
+      0,
+      Number(
+        Object.prototype.hasOwnProperty.call(stackByPlayerId, entry.id)
+          ? stackByPlayerId[entry.id]
+          : entry.betAmount || 0
+      )
+    );
+    if (available > 0) readyIndexes.push(index);
   });
   if (readyIndexes.length < 2) {
-    return { error: "Need at least 2 players with bets to start." };
+    return { error: "Need at least 2 players with chips to start." };
   }
 
   state.deck = shuffle(buildDeck());
@@ -436,12 +444,20 @@ const startRound = (state) => {
 
   state.players = state.players.map((entry, index) => {
     const next = normalizePlayer(entry);
-    const active = readyIndexes.includes(index) && Number(next.betAmount || 0) > 0;
+    const available = Math.max(
+      0,
+      Number(
+        Object.prototype.hasOwnProperty.call(stackByPlayerId, next.id)
+          ? stackByPlayerId[next.id]
+          : next.betAmount || 0
+      )
+    );
+    const active = readyIndexes.includes(index) && available > 0;
     next.cards = active ? [draw(state.deck), draw(state.deck)] : [];
     next.folded = !active;
     next.acted = false;
     next.allIn = false;
-    next.stack = active ? Number(next.betAmount || 0) : 0;
+    next.stack = active ? available : 0;
     next.roundBet = 0;
     next.committed = 0;
     next.status = active ? "playing" : "sitting";
@@ -589,6 +605,7 @@ const clearCompletedRound = (state) => {
   if (!state || state.phase !== "showdown") return false;
   state.community = [];
   state.pot = 0;
+  state.potBreakdown = [];
   state.inRound = false;
   state.phase = "lobby";
   state.settled = false;
@@ -605,7 +622,7 @@ const clearCompletedRound = (state) => {
     stack: 0,
     roundBet: 0,
     committed: 0,
-    status: entry.betAmount > 0 ? "waiting" : "sitting",
+    status: "waiting",
     lastResult: "",
     lastPayout: 0,
     lastCommitted: 0,

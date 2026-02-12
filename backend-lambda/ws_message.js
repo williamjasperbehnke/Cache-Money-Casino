@@ -164,42 +164,10 @@ exports.handler = async (event) => {
       const player = state.players.find((entry) => entry.id === connection.player_id);
       let result = { state };
       if (payload.type === "BET") {
-        if (!player) {
-          await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Player not found." });
-          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
-        }
-        if (state.inRound) {
-          await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Round already in progress." });
-          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
-        }
-        if (cooldownPending) {
-          await sendToConnection(endpoint, connectionId, {
-            type: "ERROR",
-            error: "Round settling. Wait a moment.",
-          });
-          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
-        }
-        if (!connection.token) {
-          await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Session missing." });
-          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
-        }
-        const session = await getSession(connection.token);
-        if (!session) {
-          await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Session missing." });
-          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
-        }
-        const amount = Math.max(0, Number(payload.amount) || 0);
-        const { balance } = await resolveBalance(session);
-        if (amount > balance) {
-          await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Not enough credits." });
-          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
-        }
-        player.betAmount = amount;
-        if (amount > 0) player.lastBet = amount;
-        player.status = amount > 0 ? "waiting" : "sitting";
-        await saveRoomState(roomId, state);
-        await updateRoomMeta(roomId, state);
-        await broadcastRoomState(endpoint, roomId, state);
+        await sendToConnection(endpoint, connectionId, {
+          type: "ERROR",
+          error: "Pre-deal staking is disabled. Bets happen during the hand.",
+        });
         return jsonResponse(200, { ok: true }, CORS_ORIGIN);
       }
       if (!player && !["START", "BET"].includes(payload.type)) {
@@ -477,35 +445,12 @@ exports.handler = async (event) => {
           return jsonResponse(200, { ok: false }, CORS_ORIGIN);
         }
         const sessionMap = await buildPlayerSessionMap(roomId);
-        const debitedPlayerIds = new Set();
+        const stackByPlayerId = {};
         for (const entry of state.players) {
           const context = sessionMap.get(entry.id);
-          if (!entry.betAmount || entry.betAmount <= 0 || !context) {
-            entry.betAmount = 0;
-            entry.status = "sitting";
-            continue;
-          }
-          if (context.balance < entry.betAmount) {
-            entry.betAmount = 0;
-            entry.status = "sitting";
-            await sendToConnection(endpoint, context.connectionId, {
-              type: "ERROR",
-              error: "Not enough credits for current bet.",
-            });
-            continue;
-          }
-          context.balance -= entry.betAmount;
-          debitedPlayerIds.add(entry.id);
+          stackByPlayerId[entry.id] = Math.max(0, Number(context?.balance || 0));
         }
-        for (const [playerId, context] of sessionMap.entries()) {
-          if (!debitedPlayerIds.has(playerId)) continue;
-          const nextBalance = await persistBalance(context.session, context.user, context.balance);
-          await sendToConnection(endpoint, context.connectionId, {
-            type: "BALANCE_UPDATE",
-            balance: nextBalance,
-          });
-        }
-        result = startHoldemRound(state);
+        result = startHoldemRound(state, stackByPlayerId);
       } else if (payload.type === "CHECK") {
         result = applyHoldemCheck(state, connection.player_id);
       } else if (payload.type === "CALL") {
@@ -529,17 +474,19 @@ exports.handler = async (event) => {
         for (const [playerId, context] of sessionMap.entries()) {
           const entry = state.players.find((p) => p.id === playerId);
           if (!entry) continue;
-          const payout = Math.max(0, Number(entry.lastPayout || 0));
-          const nextBalance = await persistBalance(context.session, context.user, context.balance + payout);
+          const committed = Math.max(0, Number(entry.lastCommitted || 0));
+          if (committed <= 0) continue;
+          const finalBalance = Math.max(0, Number(entry.lastPayout || 0));
+          const nextBalance = await persistBalance(context.session, context.user, finalBalance);
           await sendToConnection(endpoint, context.connectionId, {
             type: "BALANCE_UPDATE",
             balance: nextBalance,
           });
-          if (context.user && Number(entry.betAmount || 0) > 0) {
-            const net = payout - Number(entry.betAmount || 0);
+          if (context.user) {
+            const net = finalBalance - Number(context.balance || 0);
             context.user.stats = updateStats(context.user.stats, {
               game: "holdem",
-              bet: Number(entry.betAmount || 0),
+              bet: committed,
               net,
               result: net > 0 ? "win" : net < 0 ? "loss" : "push",
             });

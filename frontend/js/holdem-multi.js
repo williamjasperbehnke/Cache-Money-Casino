@@ -47,9 +47,7 @@ export class HoldemMultiGame {
       potBreakdown: document.getElementById("heMultiPotBreakdown"),
       players: document.getElementById("heMultiPlayers"),
       startBtn: document.getElementById("heMultiStart"),
-      checkBtn: document.getElementById("heMultiCheck"),
-      callBtn: document.getElementById("heMultiCall"),
-      raiseBtn: document.getElementById("heMultiRaise"),
+      betBtn: document.getElementById("heMultiBet"),
       foldBtn: document.getElementById("heMultiFold"),
       betAmount: document.getElementById("heMultiBetAmount"),
       betButtons: document.querySelectorAll("#heMultiBetButtons .chip"),
@@ -101,12 +99,7 @@ export class HoldemMultiGame {
     this.ui.leaveBtn?.addEventListener("click", () => this.leaveRoom());
     this.ui.copyInvite?.addEventListener("click", () => this.copyInvite());
     this.ui.startBtn?.addEventListener("click", () => this.sendAction("START"));
-    this.ui.checkBtn?.addEventListener("click", () => this.sendAction("CHECK"));
-    this.ui.callBtn?.addEventListener("click", () => this.sendAction("CALL"));
-    this.ui.raiseBtn?.addEventListener("click", () => {
-      const amount = Math.max(0, Number(this.raiseAmount) || 0);
-      this.sendAction("RAISE", { amount });
-    });
+    this.ui.betBtn?.addEventListener("click", () => this.handleBetAction());
     this.ui.foldBtn?.addEventListener("click", () => this.sendAction("FOLD"));
     this.ui.betButtons?.forEach((btn) => {
       const amount = Number(btn.dataset.amount) || 0;
@@ -303,36 +296,28 @@ export class HoldemMultiGame {
 
   setBet(amount) {
     if (!this.state || this.state.phase === "showdown") return;
-    const me = this.state.players?.find((entry) => entry.id === this.playerId);
-    if (!me) return;
-    const next = Math.max(0, Number(amount) || 0);
-    if (this.state.inRound) {
-      this.raiseAmount = next;
-      this.updateBet();
-      return;
-    }
-    const bank = Math.max(0, Number(coreState.balance || 0));
-    const stake = Math.min(bank, next);
-    me.betAmount = stake;
-    me.status = stake > 0 ? "waiting" : "sitting";
-    this.raiseAmount = 0;
+    if (!this.state.inRound) return;
+    const players = Array.isArray(this.state.players) ? this.state.players : [];
+    const current = players[this.state.turnIndex] || null;
+    if (!current || current.id !== this.playerId) return;
+    this.raiseAmount = Math.max(0, Number(amount) || 0);
     this.updateBet();
-    this.sendAction("BET", { amount: stake });
   }
 
   adjustBet(delta) {
-    const me = this.state?.players?.find((entry) => entry.id === this.playerId);
-    if (!me) return;
-    this.setBet(Number(me.betAmount || 0) + Number(delta || 0));
+    this.setBet(Number(this.raiseAmount || 0) + Number(delta || 0));
   }
 
   applyState(state) {
+    const prevTurn = this.state?.turnIndex;
     this.state = state || null;
     if (!this.state) {
       this.showLobby();
       return;
     }
-    if (!this.state.inRound) this.raiseAmount = 0;
+    const current = this.state.players?.[this.state.turnIndex];
+    const myTurn = Boolean(this.state.inRound && current && current.id === this.playerId);
+    if (!this.state.inRound || !myTurn || prevTurn !== this.state.turnIndex) this.raiseAmount = 0;
     this.renderRoom();
   }
 
@@ -367,13 +352,8 @@ export class HoldemMultiGame {
   }
 
   updateBet() {
-    const me = this.state?.players?.find((entry) => entry.id === this.playerId);
     if (this.ui.betAmount) {
-      if (this.state?.inRound) {
-        this.ui.betAmount.textContent = `Raise +$${Math.max(0, Number(this.raiseAmount || 0))}`;
-      } else {
-        this.ui.betAmount.textContent = `$${Math.max(0, Number(me?.betAmount || 0))}`;
-      }
+      this.ui.betAmount.textContent = `+$${Math.max(0, Number(this.raiseAmount || 0))}`;
     }
   }
 
@@ -463,7 +443,7 @@ export class HoldemMultiGame {
       } else if (player.lastResult) {
         status.textContent = `${player.lastResult.toUpperCase()}${player.bestLabel ? ` (${player.bestLabel})` : ""}`;
       } else {
-        status.textContent = `Stake $${Number(player.betAmount || 0)}`;
+        status.textContent = "Waiting";
       }
       header.appendChild(name);
       header.appendChild(status);
@@ -489,38 +469,53 @@ export class HoldemMultiGame {
     const inCooldown = this.state.phase === "showdown";
     const me = players.find((entry) => entry.id === this.playerId) || null;
     const toCall = Math.max(0, Number(this.state.currentBet || 0) - Number(me?.roundBet || 0));
-    const canCheck = myTurn && toCall <= 0;
-    const canCall = myTurn && toCall > 0;
     const canRaise = myTurn && Number(me?.stack || 0) > toCall;
 
     if (this.ui.startBtn) {
       this.ui.startBtn.disabled = !this.connectionReady || inCooldown || this.state.inRound || !isHost;
       this.ui.startBtn.classList.toggle("hidden", inCooldown || this.state.inRound || !isHost);
     }
-    if (this.ui.checkBtn) {
-      this.ui.checkBtn.disabled = !this.connectionReady || !canCheck;
-      this.ui.checkBtn.classList.toggle("hidden", !canCheck);
-    }
-    if (this.ui.callBtn) {
-      this.ui.callBtn.disabled = !this.connectionReady || !canCall;
-      this.ui.callBtn.classList.toggle("hidden", !canCall);
-      this.ui.callBtn.textContent = `Call $${toCall}`;
-    }
-    if (this.ui.raiseBtn) {
-      this.ui.raiseBtn.disabled = !this.connectionReady || !canRaise;
-      this.ui.raiseBtn.classList.toggle("hidden", !myTurn);
-      this.ui.raiseBtn.textContent = `Raise +$${Math.max(0, Number(this.raiseAmount || 0))}`;
+    if (this.ui.betBtn) {
+      this.ui.betBtn.disabled = !this.connectionReady || !myTurn;
+      this.ui.betBtn.classList.toggle("hidden", !myTurn);
+      if (this.raiseAmount > 0 && canRaise) {
+        this.ui.betBtn.textContent = `Raise $${toCall + this.raiseAmount}`;
+      } else if (toCall > 0) {
+        this.ui.betBtn.textContent = `Call $${toCall}`;
+      } else {
+        this.ui.betBtn.textContent = "Check";
+      }
     }
     if (this.ui.foldBtn) {
       this.ui.foldBtn.disabled = !this.connectionReady || !myTurn;
       this.ui.foldBtn.classList.toggle("hidden", !myTurn);
     }
     this.ui.betButtons?.forEach((btn) => {
-      btn.disabled = !this.connectionReady || inCooldown;
+      btn.disabled = !this.connectionReady || inCooldown || !myTurn;
     });
     if (this.ui.betClear) {
-      this.ui.betClear.disabled = !this.connectionReady || inCooldown;
+      this.ui.betClear.disabled = !this.connectionReady || inCooldown || !myTurn;
     }
+  }
+
+  handleBetAction() {
+    if (!this.state || !this.state.inRound) return;
+    const players = Array.isArray(this.state.players) ? this.state.players : [];
+    const me = players.find((entry) => entry.id === this.playerId) || null;
+    const current = players[this.state.turnIndex] || null;
+    if (!me || !current || current.id !== this.playerId) return;
+    const toCall = Math.max(0, Number(this.state.currentBet || 0) - Number(me.roundBet || 0));
+    const raiseBy = Math.max(0, Number(this.raiseAmount || 0));
+    if (raiseBy > 0) {
+      this.sendAction("RAISE", { amount: raiseBy });
+    } else if (toCall > 0) {
+      this.sendAction("CALL");
+    } else {
+      this.sendAction("CHECK");
+    }
+    this.raiseAmount = 0;
+    this.updateBet();
+    this.updateControls();
   }
 
   updateStatus() {
