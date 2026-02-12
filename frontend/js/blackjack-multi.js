@@ -110,6 +110,7 @@ export class BlackjackMultiGame {
       const payload = await auth.request("/api/games/blackjack-multi/rooms", { method: "GET" });
       this.renderRoomList(payload.rooms || []);
     } catch (err) {
+      console.error("Failed to load multiplayer rooms", err);
       showCenterToast("Unable to load rooms.", "danger");
     }
   }
@@ -156,6 +157,7 @@ export class BlackjackMultiGame {
         await this.joinRoom(payload.roomId);
       }
     } catch (err) {
+      console.error("Failed to create multiplayer room", err);
       showCenterToast("Unable to create room.", "danger");
     }
   }
@@ -173,6 +175,7 @@ export class BlackjackMultiGame {
       this.showRoom();
       this.setInviteLink(roomId);
     } catch (err) {
+      console.error("Failed to join multiplayer room", { roomId, err });
       showCenterToast("Unable to join room.", "danger");
     }
   }
