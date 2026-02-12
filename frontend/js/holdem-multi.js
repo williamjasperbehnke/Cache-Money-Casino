@@ -3,6 +3,7 @@ import {
   updateBalance,
   renderCards,
   renderHiddenCards,
+  makeChipStack,
   showCenterToast,
   playSfx,
 } from "./core.js";
@@ -27,6 +28,7 @@ export class HoldemMultiGame {
     this.authReadyPromise = null;
     this.raiseAmount = 0;
     this.lastOutcomeToastKey = "";
+    this.lastActionLabelByPlayer = {};
   }
 
   cacheElements() {
@@ -216,6 +218,7 @@ export class HoldemMultiGame {
     this.roomId = "";
     this.playerId = "";
     this.state = null;
+    this.lastActionLabelByPlayer = {};
     this.syncRoomQuery("");
     this.showLobby();
     void this.loadLobby();
@@ -320,9 +323,11 @@ export class HoldemMultiGame {
     const prevState = this.state;
     this.state = state || null;
     if (!this.state) {
+      this.lastActionLabelByPlayer = {};
       this.showLobby();
       return;
     }
+    if (!this.state.inRound) this.lastActionLabelByPlayer = {};
     const current = this.state.players?.[this.state.turnIndex];
     const myTurn = Boolean(this.state.inRound && current && current.id === this.playerId);
     if (!this.state.inRound || !myTurn || prevTurn !== this.state.turnIndex) this.raiseAmount = 0;
@@ -419,7 +424,10 @@ export class HoldemMultiGame {
     if (!state) return;
     if (this.ui.roomId) this.ui.roomId.textContent = state.roomId || this.roomId;
     renderCards(this.ui.community, state.community || []);
-    if (this.ui.pot) this.ui.pot.textContent = `Pot: $${Number(state.pot || 0)}`;
+    if (this.ui.pot) {
+      const potAmount = Number(state.pot || 0);
+      makeChipStack(this.ui.pot, potAmount);
+    }
     this.renderPotBreakdown();
     this.renderPlayers();
     this.updateBet();
@@ -449,7 +457,8 @@ export class HoldemMultiGame {
     const players = Array.isArray(this.state.players) ? this.state.players : [];
     const blindPositions = this.getBlindPositions(players);
     const me = players.find((entry) => entry.id === this.playerId) || null;
-    const toneClass = me?.lastResult === "loss" ? "lose" : "win";
+    const toneClass =
+      me?.lastResult === "push" ? "push" : me?.lastResult === "loss" ? "lose" : "win";
     players.forEach((player, index) => {
       const wrapper = document.createElement("div");
       wrapper.className = "bjmulti-player";
@@ -484,13 +493,13 @@ export class HoldemMultiGame {
       if (index === blindPositions.smallBlindIndex) {
         const sbTag = document.createElement("span");
         sbTag.className = "player-role-tag is-small-blind";
-        sbTag.textContent = "Small Blind";
+        sbTag.textContent = "Small";
         name.appendChild(sbTag);
       }
       if (index === blindPositions.bigBlindIndex) {
         const bbTag = document.createElement("span");
         bbTag.className = "player-role-tag is-big-blind";
-        bbTag.textContent = "Big Blind";
+        bbTag.textContent = "Big";
         name.appendChild(bbTag);
       }
       const status = document.createElement("div");
@@ -498,12 +507,18 @@ export class HoldemMultiGame {
       if (player.folded) {
         status.textContent = "Folded";
       } else if (this.state.inRound && player.status === "playing") {
-        const action = player.lastAction ? ` ${String(player.lastAction).toUpperCase()}` : "";
-        status.textContent = `Stack $${Number(player.stack || 0)} • In $${Number(player.committed || 0)}${action}`;
-      } else if (this.state.phase === "showdown" && player.lastResult) {
-        status.textContent = "Showdown";
+        const isActiveTurn = index === this.state.turnIndex;
+        const isMe = player.id === this.playerId;
+        const actionLabel = player.lastAction ? String(player.lastAction).toUpperCase() : "";
+        const cachedAction = String(this.lastActionLabelByPlayer[player.id] || "");
+        if (actionLabel) this.lastActionLabelByPlayer[player.id] = actionLabel;
+        status.textContent = actionLabel || cachedAction || (isActiveTurn && isMe ? "YOUR TURN" : "THEIR TURN");
       } else if (player.lastResult) {
         status.textContent = player.lastResult.toUpperCase();
+        const resultTone = String(player.lastResult).toLowerCase();
+        if (resultTone === "win" || resultTone === "loss" || resultTone === "push") {
+          status.classList.add("is-result", `is-${resultTone}`);
+        }
       } else {
         status.textContent = "Waiting";
       }
@@ -522,25 +537,41 @@ export class HoldemMultiGame {
       } else {
         renderCards(cards, player.cards || []);
       }
-      if (this.state.phase === "showdown" && player.lastResult === "win") {
+      if (
+        this.state.phase === "showdown" &&
+        (player.lastResult === "win" || player.lastResult === "push")
+      ) {
         const winnerIndexes = Array.isArray(player.bestIndexes) ? player.bestIndexes : [];
         const holeSet = new Set(winnerIndexes.filter((idx) => idx < 2));
         cards.querySelectorAll(".card").forEach((cardEl, cardIdx) => {
-          cardEl.classList.remove("win", "lose");
+          cardEl.classList.remove("win", "lose", "push");
           if (holeSet.has(cardIdx)) cardEl.classList.add(toneClass);
         });
       }
       block.appendChild(cards);
+      if (this.state.inRound && player.status === "playing") {
+        const meta = document.createElement("div");
+        meta.className = "he-player-meta";
+        const stackPill = document.createElement("span");
+        stackPill.className = "he-status-pill he-status-stack";
+        stackPill.textContent = `STACK $${Number(player.stack || 0)}`;
+        meta.appendChild(stackPill);
+
+        const inPill = document.createElement("span");
+        inPill.className = "he-status-pill he-status-in";
+        inPill.textContent = `IN $${Number(player.committed || 0)}`;
+        meta.appendChild(inPill);
+        block.appendChild(meta);
+      }
       if (this.state.phase === "showdown" && player.lastResult) {
-        const result = document.createElement("div");
-        result.className = `bjmulti-result ${String(player.lastResult).toLowerCase()}`;
-        result.textContent = String(player.lastResult).toUpperCase();
-        block.appendChild(result);
         if (player.bestLabel) {
+          const resultWrap = document.createElement("div");
+          resultWrap.className = "he-result-wrap";
           const hand = document.createElement("div");
           hand.className = "he-result-hand";
           hand.textContent = player.bestLabel;
-          block.appendChild(hand);
+          resultWrap.appendChild(hand);
+          block.appendChild(resultWrap);
         }
       }
       wrapper.appendChild(header);
@@ -550,13 +581,13 @@ export class HoldemMultiGame {
 
     if (this.ui.community) {
       const allWinningSets = players
-        .filter((entry) => entry.lastResult === "win")
+        .filter((entry) => entry.lastResult === "win" || entry.lastResult === "push")
         .flatMap((entry) => (Array.isArray(entry.bestIndexes) ? entry.bestIndexes : []));
       const communitySet = new Set(
         allWinningSets.filter((idx) => idx >= 2).map((idx) => idx - 2)
       );
       this.ui.community.querySelectorAll(".card").forEach((cardEl, idx) => {
-        cardEl.classList.remove("win", "lose");
+        cardEl.classList.remove("win", "lose", "push");
         if (this.state.phase === "showdown" && communitySet.has(idx)) {
           cardEl.classList.add(toneClass);
         }
@@ -580,7 +611,7 @@ export class HoldemMultiGame {
       this.ui.startBtn.classList.toggle("hidden", inCooldown || this.state.inRound || !isHost);
     }
     if (this.ui.betRow) {
-      this.ui.betRow.classList.toggle("hidden", !this.state.inRound || inCooldown);
+      this.ui.betRow.classList.toggle("hidden", !this.state.inRound || inCooldown || !myTurn);
     }
     if (this.ui.betBtn) {
       this.ui.betBtn.disabled = !this.connectionReady || !myTurn;

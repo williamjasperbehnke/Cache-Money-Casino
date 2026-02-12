@@ -913,6 +913,12 @@ h3 {
   transform: translateY(6px);
 }
 
+.card.push {
+  border-color: #fbbf24;
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.45);
+  transform: translateY(6px);
+}
+
 #poker .card {
   cursor: pointer;
   transition: transform 0.1s ease, box-shadow 0.2s ease, filter 0.2s ease;
@@ -3753,6 +3759,10 @@ body.small-win .topbar {
   padding: 4px 10px;
 }
 
+#holdem-multi #heMultiPot {
+  margin-top: 14px;
+}
+
 :is(#blackjack-multi, #holdem-multi) .bjmulti-players {
   display: grid;
   gap: 10px;
@@ -3874,6 +3884,18 @@ body.small-win .topbar {
   background: rgba(20, 83, 45, 0.28);
 }
 
+#holdem-multi .bjmulti-player-header .status.is-win {
+  color: #22c55e;
+}
+
+#holdem-multi .bjmulti-player-header .status.is-loss {
+  color: #ef4444;
+}
+
+#holdem-multi .bjmulti-player-header .status.is-push {
+  color: #f59e0b;
+}
+
 :is(#blackjack-multi, #holdem-multi) .bjmulti-result {
   margin-bottom: 6px;
   font-size: 12px;
@@ -3898,6 +3920,39 @@ body.small-win .topbar {
   font-size: 11px;
   letter-spacing: 0.04em;
   color: #cbd5e1;
+}
+
+#holdem-multi .he-result-wrap {
+  margin-top: 14px;
+}
+
+#holdem-multi .he-status-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 7px;
+  font-size: 9px;
+  line-height: 1;
+  letter-spacing: 0.06em;
+}
+
+#holdem-multi .he-player-meta {
+  margin-top: 10px;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+#holdem-multi .he-status-stack {
+  color: #bfdbfe;
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  background: rgba(30, 64, 175, 0.2);
+}
+
+#holdem-multi .he-status-in {
+  color: #86efac;
+  border: 1px solid rgba(34, 197, 94, 0.45);
+  background: rgba(21, 128, 61, 0.2);
 }
 
 :is(#blackjack-multi, #holdem-multi) .bjmulti-actions {
