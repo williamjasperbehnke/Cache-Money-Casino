@@ -130,13 +130,15 @@ export class HoldemMultiGame {
 
   searchRooms() {
     const query = (this.ui.searchId?.value || "").trim().toLowerCase();
-    const list = !query
-      ? this.rooms
-      : this.rooms.filter((room) =>
-          String(room.roomId || "").toLowerCase().includes(query) ||
-          String(room.name || "").toLowerCase().includes(query)
-        );
-    this.renderRoomList(list, query);
+    this.renderRoomList(this.filterRoomsByQuery(query), query);
+  }
+
+  filterRoomsByQuery(query) {
+    if (!query) return this.rooms;
+    return this.rooms.filter((room) =>
+      String(room.roomId || "").toLowerCase().includes(query) ||
+      String(room.name || "").toLowerCase().includes(query)
+    );
   }
 
   renderRoomList(rooms, query = "") {
@@ -303,12 +305,8 @@ export class HoldemMultiGame {
   setBet(amount) {
     if (!this.state || this.state.phase === "showdown") return;
     if (!this.state.inRound) return;
-    const players = Array.isArray(this.state.players) ? this.state.players : [];
-    const me = players.find((entry) => entry.id === this.playerId) || null;
-    const current = players[this.state.turnIndex] || null;
+    const { me, current, maxRaiseBy } = this.getPlayerTurnContext();
     if (!me || !current || current.id !== this.playerId) return;
-    const toCall = Math.max(0, Number(this.state.currentBet || 0) - Number(me.roundBet || 0));
-    const maxRaiseBy = Math.max(0, Number(me.stack || 0) - toCall);
     this.raiseAmount = Math.min(Math.max(0, Number(amount) || 0), maxRaiseBy);
     this.updateBet();
     this.updateControls();
@@ -405,15 +403,22 @@ export class HoldemMultiGame {
     this.updateControls();
   }
 
+  getPlayerTurnContext() {
+    const players = Array.isArray(this.state?.players) ? this.state.players : [];
+    const me = players.find((entry) => entry.id === this.playerId) || null;
+    const current = players[this.state?.turnIndex] || null;
+    const toCall = Math.max(0, Number(this.state?.currentBet || 0) - Number(me?.roundBet || 0));
+    const maxRaiseBy = Math.max(0, Number(me?.stack || 0) - toCall);
+    return { players, me, current, toCall, maxRaiseBy };
+  }
+
   updateBet() {
     if (this.ui.betAmount) {
       if (!this.state || !this.state.inRound) {
         this.ui.betAmount.textContent = "+$0";
         return;
       }
-      const players = Array.isArray(this.state.players) ? this.state.players : [];
-      const me = players.find((entry) => entry.id === this.playerId) || null;
-      const toCall = Math.max(0, Number(this.state.currentBet || 0) - Number(me?.roundBet || 0));
+      const { toCall } = this.getPlayerTurnContext();
       const effectiveRaiseBy = Math.max(0, Number(this.raiseAmount || 0));
       this.ui.betAmount.textContent = `+$${toCall + effectiveRaiseBy}`;
     }
@@ -597,13 +602,10 @@ export class HoldemMultiGame {
 
   updateControls() {
     if (!this.state) return;
-    const players = Array.isArray(this.state.players) ? this.state.players : [];
-    const current = players[this.state.turnIndex] || null;
+    const { players, me, current, toCall } = this.getPlayerTurnContext();
     const myTurn = Boolean(this.state.inRound && current && current.id === this.playerId);
     const isHost = this.state.hostId ? this.state.hostId === this.playerId : false;
     const inCooldown = this.state.phase === "showdown";
-    const me = players.find((entry) => entry.id === this.playerId) || null;
-    const toCall = Math.max(0, Number(this.state.currentBet || 0) - Number(me?.roundBet || 0));
     const canRaise = myTurn && Number(me?.stack || 0) > toCall;
 
     if (this.ui.startBtn) {
@@ -669,12 +671,8 @@ export class HoldemMultiGame {
 
   handleBetAction() {
     if (!this.state || !this.state.inRound) return;
-    const players = Array.isArray(this.state.players) ? this.state.players : [];
-    const me = players.find((entry) => entry.id === this.playerId) || null;
-    const current = players[this.state.turnIndex] || null;
+    const { me, current, toCall, maxRaiseBy } = this.getPlayerTurnContext();
     if (!me || !current || current.id !== this.playerId) return;
-    const toCall = Math.max(0, Number(this.state.currentBet || 0) - Number(me.roundBet || 0));
-    const maxRaiseBy = Math.max(0, Number(me.stack || 0) - toCall);
     const raiseBy = Math.min(Math.max(0, Number(this.raiseAmount || 0)), maxRaiseBy);
     if (raiseBy > 0) {
       this.sendAction("RAISE", { amount: raiseBy });

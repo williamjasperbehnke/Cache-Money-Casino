@@ -15,11 +15,7 @@ const getWsBase = () => {
   const fromStorage = localStorage.getItem("casino-ws-base");
   const fromWindow = window.WS_BASE || "";
   const base = (fromStorage || fromWindow || "").trim();
-  if (base) {
-    const cleaned = base.replace(/\/+$/, "");
-    return cleaned;
-  }
-  return "";
+  return base ? base.replace(/\/+$/, "") : "";
 };
 
 export class BlackjackMultiGame {
@@ -153,40 +149,29 @@ export class BlackjackMultiGame {
 
   searchRooms() {
     const query = (this.ui.searchId?.value || "").trim().toLowerCase();
-    if (!query) {
-      this.renderRoomList(this.rooms);
-      return;
-    }
-    const filtered = this.rooms.filter((room) =>
-      String(room.roomId || "")
-        .toLowerCase()
-        .includes(query) ||
-      String(room.name || "")
-        .toLowerCase()
-        .includes(query)
-    );
-    this.renderRoomList(filtered, query);
+    this.renderRoomList(this.filterRoomsByQuery(query), query);
   }
 
   async searchAndMaybeJoin() {
     const query = (this.ui.searchId?.value || "").trim().toLowerCase();
-    if (!query) {
-      this.renderRoomList(this.rooms);
-      return;
-    }
-    const filtered = this.rooms.filter((room) =>
-      String(room.roomId || "")
-        .toLowerCase()
-        .includes(query) ||
-      String(room.name || "")
-        .toLowerCase()
-        .includes(query)
-    );
+    const filtered = this.filterRoomsByQuery(query);
     if (filtered.length > 0) {
       this.renderRoomList(filtered, query);
       return;
     }
     this.renderRoomList([], query);
+  }
+
+  filterRoomsByQuery(query) {
+    if (!query) return this.rooms;
+    return this.rooms.filter((room) =>
+      String(room.roomId || "")
+        .toLowerCase()
+        .includes(query) ||
+      String(room.name || "")
+        .toLowerCase()
+        .includes(query)
+    );
   }
 
   renderRoomList(rooms, query = "") {
@@ -563,13 +548,13 @@ export class BlackjackMultiGame {
         this.ui.dealerTotal.textContent = `Total: ${handTotal(dealerCards)}`;
       }
     }
-    this.renderPlayers(state, false);
+    this.renderPlayers(state);
     this.updateControls(state);
     this.updateStatus(state);
     this.updateBet(state);
   }
 
-  renderPlayers(state, hideHands = false) {
+  renderPlayers(state) {
     if (!this.ui.players) return;
     this.ui.players.innerHTML = "";
     const players = Array.isArray(state.players) ? state.players : [];

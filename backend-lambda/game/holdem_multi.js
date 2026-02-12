@@ -251,7 +251,6 @@ const advanceStreet = (state) => {
     if (!isInHand(entry)) return;
     entry.roundBet = 0;
     entry.acted = false;
-    entry.lastAction = "";
   });
   state.currentBet = 0;
   state.minRaise = Math.max(1, Number(state.bigBlind) || 10);
