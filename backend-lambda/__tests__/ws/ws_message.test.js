@@ -86,7 +86,7 @@ describe("ws_message", () => {
     expect(stateResp.Item?.state?.players?.[0]?.id).toBe("p1");
   });
 
-  it("does not remove player if rejoin happens during leave cleanup window", async () => {
+  it("does not remove player if rejoin to same room happens during leave cleanup window", async () => {
     await put({
       TableName: "Connections",
       Item: { connection_id: "c1", username: "alice", player_id: "p1", room_id: "r1" },
@@ -112,7 +112,11 @@ describe("ws_message", () => {
     await new Promise((resolve) => setTimeout(resolve, 50));
     await put({
       TableName: "Connections",
-      Item: { connection_id: "c2", username: "alice", player_id: "p1", room_id: null },
+      Item: { connection_id: "c2", username: "alice", player_id: "p1", room_id: "r1" },
+    });
+    await put({
+      TableName: "Rooms",
+      Item: { room_id: "r1", player_id: "c2", username: "alice" },
     });
 
     const resp = await pendingLeave;
