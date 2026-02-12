@@ -86,6 +86,43 @@ describe("ws_message", () => {
     expect(stateResp.Item?.state?.players?.[0]?.id).toBe("p1");
   });
 
+  it("does not remove player if rejoin happens during leave cleanup window", async () => {
+    await put({
+      TableName: "Connections",
+      Item: { connection_id: "c1", username: "alice", player_id: "p1", room_id: "r1" },
+    });
+    await put({
+      TableName: "Rooms",
+      Item: { room_id: "r1", player_id: "c1", username: "alice" },
+    });
+    await put({
+      TableName: "Rooms",
+      Item: { room_id: "r1", player_id: "meta", host: "alice", player_count: 1 },
+    });
+    await put({
+      TableName: "GameSessions",
+      Item: {
+        session_id: "room:r1",
+        game: "blackjack-multi",
+        state: { roomId: "r1", hostId: "p1", players: [{ id: "p1", username: "alice" }] },
+      },
+    });
+
+    const pendingLeave = handler(makeWsEvent({ connectionId: "c1", body: { action: "leave" } }));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    await put({
+      TableName: "Connections",
+      Item: { connection_id: "c2", username: "alice", player_id: "p1", room_id: null },
+    });
+
+    const resp = await pendingLeave;
+    expect(parseResponse(resp).statusCode).toBe(200);
+
+    const stateResp = await get({ TableName: "GameSessions", Key: { session_id: "room:r1" } });
+    expect(stateResp.Item?.state?.players?.length).toBe(1);
+    expect(stateResp.Item?.state?.players?.[0]?.id).toBe("p1");
+  });
+
   it("acks action", async () => {
     const resp = await handler(
       makeWsEvent({ connectionId: "c1", body: { action: "action", payload: { x: 1 } } })

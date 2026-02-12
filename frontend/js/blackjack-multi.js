@@ -692,7 +692,7 @@ export class BlackjackMultiGame {
     if (this.ui.startBtn) {
       this.ui.startBtn.disabled =
         !controlsEnabled || roundCooldown || state.inRound || players.length === 0 || !isHost;
-      this.ui.startBtn.classList.toggle("hidden", state.inRound || !isHost);
+      this.ui.startBtn.classList.toggle("hidden", roundCooldown || state.inRound || !isHost);
     }
     if (this.ui.hitBtn) {
       this.ui.hitBtn.disabled = !controlsEnabled || !myTurn;

@@ -6,6 +6,7 @@ const { isRoomExpired } = require("./room_expiration");
 
 const { CONNECTIONS_TABLE, ROOMS_TABLE, GAME_SESSIONS_TABLE } = process.env;
 const DISCONNECT_REJOIN_GRACE_MS = 1200;
+const LEAVE_REJOIN_GRACE_MS = 600;
 
 const hasRoomsConfig = () => Boolean(ROOMS_TABLE && GAME_SESSIONS_TABLE);
 
@@ -237,6 +238,14 @@ const cleanupRoomForConnection = async ({
     excludeConnectionId: connectionId,
   });
   if (hasAnyOtherActiveConnection) return;
+  if (reason === "leave") {
+    await new Promise((resolve) => setTimeout(resolve, LEAVE_REJOIN_GRACE_MS));
+    const joinedAfterLeave = await hasOtherActiveConnectionForPlayer({
+      playerId,
+      excludeConnectionId: connectionId,
+    });
+    if (joinedAfterLeave) return;
+  }
   if (reason === "disconnect") {
     await new Promise((resolve) => setTimeout(resolve, DISCONNECT_REJOIN_GRACE_MS));
     const stillHasOtherConnection = await hasOtherActiveConnectionForPlayer({
