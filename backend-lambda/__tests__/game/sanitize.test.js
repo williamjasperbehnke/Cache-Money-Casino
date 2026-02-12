@@ -100,4 +100,20 @@ describe("sanitize", () => {
     expect(sanitized.players?.[0]?.cards?.[0]?.rank).toBe("A");
     expect(sanitized.players?.[1]?.cards?.[0]?.rank).toBe("?");
   });
+
+  it("reveals all holdem-multi cards on showdown", () => {
+    const state = {
+      game: "holdem-multi",
+      phase: "showdown",
+      deck: [{ rank: "A", suit: "S" }],
+      players: [
+        { id: "p1", cards: [{ rank: "A", suit: "S" }, { rank: "K", suit: "S" }] },
+        { id: "p2", cards: [{ rank: "Q", suit: "H" }, { rank: "J", suit: "H" }] },
+      ],
+    };
+    const sanitized = sanitizeState("holdem-multi", state, "p1");
+    expect(sanitized.deck).toBeUndefined();
+    expect(sanitized.players?.[0]?.cards?.[0]?.rank).toBe("A");
+    expect(sanitized.players?.[1]?.cards?.[0]?.rank).toBe("Q");
+  });
 });

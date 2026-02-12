@@ -118,6 +118,8 @@ describe("holdem_multi", () => {
     expect(p1.lastPayout).toBe(150);
     expect(p2.lastPayout).toBe(100);
     expect(p3.lastPayout).toBe(1);
+    expect(Array.isArray(p1.bestIndexes)).toBe(true);
+    expect(p1.bestIndexes.length).toBeGreaterThan(0);
   });
 
   it("advances turn after each action", () => {

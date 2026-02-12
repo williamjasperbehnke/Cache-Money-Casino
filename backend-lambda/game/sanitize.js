@@ -39,6 +39,7 @@ const sanitizeHoldemMultiState = (state, viewerId = "") => {
   if (Array.isArray(next.players)) {
     next.players = next.players.map((entry) => {
       const cards = Array.isArray(entry?.cards) ? entry.cards : [];
+      if (next.phase === "showdown") return { ...entry, cards: cards.slice() };
       if (viewerId && entry?.id === viewerId) return { ...entry, cards: cards.slice() };
       return { ...entry, cards: maskCards(cards.length) };
     });

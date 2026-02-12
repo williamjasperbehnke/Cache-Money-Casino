@@ -2,6 +2,7 @@ import {
   state as coreState,
   updateBalance,
   renderCards,
+  renderHiddenCards,
   showCenterToast,
   playSfx,
 } from "./core.js";
@@ -453,12 +454,41 @@ export class HoldemMultiGame {
       block.className = "hand-block";
       const cards = document.createElement("div");
       cards.className = "cards";
-      renderCards(cards, player.cards || []);
+      const isShowdown = this.state.phase === "showdown";
+      const isMe = player.id === this.playerId;
+      const cardCount = Array.isArray(player.cards) ? player.cards.length : 0;
+      if (!isShowdown && !isMe && cardCount > 0) {
+        renderHiddenCards(cards, cardCount);
+      } else {
+        renderCards(cards, player.cards || []);
+      }
+      if (this.state.phase === "showdown" && player.lastResult === "win") {
+        const winnerIndexes = Array.isArray(player.bestIndexes) ? player.bestIndexes : [];
+        const holeSet = new Set(winnerIndexes.filter((idx) => idx < 2));
+        cards.querySelectorAll(".card").forEach((cardEl, cardIdx) => {
+          cardEl.classList.toggle("win", holeSet.has(cardIdx));
+        });
+      }
       block.appendChild(cards);
       wrapper.appendChild(header);
       wrapper.appendChild(block);
       this.ui.players.appendChild(wrapper);
     });
+
+    if (this.ui.community) {
+      const allWinningSets = players
+        .filter((entry) => entry.lastResult === "win")
+        .flatMap((entry) => (Array.isArray(entry.bestIndexes) ? entry.bestIndexes : []));
+      const communitySet = new Set(
+        allWinningSets.filter((idx) => idx >= 2).map((idx) => idx - 2)
+      );
+      this.ui.community.querySelectorAll(".card").forEach((cardEl, idx) => {
+        cardEl.classList.toggle(
+          "win",
+          this.state.phase === "showdown" && communitySet.has(idx)
+        );
+      });
+    }
   }
 
   updateControls() {

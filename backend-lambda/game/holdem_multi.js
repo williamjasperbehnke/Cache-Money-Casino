@@ -19,6 +19,7 @@ const normalizePlayer = (player) => ({
   lastPayout: Number(player.lastPayout) || 0,
   lastCommitted: Number(player.lastCommitted) || 0,
   bestLabel: player.bestLabel || "",
+  bestIndexes: Array.isArray(player.bestIndexes) ? player.bestIndexes : [],
   lastAction: player.lastAction || "",
 });
 
@@ -76,6 +77,7 @@ const addPlayer = (state, player) => {
       lastPayout: 0,
       lastCommitted: 0,
       bestLabel: "",
+      bestIndexes: [],
       lastAction: "",
     })
   );
@@ -276,6 +278,7 @@ const settleSingleWinner = (state, winnerId) => {
     entry.lastPayout = winnings + refund;
     entry.lastResult = isWinner ? "win" : "loss";
     entry.bestLabel = "";
+    entry.bestIndexes = [];
   });
   state.inRound = false;
   state.phase = "showdown";
@@ -300,6 +303,7 @@ const settleShowdown = (state) => {
       entry.lastPayout = Number(entry.stack || 0);
       entry.lastResult = "loss";
       entry.bestLabel = "";
+      entry.bestIndexes = [];
     });
     finalizeRound(state);
     return;
@@ -350,9 +354,11 @@ const settleShowdown = (state) => {
     entry.lastResult = net > 0 ? "win" : net < 0 ? "loss" : "push";
     const best = rankedById.get(entry.id);
     entry.bestLabel = best?.eval?.label || "";
+    entry.bestIndexes = Array.isArray(best?.indexes) ? best.indexes.slice() : [];
     if (!isInHand(entry) && committed > 0 && winnings === 0) {
       entry.lastResult = "loss";
       entry.bestLabel = "";
+      entry.bestIndexes = [];
     }
   });
 
@@ -637,6 +643,7 @@ const clearCompletedRound = (state) => {
     lastPayout: 0,
     lastCommitted: 0,
     bestLabel: "",
+    bestIndexes: [],
     lastAction: "",
   }));
   state.updatedAt = new Date().toISOString();
