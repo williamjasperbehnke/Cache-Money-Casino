@@ -24,6 +24,7 @@ export class BlackjackMultiGame {
     this.lastInRound = false;
     this.prevMe = null;
     this.sawBustThisRound = false;
+    this.authReadyPromise = null;
   }
 
   cacheElements() {
@@ -57,11 +58,26 @@ export class BlackjackMultiGame {
   init() {
     this.cacheElements();
     this.bindControls();
-    this.loadLobby();
     window.addEventListener("beforeunload", () => this.closeSocket());
+    void this.bootstrap();
+  }
+
+  async bootstrap() {
+    await this.ensureAuthReady();
+    await this.loadLobby();
     const params = new URLSearchParams(window.location.search);
     const room = params.get("room");
-    if (room) this.joinRoom(room);
+    if (room) await this.joinRoom(room);
+  }
+
+  async ensureAuthReady() {
+    if (auth.apiToken || auth.token || auth.guestToken) return;
+    if (!this.authReadyPromise) {
+      this.authReadyPromise = auth.ensureGuestSession().finally(() => {
+        this.authReadyPromise = null;
+      });
+    }
+    await this.authReadyPromise;
   }
 
   bindControls() {
@@ -90,6 +106,7 @@ export class BlackjackMultiGame {
 
   async loadLobby() {
     try {
+      await this.ensureAuthReady();
       const payload = await auth.request("/api/games/blackjack-multi/rooms", { method: "GET" });
       this.renderRoomList(payload.rooms || []);
     } catch (err) {
@@ -130,6 +147,7 @@ export class BlackjackMultiGame {
     const name = this.ui.roomName?.value?.trim() || "Blackjack Table";
     const isPublic = Boolean(this.ui.roomPublic?.checked);
     try {
+      await this.ensureAuthReady();
       const payload = await auth.request("/api/games/blackjack-multi/rooms", {
         method: "POST",
         body: JSON.stringify({ name, public: isPublic }),
@@ -144,6 +162,7 @@ export class BlackjackMultiGame {
 
   async joinRoom(roomId) {
     try {
+      await this.ensureAuthReady();
       const payload = await auth.request(`/api/games/blackjack-multi/rooms/${roomId}/join`, {
         method: "POST",
       });
