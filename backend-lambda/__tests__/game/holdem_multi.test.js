@@ -3,6 +3,7 @@ const {
   addPlayer,
   startRound,
   applyCheck,
+  applyCall,
   clearCompletedRound,
 } = require("../../game/holdem_multi");
 
@@ -117,5 +118,20 @@ describe("holdem_multi", () => {
     expect(p1.lastPayout).toBe(150);
     expect(p2.lastPayout).toBe(100);
     expect(p3.lastPayout).toBe(1);
+  });
+
+  it("advances turn after each action", () => {
+    const state = createHoldemMultiState({ roomId: "r3", host: "Host", hostId: "p1" });
+    addPlayer(state, { id: "p1", username: "A" });
+    addPlayer(state, { id: "p2", username: "B" });
+    addPlayer(state, { id: "p3", username: "C" });
+
+    const started = startRound(state, { p1: 100, p2: 100, p3: 100 });
+    expect(started.error).toBeUndefined();
+    expect(state.turnIndex).toBe(0);
+
+    const acted = applyCall(state, "p1");
+    expect(acted.error).toBeUndefined();
+    expect(state.turnIndex).toBe(1);
   });
 });

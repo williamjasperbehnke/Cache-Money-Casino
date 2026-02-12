@@ -505,12 +505,18 @@ const withTurn = (state, playerId, fn) => {
   return fn(player);
 };
 
+const advanceTurnCursor = (state) => {
+  const next = nextIndexFrom(state, state.turnIndex + 1, (entry) => canAct(entry));
+  if (next !== -1) state.turnIndex = next;
+};
+
 const applyCheck = (state, playerId) =>
   withTurn(state, playerId, (player) => {
     const toCall = Math.max(0, Number(state.currentBet || 0) - Number(player.roundBet || 0));
     if (toCall > 0) return { error: "Cannot check. Call or fold." };
     player.acted = true;
     player.lastAction = "check";
+    advanceTurnCursor(state);
     progressState(state);
     state.updatedAt = new Date().toISOString();
     return { state };
@@ -524,6 +530,7 @@ const applyCall = (state, playerId) =>
     if (paid <= 0) return { error: "No chips left to call." };
     player.acted = true;
     player.lastAction = paid < toCall ? "all-in" : "call";
+    advanceTurnCursor(state);
     progressState(state);
     state.updatedAt = new Date().toISOString();
     return { state };
@@ -554,6 +561,7 @@ const applyRaise = (state, playerId, raiseByAmount) =>
         if (paid <= 0) return { error: "No chips left to call." };
         player.acted = true;
         player.lastAction = paid < toCall ? "all-in" : "call";
+        advanceTurnCursor(state);
         progressState(state);
         state.updatedAt = new Date().toISOString();
         return { state };
@@ -577,6 +585,7 @@ const applyRaise = (state, playerId, raiseByAmount) =>
     });
 
     player.lastAction = player.allIn ? "all-in" : "raise";
+    advanceTurnCursor(state);
     progressState(state);
     state.updatedAt = new Date().toISOString();
     return { state };
@@ -588,6 +597,7 @@ const applyFold = (state, playerId) =>
     player.status = "folded";
     player.acted = true;
     player.lastAction = "fold";
+    advanceTurnCursor(state);
     progressState(state);
     state.updatedAt = new Date().toISOString();
     return { state };

@@ -478,8 +478,10 @@ export class HoldemMultiGame {
     if (this.ui.betBtn) {
       this.ui.betBtn.disabled = !this.connectionReady || !myTurn;
       this.ui.betBtn.classList.toggle("hidden", !myTurn);
-      if (this.raiseAmount > 0 && canRaise) {
-        this.ui.betBtn.textContent = `Raise $${toCall + this.raiseAmount}`;
+      const maxRaiseBy = Math.max(0, Number(me?.stack || 0) - toCall);
+      const effectiveRaiseBy = Math.min(Math.max(0, Number(this.raiseAmount || 0)), maxRaiseBy);
+      if (effectiveRaiseBy > 0 && canRaise) {
+        this.ui.betBtn.textContent = `Raise $${toCall + effectiveRaiseBy}`;
       } else if (toCall > 0) {
         this.ui.betBtn.textContent = `Call $${toCall}`;
       } else {
@@ -505,7 +507,8 @@ export class HoldemMultiGame {
     const current = players[this.state.turnIndex] || null;
     if (!me || !current || current.id !== this.playerId) return;
     const toCall = Math.max(0, Number(this.state.currentBet || 0) - Number(me.roundBet || 0));
-    const raiseBy = Math.max(0, Number(this.raiseAmount || 0));
+    const maxRaiseBy = Math.max(0, Number(me.stack || 0) - toCall);
+    const raiseBy = Math.min(Math.max(0, Number(this.raiseAmount || 0)), maxRaiseBy);
     if (raiseBy > 0) {
       this.sendAction("RAISE", { amount: raiseBy });
     } else if (toCall > 0) {
