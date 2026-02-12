@@ -350,7 +350,7 @@ const settleShowdown = (state) => {
     const refund = Number(entry.stack || 0);
     const committed = Number(entry.committed || 0);
     entry.lastPayout = winnings + refund;
-    const net = entry.lastPayout - committed;
+    const net = winnings - committed;
     entry.lastResult = net > 0 ? "win" : net < 0 ? "loss" : "push";
     const best = rankedById.get(entry.id);
     entry.bestLabel = best?.eval?.label || "";
@@ -575,10 +575,10 @@ const applyRaise = (state, playerId, raiseByAmount) =>
       return { error: "Invalid raise." };
     }
 
-    // Treat forced call as part of the action threshold so "call + small add" is valid.
-    const requiredRaiseBy = Math.max(1, minRaise - toCall);
-    if (raiseBy > 0 && raiseBy < requiredRaiseBy && !isAllIn) {
-      return { error: `Minimum raise is $${requiredRaiseBy}.` };
+    // Minimum legal raise is at least the last raise increment.
+    if (raiseBy > 0 && raiseBy < minRaise && !isAllIn) {
+      const requiredTotal = toCall + minRaise;
+      return { error: `Minimum raise is $${requiredTotal}.` };
     }
 
     const actualPaid = applyBet(player, pay, state);

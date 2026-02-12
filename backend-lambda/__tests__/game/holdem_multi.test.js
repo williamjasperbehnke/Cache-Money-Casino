@@ -148,8 +148,89 @@ describe("holdem_multi", () => {
     expect(state.currentBet).toBe(10);
     expect(state.turnIndex).toBe(0);
 
-    const raised = applyRaise(state, "p1", 5);
+    const invalid = applyRaise(state, "p1", 5);
+    expect(invalid.error).toBe("Minimum raise is $20.");
+
+    const raised = applyRaise(state, "p1", 10);
     expect(raised.error).toBeUndefined();
-    expect(state.currentBet).toBe(15);
+    expect(state.currentBet).toBe(20);
+  });
+
+  it("enforces minimum raise correctly after prior raises", () => {
+    const state = createHoldemMultiState({ roomId: "r5", host: "Host", hostId: "p1" });
+    addPlayer(state, { id: "p1", username: "A" });
+    addPlayer(state, { id: "p2", username: "B" });
+    addPlayer(state, { id: "p3", username: "C" });
+    const started = startRound(state, { p1: 200, p2: 200, p3: 200 });
+    expect(started.error).toBeUndefined();
+
+    const firstRaise = applyRaise(state, "p1", 10);
+    expect(firstRaise.error).toBeUndefined();
+    expect(state.currentBet).toBe(20);
+
+    expect(state.turnIndex).toBe(1);
+    const badReRaise = applyRaise(state, "p2", 5);
+    expect(badReRaise.error).toBe("Minimum raise is $25.");
+
+    const goodReRaise = applyRaise(state, "p2", 10);
+    expect(goodReRaise.error).toBeUndefined();
+    expect(state.currentBet).toBe(30);
+  });
+
+  it("marks loser as loss even when they have uncommitted stack refunded", () => {
+    const state = createHoldemMultiState({ roomId: "r6", host: "Host", hostId: "p1" });
+    state.phase = "river";
+    state.inRound = true;
+    state.settled = false;
+    state.currentBet = 0;
+    state.pot = 100;
+    state.community = [
+      { rank: "2", suit: "H" },
+      { rank: "3", suit: "D" },
+      { rank: "7", suit: "S" },
+      { rank: "9", suit: "C" },
+      { rank: "K", suit: "D" },
+    ];
+    state.players = [
+      {
+        id: "p1",
+        username: "Winner",
+        status: "playing",
+        cards: [
+          { rank: "A", suit: "H" },
+          { rank: "A", suit: "C" },
+        ],
+        folded: false,
+        allIn: false,
+        acted: false,
+        stack: 50,
+        roundBet: 0,
+        committed: 50,
+        betAmount: 100,
+      },
+      {
+        id: "p2",
+        username: "Loser",
+        status: "playing",
+        cards: [
+          { rank: "Q", suit: "H" },
+          { rank: "J", suit: "C" },
+        ],
+        folded: false,
+        allIn: true,
+        acted: true,
+        stack: 0,
+        roundBet: 0,
+        committed: 50,
+        betAmount: 50,
+      },
+    ];
+    state.turnIndex = 0;
+
+    const result = applyCheck(state, "p1");
+    expect(result.error).toBeUndefined();
+    expect(state.phase).toBe("showdown");
+    expect(state.players[0].lastResult).toBe("win");
+    expect(state.players[1].lastResult).toBe("loss");
   });
 });
