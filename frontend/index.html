@@ -3,30 +3,157 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta http-equiv="refresh" content="0; url=poker.html" />
-    <title>Cache Money Casino</title>
+    <title>Cache Money Casino - Game Lobby</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main class="layout">
-      <div class="panel">
-        <h2>Cache Money Casino</h2>
-        <p>Redirecting to Null Pointer Poker...</p>
-        <p>
-          If you are not redirected automatically, choose a game:
-        </p>
-        <nav class="arcade-tabs" role="navigation">
-          <a class="tab" href="poker.html">Poker</a>
-          <a class="tab" href="holdem.html">Texas Hold'em</a>
-          <a class="tab" href="blackjack.html">Blackjack</a>
-          <a class="tab" href="blackjack-multi.html">Blackjack Live</a>
-          <a class="tab" href="roulette.html">Roulette</a>
-          <a class="tab" href="craps.html">Craps</a>
-          <a class="tab" href="yahtzee.html">Yahtzee</a>
-          <a class="tab" href="memory.html">Memory</a>
-          <a class="tab" href="slots.html">Slots</a>
-        </nav>
+    <div id="centerToast" class="center-toast-stack" aria-live="polite"></div>
+    <header class="topbar">
+      <div class="logo">CACHE MONEY CASINO</div>
+      <div class="balance" aria-live="polite">
+        BANK: <span id="balance">$0</span>
+        <span id="balanceDelta" class="balance-delta" aria-live="polite"></span>
       </div>
+      <div class="account-controls">
+        <button id="accountLink" class="btn ghost hidden">Account</button>
+        <button id="signInBtn" class="btn ghost">Sign In</button>
+      </div>
+    </header>
+
+    <main class="layout lobby-layout">
+      <section class="panel lobby-panel" id="lobby">
+        <div class="lobby-hero">
+          <h2>Game Lobby</h2>
+          <p class="lobby-lead">Choose a mode, pick a category, and jump into a table.</p>
+        </div>
+
+        <div class="mode-sections">
+          <section class="mode-section">
+            <h3>Singleplayer</h3>
+
+            <div class="category-block">
+              <h4>Card Games</h4>
+              <div class="game-grid">
+                <a class="game-card" href="poker.html">
+                  <span class="game-title">5-Card Poker</span>
+                  <span class="game-badges">
+                    <span class="game-badge"><span aria-hidden="true">🃏</span>Card</span>
+                    <span class="game-badge"><span aria-hidden="true">👤</span>Singleplayer</span>
+                  </span>
+                </a>
+                <a class="game-card" href="holdem.html">
+                  <span class="game-title">Texas Hold'em</span>
+                  <span class="game-badges">
+                    <span class="game-badge"><span aria-hidden="true">🃏</span>Card</span>
+                    <span class="game-badge"><span aria-hidden="true">👤</span>Singleplayer</span>
+                  </span>
+                </a>
+                <a class="game-card" href="blackjack.html">
+                  <span class="game-title">Blackjack</span>
+                  <span class="game-badges">
+                    <span class="game-badge"><span aria-hidden="true">🃏</span>Card</span>
+                    <span class="game-badge"><span aria-hidden="true">👤</span>Singleplayer</span>
+                  </span>
+                </a>
+                <a class="game-card" href="memory.html">
+                  <span class="game-title">Memory</span>
+                  <span class="game-badges">
+                    <span class="game-badge"><span aria-hidden="true">🃏</span>Card</span>
+                    <span class="game-badge"><span aria-hidden="true">👤</span>Singleplayer</span>
+                  </span>
+                </a>
+              </div>
+            </div>
+
+            <div class="category-block">
+              <h4>Chance Games</h4>
+              <div class="game-grid">
+                <a class="game-card" href="roulette.html">
+                  <span class="game-title">Roulette</span>
+                  <span class="game-badges">
+                    <span class="game-badge"><span aria-hidden="true">🎯</span>Chance</span>
+                    <span class="game-badge"><span aria-hidden="true">👤</span>Singleplayer</span>
+                  </span>
+                </a>
+                <a class="game-card" href="slots.html">
+                  <span class="game-title">Slots</span>
+                  <span class="game-badges">
+                    <span class="game-badge"><span aria-hidden="true">🎯</span>Chance</span>
+                    <span class="game-badge"><span aria-hidden="true">👤</span>Singleplayer</span>
+                  </span>
+                </a>
+              </div>
+            </div>
+
+            <div class="category-block">
+              <h4>Dice Games</h4>
+              <div class="game-grid">
+                <a class="game-card" href="craps.html">
+                  <span class="game-title">Craps</span>
+                  <span class="game-badges">
+                    <span class="game-badge"><span aria-hidden="true">🎲</span>Dice</span>
+                    <span class="game-badge"><span aria-hidden="true">👤</span>Singleplayer</span>
+                  </span>
+                </a>
+                <a class="game-card" href="yahtzee.html">
+                  <span class="game-title">Yahtzee</span>
+                  <span class="game-badges">
+                    <span class="game-badge"><span aria-hidden="true">🎲</span>Dice</span>
+                    <span class="game-badge"><span aria-hidden="true">👤</span>Singleplayer</span>
+                  </span>
+                </a>
+              </div>
+            </div>
+          </section>
+
+          <section class="mode-section">
+            <h3>Multiplayer</h3>
+
+            <div class="category-block">
+              <h4>Card Games</h4>
+              <div class="game-grid">
+                <a class="game-card" href="blackjack-multi.html">
+                  <span class="game-title">Blackjack Live</span>
+                  <span class="game-badges">
+                    <span class="game-badge"><span aria-hidden="true">🃏</span>Card</span>
+                    <span class="game-badge"><span aria-hidden="true">👥</span>Multiplayer</span>
+                  </span>
+                </a>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
     </main>
+
+    <footer class="footer">
+      For entertainment purposes only. Gamble responsibly with your imaginary chips.
+    </footer>
+
+    <div id="authBackdrop" class="modal-backdrop hidden"></div>
+    <div id="authModal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-content">
+        <button type="button" class="modal-close" id="authClose" aria-label="Close">×</button>
+        <h3 id="authTitle">Sign In</h3>
+        <div id="authMessage" class="modal-message"></div>
+        <form id="authForm">
+          <input id="authUsername" type="text" placeholder="Username" autocomplete="username" />
+          <div class="password-field">
+            <input
+              id="authPassword"
+              type="password"
+              placeholder="Password"
+              autocomplete="current-password"
+            />
+            <button type="button" id="authTogglePassword" class="btn ghost small">Show</button>
+          </div>
+          <button type="submit" class="btn">Continue</button>
+          <button type="button" id="authToggle" class="btn ghost">Create account</button>
+        </form>
+      </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script type="module" src="js/page-index.js"></script>
   </body>
 </html>

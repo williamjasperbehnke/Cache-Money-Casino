@@ -1,4 +1,12 @@
-import { renderCards, handTotal, showCenterToast, showCenterToasts, playSfx } from "./core.js";
+import {
+  state as coreState,
+  updateBalance,
+  renderCards,
+  handTotal,
+  showCenterToast,
+  showCenterToasts,
+  playSfx,
+} from "./core.js";
 import { auth } from "./auth.js";
 
 const ROOM_POLL_INTERVAL = 8000;
@@ -25,6 +33,7 @@ export class BlackjackMultiGame {
     this.prevMe = null;
     this.sawBustThisRound = false;
     this.authReadyPromise = null;
+    this.rooms = [];
   }
 
   cacheElements() {
@@ -34,6 +43,7 @@ export class BlackjackMultiGame {
       roomId: document.getElementById("bjMultiRoomId"),
       roomName: document.getElementById("bjMultiRoomName"),
       roomPublic: document.getElementById("bjMultiPublic"),
+      searchId: document.getElementById("bjMultiSearchId"),
       createBtn: document.getElementById("bjMultiCreate"),
       refreshBtn: document.getElementById("bjMultiRefresh"),
       rooms: document.getElementById("bjMultiRooms"),
@@ -59,15 +69,26 @@ export class BlackjackMultiGame {
     this.cacheElements();
     this.bindControls();
     window.addEventListener("beforeunload", () => this.closeSocket());
-    void this.bootstrap();
-  }
-
-  async bootstrap() {
-    await this.ensureAuthReady();
-    await this.loadLobby();
     const params = new URLSearchParams(window.location.search);
     const room = params.get("room");
-    if (room) await this.joinRoom(room);
+    if (room) {
+      this.ui.lobby?.classList.add("hidden");
+      this.ui.room?.classList.add("hidden");
+    }
+    void this.bootstrap(room);
+  }
+
+  async bootstrap(preferredRoom = "") {
+    await this.ensureAuthReady();
+    if (preferredRoom) {
+      await this.joinRoom(preferredRoom);
+      if (this.roomId) {
+        void this.loadLobby();
+        return;
+      }
+      this.showLobby();
+    }
+    await this.loadLobby();
   }
 
   async ensureAuthReady() {
@@ -83,6 +104,13 @@ export class BlackjackMultiGame {
   bindControls() {
     this.ui.createBtn?.addEventListener("click", () => this.createRoom());
     this.ui.refreshBtn?.addEventListener("click", () => this.loadLobby());
+    this.ui.searchId?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        this.searchAndMaybeJoin();
+      }
+    });
+    this.ui.searchId?.addEventListener("input", () => this.searchRooms());
     this.ui.leaveBtn?.addEventListener("click", () => this.leaveRoom());
     this.ui.copyInvite?.addEventListener("click", () => this.copyInvite());
     this.ui.startBtn?.addEventListener("click", () => this.sendAction("START"));
@@ -91,16 +119,19 @@ export class BlackjackMultiGame {
     this.ui.doubleBtn?.addEventListener("click", () => this.sendAction("DOUBLE"));
     this.ui.splitBtn?.addEventListener("click", () => this.sendAction("SPLIT"));
     this.ui.betButtons?.forEach((btn) => {
+      const amount = Number(btn.dataset.amount) || 0;
       btn.addEventListener("click", () => {
-        const amount = Number(btn.dataset.amount) || 0;
-        this.applyLocalBet(amount);
-        this.sendAction("BET", { amount });
+        this.adjustLocalBet(-amount);
+        playSfx("hit");
+      });
+      btn.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        this.adjustLocalBet(amount);
         playSfx("hit");
       });
     });
     this.ui.betClear?.addEventListener("click", () => {
-      this.applyLocalBet(0);
-      this.sendAction("BET", { amount: 0 });
+      this.setLocalBet(0);
     });
   }
 
@@ -108,20 +139,61 @@ export class BlackjackMultiGame {
     try {
       await this.ensureAuthReady();
       const payload = await auth.request("/api/games/blackjack-multi/rooms", { method: "GET" });
-      this.renderRoomList(payload.rooms || []);
+      this.rooms = Array.isArray(payload.rooms) ? payload.rooms : [];
+      this.searchRooms();
     } catch (err) {
       console.error("Failed to load multiplayer rooms", err);
       showCenterToast("Unable to load rooms.", "danger");
     }
   }
 
-  renderRoomList(rooms) {
+  searchRooms() {
+    const query = (this.ui.searchId?.value || "").trim().toLowerCase();
+    if (!query) {
+      this.renderRoomList(this.rooms);
+      return;
+    }
+    const filtered = this.rooms.filter((room) =>
+      String(room.roomId || "")
+        .toLowerCase()
+        .includes(query) ||
+      String(room.name || "")
+        .toLowerCase()
+        .includes(query)
+    );
+    this.renderRoomList(filtered, query);
+  }
+
+  async searchAndMaybeJoin() {
+    const query = (this.ui.searchId?.value || "").trim().toLowerCase();
+    if (!query) {
+      this.renderRoomList(this.rooms);
+      return;
+    }
+    const filtered = this.rooms.filter((room) =>
+      String(room.roomId || "")
+        .toLowerCase()
+        .includes(query) ||
+      String(room.name || "")
+        .toLowerCase()
+        .includes(query)
+    );
+    if (filtered.length > 0) {
+      this.renderRoomList(filtered, query);
+      return;
+    }
+    this.renderRoomList([], query);
+  }
+
+  renderRoomList(rooms, query = "") {
     if (!this.ui.rooms) return;
     this.ui.rooms.innerHTML = "";
     if (!rooms.length) {
       const empty = document.createElement("div");
       empty.className = "bjmulti-empty";
-      empty.textContent = "No public tables yet.";
+      empty.textContent = query
+        ? `No tables found for ID: ${query}`
+        : "No public tables yet.";
       this.ui.rooms.appendChild(empty);
       return;
     }
@@ -130,9 +202,14 @@ export class BlackjackMultiGame {
       card.className = "bjmulti-room-card";
       const meta = document.createElement("div");
       meta.className = "bjmulti-room-meta";
+      const roomName = String(room.name || "").trim() || "Blackjack Table";
       meta.innerHTML = `
-        <div class="title">${room.name}</div>
-        <div class="details">Host: ${room.host} · ${room.playerCount}/${room.maxPlayers}</div>
+        <div class="title">${roomName}</div>
+        <div class="details">
+          <span class="bjmulti-id-tag">ID</span> ${room.roomId}
+          <span class="bjmulti-host-tag">HOST</span> ${room.host}
+          <span class="bjmulti-count-tag">${room.playerCount}/${room.maxPlayers}</span>
+        </div>
       `;
       const btn = document.createElement("button");
       btn.className = "btn ghost";
@@ -169,6 +246,7 @@ export class BlackjackMultiGame {
         method: "POST",
       });
       this.roomId = roomId;
+      this.syncRoomQuery(roomId);
       this.playerId = payload.playerId || this.playerId;
       this.applyState(payload.state);
       this.connectSocket();
@@ -191,10 +269,22 @@ export class BlackjackMultiGame {
     }
     this.closeSocket();
     this.roomId = "";
+    this.syncRoomQuery("");
     this.playerId = "";
     this.state = null;
     this.showLobby();
     this.loadLobby();
+  }
+
+  syncRoomQuery(roomId) {
+    try {
+      const url = new URL(window.location.href);
+      if (roomId) url.searchParams.set("room", roomId);
+      else url.searchParams.delete("room");
+      window.history.replaceState({}, "", url.toString());
+    } catch (err) {
+      // ignore history/url failures
+    }
   }
 
   connectSocket() {
@@ -222,6 +312,9 @@ export class BlackjackMultiGame {
       }
       if (msg.type === "BLACKJACK_MULTI_STATE" && msg.roomId === this.roomId) {
         this.applyState(msg.state);
+      } else if (msg.type === "BALANCE_UPDATE" && Number.isFinite(Number(msg.balance))) {
+        coreState.balance = Number(msg.balance);
+        updateBalance();
       } else if (msg.error) {
         showCenterToast(msg.error, "danger");
       }
@@ -258,13 +351,26 @@ export class BlackjackMultiGame {
     );
   }
 
-  applyLocalBet(amount) {
+  setLocalBet(nextAmount) {
     if (!this.state || this.state.inRound) return;
     const me = this.state.players?.find((entry) => entry.id === this.playerId);
     if (!me) return;
-    me.betAmount = Math.max(0, Number(amount) || 0);
+    const current = Math.max(0, Number(me.betAmount || 0));
+    const bank = Math.max(0, Number(coreState.balance || 0));
+    const cap = bank + current;
+    const next = Math.min(cap, Math.max(0, Number(nextAmount) || 0));
+    me.betAmount = next;
     this.updateBet(this.state);
     this.renderPlayers(this.state, false);
+    this.sendAction("BET", { amount: next });
+  }
+
+  adjustLocalBet(delta) {
+    if (!this.state || this.state.inRound) return;
+    const me = this.state.players?.find((entry) => entry.id === this.playerId);
+    if (!me) return;
+    const current = Math.max(0, Number(me.betAmount || 0));
+    this.setLocalBet(current + Number(delta || 0));
   }
 
   applyState(state) {
@@ -430,16 +536,34 @@ export class BlackjackMultiGame {
       }
       const name = document.createElement("div");
       name.className = "name";
-      const baseName =
-        player.id === this.playerId ? `${player.username} (You)` : player.username;
-      name.textContent =
-        state.hostId && player.id === state.hostId ? `${baseName} (Host)` : baseName;
+      const username = document.createElement("span");
+      username.className = "player-name-text";
+      username.textContent = player.username || "Guest";
+      name.appendChild(username);
+      if (player.id === this.playerId) {
+        const youTag = document.createElement("span");
+        youTag.className = "player-role-tag is-you";
+        youTag.textContent = "You";
+        name.appendChild(youTag);
+      }
+      if (state.hostId && player.id === state.hostId) {
+        const hostTag = document.createElement("span");
+        hostTag.className = "player-role-tag is-host";
+        hostTag.textContent = "Host";
+        name.appendChild(hostTag);
+      }
       const bet = document.createElement("div");
       bet.className = "status";
       const betTotal = Array.isArray(player.bets) && state.inRound
         ? player.bets.reduce((sum, val) => sum + Number(val || 0), 0)
         : Number(player.betAmount || 0);
-      bet.textContent = betTotal > 0 ? `Bet $${betTotal}` : "No bet";
+      const isSittingOut =
+        player.status === "sitting" || (!state.inRound && betTotal <= 0 && hands.length === 0);
+      if (isSittingOut) wrapper.classList.add("sitting-out");
+      const hasBet = betTotal > 0;
+      bet.textContent = isSittingOut ? "Sitting out" : betTotal > 0 ? `Bet $${betTotal}` : "No bet";
+      if (isSittingOut) bet.classList.add("is-sitting");
+      if (hasBet) bet.classList.add("is-bet");
       header.appendChild(name);
       header.appendChild(bet);
       const showLabels = hands.length > 1;
@@ -474,8 +598,15 @@ export class BlackjackMultiGame {
       }
       if (!hands.length || hideHands) {
         const empty = document.createElement("div");
-        empty.className = "total";
-        empty.textContent = hideHands ? "Waiting for next round" : "Sitting out";
+        const isWaitingForCards = !hideHands && !isSittingOut;
+        empty.className = `total ${isSittingOut ? "bjmulti-sitting-note" : ""} ${
+          isWaitingForCards ? "bjmulti-waiting-note" : ""
+        }`;
+        empty.textContent = hideHands
+          ? "Waiting for next round"
+          : isSittingOut
+            ? "Sitting out - place a bet to join next round"
+            : "Waiting for cards - bet to be dealt in";
         cardsWrap.appendChild(empty);
       }
       wrapper.appendChild(header);

@@ -21,39 +21,33 @@
 </header>
 
     <main class="layout">
-      <nav class="arcade-tabs" role="navigation">
-        <a class="tab" href="poker.html">5-Card Poker</a>
-        <a class="tab" href="holdem.html">Texas Hold'em</a>
-        <a class="tab" href="blackjack.html">Blackjack</a>
-        <a class="tab active" href="blackjack-multi.html">Blackjack Live</a>
-        <a class="tab" href="roulette.html">Roulette</a>
-        <a class="tab" href="craps.html">Craps</a>
-        <a class="tab" href="yahtzee.html">Yahtzee</a>
-        <a class="tab" href="memory.html">Memory</a>
-        <a class="tab" href="slots.html">Slots</a>
-      </nav>
-
       <section class="panel" id="blackjack-multi">
-        <h2>Blackjack Live</h2>
+        <div class="panel-head">
+          <h2>Blackjack Live</h2>
+          <a class="back-link" href="index.html" aria-label="Back to games"><span class="back-arrow" aria-hidden="true">&larr;</span><span>Back to Games</span></a>
+        </div>
         <div class="bjmulti-grid">
           <div class="bjmulti-lobby" id="bjMultiLobby">
             <div class="bjmulti-card">
-              <h3>Create Room</h3>
+              <h3>Create Table</h3>
               <div class="bjmulti-create">
-                <input id="bjMultiRoomName" type="text" placeholder="Table name" />
+                <input id="bjMultiRoomName" type="text" placeholder="Table name (optional)" />
                 <label class="auto-toggle auto-inline">
                   <input id="bjMultiPublic" type="checkbox" checked />
                   <span class="toggle-track"></span>
-                  <span class="toggle-label">Public lobby</span>
+                  <span class="toggle-label">Public</span>
                 </label>
-                <button id="bjMultiCreate" class="btn">Create Room</button>
+                <button id="bjMultiCreate" class="btn">Create Table</button>
               </div>
             </div>
 
             <div class="bjmulti-card">
               <h3>Public Tables</h3>
+              <div class="bjmulti-search">
+                <input id="bjMultiSearchId" type="text" placeholder="Search by table ID or name" />
+                <button id="bjMultiRefresh" class="btn ghost">Refresh</button>
+              </div>
               <div id="bjMultiRooms" class="bjmulti-room-list"></div>
-              <button id="bjMultiRefresh" class="btn ghost">Refresh</button>
             </div>
           </div>
 
@@ -62,14 +56,13 @@
               <div class="bjmulti-room-title">
                 Room <span id="bjMultiRoomId">-</span>
               </div>
-              <button id="bjMultiLeave" class="btn ghost">Leave</button>
-            </div>
-            <div class="bjmulti-invite">
-              <label>Invite link</label>
-              <div class="bjmulti-invite-row">
-                <input id="bjMultiInvite" type="text" readonly />
-                <button id="bjMultiCopy" class="btn ghost">Copy</button>
+              <div class="bjmulti-invite bjmulti-invite-inline">
+                <div class="bjmulti-invite-row">
+                  <input id="bjMultiInvite" type="text" readonly />
+                  <button id="bjMultiCopy" class="btn ghost">Copy</button>
+                </div>
               </div>
+              <button id="bjMultiLeave" class="btn ghost">Leave</button>
             </div>
             <div class="bjmulti-table">
               <div class="bjmulti-dealer">

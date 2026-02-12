@@ -20,6 +20,7 @@ exports.handler = async (event) => {
     await cleanupRoomForConnection({
       roomId: connection.room_id,
       playerId: connection.player_id,
+      connectionId,
       endpoint,
     });
   }

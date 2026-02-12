@@ -253,6 +253,224 @@ body::before {
   outline-offset: 2px;
 }
 
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.panel-head h2 {
+  margin: 0;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 14px;
+  border: 1px solid rgba(125, 211, 252, 0.45);
+  border-radius: 999px;
+  text-decoration: none;
+  color: #dbeafe;
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.9));
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  box-shadow:
+    inset 0 1px 0 rgba(191, 219, 254, 0.22),
+    0 6px 14px rgba(2, 6, 23, 0.35);
+  transition: border-color 0.18s ease, color 0.18s ease, transform 0.12s ease, box-shadow 0.2s ease;
+}
+
+.back-link .back-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-size: 12px;
+  height: 1em;
+  transform: translateY(-2px);
+}
+
+.back-link:hover {
+  border-color: rgba(125, 211, 252, 0.85);
+  color: #eff6ff;
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(191, 219, 254, 0.3),
+    0 10px 18px rgba(2, 6, 23, 0.42);
+}
+
+.back-link:focus-visible {
+  outline: none;
+  border-color: rgba(125, 211, 252, 0.95);
+  box-shadow:
+    0 0 0 3px rgba(56, 189, 248, 0.22),
+    inset 0 1px 0 rgba(191, 219, 254, 0.32),
+    0 10px 18px rgba(2, 6, 23, 0.42);
+}
+
+.back-link:active {
+  transform: translateY(0);
+  box-shadow:
+    inset 0 1px 0 rgba(191, 219, 254, 0.2),
+    0 5px 10px rgba(2, 6, 23, 0.34);
+}
+
+@media (max-width: 700px) {
+  .panel-head {
+    flex-wrap: wrap;
+  }
+}
+
+.lobby-layout {
+  max-width: 980px;
+}
+
+.lobby-panel {
+  padding: clamp(20px, 2.8vw, 34px);
+  background:
+    radial-gradient(circle at top right, rgba(34, 211, 238, 0.06), transparent 42%),
+    linear-gradient(145deg, rgba(17, 24, 39, 0.97), rgba(8, 12, 20, 0.95));
+}
+
+.lobby-lead {
+  margin: 0;
+  color: #bfdbfe;
+  font-size: 11px;
+  max-width: 62ch;
+  line-height: 1.5;
+}
+
+.lobby-hero {
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.mode-sections {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 1fr;
+}
+
+.mode-section {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 14px;
+  padding: 16px 16px 14px;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.54), rgba(15, 23, 42, 0.36));
+  box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.08);
+}
+
+.mode-section h3 {
+  margin: 0 0 12px;
+  color: #7dd3fc;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+.category-block + .category-block {
+  margin-top: 16px;
+}
+
+.category-block h4 {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0 9px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  background: rgba(251, 191, 36, 0.08);
+  font-size: 10px;
+  color: #fde68a;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.game-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.game-card {
+  display: grid;
+  grid-template-rows: auto auto;
+  align-content: center;
+  justify-items: start;
+  gap: 4px;
+  position: relative;
+  text-decoration: none;
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  border-radius: 12px;
+  padding: 12px 42px 12px 14px;
+  min-height: 76px;
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.58), rgba(30, 41, 59, 0.42));
+  transition: border-color 0.2s ease, transform 0.12s ease, box-shadow 0.2s ease;
+}
+
+.game-card:hover {
+  border-color: rgba(125, 211, 252, 0.72);
+  transform: translateY(-1px);
+  box-shadow: 0 5px 12px rgba(2, 6, 23, 0.33);
+}
+
+.game-card::after {
+  content: "->";
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  color: rgba(125, 211, 252, 0.8);
+  font-size: 11px;
+}
+
+.game-title {
+  font-size: 11px;
+  color: #f8fafc;
+  line-height: 1.35;
+}
+
+.game-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.game-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  background: rgba(15, 23, 42, 0.55);
+  color: #bfdbfe;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.game-badge [aria-hidden="true"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1em;
+  line-height: 1;
+  position: relative;
+  top: -1px;
+}
+
+@media (max-width: 560px) {
+  .lobby-panel {
+    padding: 18px;
+  }
+}
+
 .panel {
   background: linear-gradient(145deg, rgba(17, 24, 39, 0.97), rgba(8, 12, 20, 0.95));
   border: 2px solid var(--panel-bright);
@@ -3263,69 +3481,202 @@ body.small-win .topbar {
 
 #blackjack-multi .bjmulti-grid {
   display: grid;
-  gap: 22px;
+  gap: 18px;
 }
 
 #blackjack-multi .bjmulti-card {
-  background: rgba(10, 12, 20, 0.7);
-  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.66), rgba(15, 23, 42, 0.42));
+  border-radius: 14px;
   padding: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  box-shadow: inset 0 0 18px rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(148, 163, 184, 0.1),
+    0 8px 18px rgba(2, 6, 23, 0.28);
   margin-bottom: 16px;
 }
 
 #blackjack-multi .bjmulti-create {
   display: grid;
+  grid-template-columns: auto minmax(260px, 1fr) auto;
   gap: 10px;
+  align-items: center;
+}
+
+#blackjack-multi .bjmulti-create #bjMultiRoomName {
+  order: 2;
+}
+
+#blackjack-multi .bjmulti-create #bjMultiCreate {
+  order: 3;
+  justify-self: end;
+}
+
+#blackjack-multi .bjmulti-create input,
+#blackjack-multi .bjmulti-invite input {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: rgba(2, 6, 23, 0.45);
+  color: #e2e8f0;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+#blackjack-multi .bjmulti-create .auto-toggle {
+  order: 1;
+  margin: 0;
+  white-space: nowrap;
+}
+
+#blackjack-multi .bjmulti-create input::placeholder {
+  color: #94a3b8;
 }
 
 #blackjack-multi .bjmulti-room-list {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   margin: 12px 0 16px;
+}
+
+#blackjack-multi .bjmulti-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 14px;
+}
+
+#blackjack-multi .bjmulti-search input {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(2, 6, 23, 0.5);
+  color: #e2e8f0;
+  padding: 11px 12px;
+  font-size: 13px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+#blackjack-multi .bjmulti-search input:focus {
+  outline: none;
+  border-color: rgba(125, 211, 252, 0.9);
+  background: rgba(15, 23, 42, 0.8);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18);
+}
+
+#blackjack-multi .bjmulti-search input::placeholder {
+  color: #7c8da8;
+}
+
+#blackjack-multi .bjmulti-search #bjMultiRefresh {
+  white-space: nowrap;
 }
 
 #blackjack-multi .bjmulti-room-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px;
+  gap: 10px;
+  padding: 12px;
   border-radius: 12px;
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  background: rgba(30, 41, 59, 0.5);
+  transition: border-color 0.2s ease, transform 0.12s ease, box-shadow 0.2s ease;
+}
+
+#blackjack-multi .bjmulti-room-card:hover {
+  border-color: rgba(125, 211, 252, 0.75);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(2, 6, 23, 0.28);
 }
 
 #blackjack-multi .bjmulti-room-card .title {
   font-weight: 700;
+  font-size: 12px;
   color: #f8fafc;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 #blackjack-multi .bjmulti-room-card .details {
   color: #94a3b8;
-  font-size: 12px;
+  font-size: 10px;
+  margin-top: 3px;
 }
 
 #blackjack-multi .bjmulti-empty {
   color: #94a3b8;
-  font-size: 14px;
+  font-size: 12px;
+  padding: 10px 0;
 }
 
 #blackjack-multi .bjmulti-room-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(280px, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
+  gap: 10px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
 }
 
 #blackjack-multi .bjmulti-room-title {
-  font-size: 18px;
+  font-size: 15px;
   font-weight: 700;
+  color: #e2e8f0;
+}
+
+#blackjack-multi .bjmulti-id-tag,
+#blackjack-multi .bjmulti-host-tag,
+#blackjack-multi .bjmulti-count-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  color: #93c5fd;
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(147, 197, 253, 0.35);
+  border-radius: 999px;
+  padding: 3px 6px;
+  margin-right: 4px;
+}
+
+#blackjack-multi .bjmulti-count-tag {
+  margin-right: 0;
+}
+
+#blackjack-multi #bjMultiRoomId {
+  display: inline-flex;
+  align-items: center;
+  font-size: 13px;
 }
 
 #blackjack-multi .bjmulti-invite {
   margin-bottom: 16px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.4);
+}
+
+#blackjack-multi .bjmulti-invite.bjmulti-invite-inline {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  min-width: 0;
+}
+
+#blackjack-multi .bjmulti-invite label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
 }
 
 #blackjack-multi .bjmulti-invite-row {
@@ -3335,12 +3686,19 @@ body.small-win .topbar {
 
 #blackjack-multi .bjmulti-table {
   display: grid;
-  gap: 18px;
+  gap: 14px;
+}
+
+#blackjack-multi .bjmulti-dealer {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.45);
 }
 
 #blackjack-multi .bjmulti-players {
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
 #blackjack-multi .bjmulti-hands {
@@ -3349,9 +3707,9 @@ body.small-win .topbar {
 }
 
 #blackjack-multi .bjmulti-hands .hand-block {
-  padding: 8px;
+  padding: 10px;
   border-radius: 10px;
-  background: rgba(15, 23, 42, 0.4);
+  background: rgba(15, 23, 42, 0.34);
   border: 1px solid rgba(148, 163, 184, 0.2);
 }
 
@@ -3362,13 +3720,21 @@ body.small-win .topbar {
 #blackjack-multi .bjmulti-player {
   padding: 12px;
   border-radius: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
-  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.55), rgba(15, 23, 42, 0.38));
+}
+
+#blackjack-multi .bjmulti-player.sitting-out {
+  border-style: dashed;
+  border-color: rgba(148, 163, 184, 0.38);
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.45), rgba(15, 23, 42, 0.3));
 }
 
 #blackjack-multi .bjmulti-player.active {
   border-color: rgba(59, 130, 246, 0.9);
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+  box-shadow:
+    0 0 0 2px rgba(59, 130, 246, 0.26),
+    0 6px 14px rgba(2, 6, 23, 0.26);
 }
 
 #blackjack-multi .bjmulti-player-header {
@@ -3378,11 +3744,59 @@ body.small-win .topbar {
   color: #e2e8f0;
 }
 
+#blackjack-multi .bjmulti-player-header .name {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+#blackjack-multi .player-role-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 2px 7px;
+  margin-left: 2px;
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+#blackjack-multi .player-role-tag.is-you {
+  color: #bae6fd;
+  border: 1px solid rgba(125, 211, 252, 0.45);
+  background: rgba(14, 116, 144, 0.2);
+}
+
+#blackjack-multi .player-role-tag.is-host {
+  color: #fecaca;
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  background: rgba(127, 29, 29, 0.28);
+}
+
 #blackjack-multi .bjmulti-player-header .status {
-  font-size: 11px;
+  font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: #94a3b8;
+}
+
+#blackjack-multi .bjmulti-player-header .status.is-sitting {
+  color: #fcd34d;
+  border: 1px solid rgba(252, 211, 77, 0.35);
+  border-radius: 999px;
+  padding: 2px 7px;
+  background: rgba(120, 53, 15, 0.22);
+}
+
+#blackjack-multi .bjmulti-player-header .status.is-bet {
+  color: #bbf7d0;
+  border: 1px solid rgba(74, 222, 128, 0.45);
+  border-radius: 999px;
+  padding: 2px 7px;
+  background: rgba(20, 83, 45, 0.28);
 }
 
 #blackjack-multi .bjmulti-result {
@@ -3405,7 +3819,8 @@ body.small-win .topbar {
 #blackjack-multi .bjmulti-result.push { color: #f59e0b; }
 
 #blackjack-multi .bjmulti-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 8px;
   margin-top: 14px;
 }
@@ -3414,8 +3829,12 @@ body.small-win .topbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
-  margin-top: 12px;
+  gap: 8px 10px;
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.35);
 }
 
 #blackjack-multi .bjmulti-bet-label {
@@ -3432,13 +3851,60 @@ body.small-win .topbar {
 }
 
 #blackjack-multi .bjmulti-status {
-  margin-top: 10px;
+  margin-top: 12px;
   color: #94a3b8;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+#blackjack-multi .bjmulti-sitting-note {
+  border: 1px dashed rgba(148, 163, 184, 0.4);
+  border-radius: 10px;
+  padding: 9px 10px;
+  color: #cbd5e1;
+  text-align: center;
+  background: rgba(2, 6, 23, 0.28);
+}
+
+#blackjack-multi .bjmulti-waiting-note {
+  border: 1px solid rgba(125, 211, 252, 0.35);
+  border-radius: 10px;
+  padding: 9px 10px;
+  color: #bae6fd;
+  text-align: center;
+  background: rgba(14, 116, 144, 0.12);
 }
 
 @media (min-width: 960px) {
   #blackjack-multi .bjmulti-grid {
     grid-template-columns: 1fr;
     align-items: start;
+  }
+}
+
+@media (max-width: 700px) {
+  #blackjack-multi .bjmulti-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  #blackjack-multi .bjmulti-room-header {
+    grid-template-columns: 1fr;
+  }
+
+  #blackjack-multi .bjmulti-invite-row {
+    flex-direction: column;
+  }
+
+  #blackjack-multi .bjmulti-invite-row .btn {
+    width: 100%;
+  }
+
+  #blackjack-multi .bjmulti-search {
+    grid-template-columns: 1fr;
+  }
+
+  #blackjack-multi .bjmulti-search #bjMultiRefresh {
+    width: 100%;
   }
 }

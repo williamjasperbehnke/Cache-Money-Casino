@@ -86,6 +86,7 @@ exports.handler = async (event) => {
     await cleanupRoomForConnection({
       roomId: connection.room_id,
       playerId: connection.player_id,
+      connectionId,
       endpoint,
     });
     await sendToConnection(endpoint, connectionId, { type: "ROOM_LEFT" });
@@ -131,12 +132,30 @@ exports.handler = async (event) => {
           await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Round already in progress." });
           return jsonResponse(200, { ok: false }, CORS_ORIGIN);
         }
+        if (!connection.token) {
+          await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Session missing." });
+          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+        }
+        const session = await getSession(connection.token);
+        if (!session) {
+          await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Session missing." });
+          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+        }
+        const { user, balance } = await resolveBalance(session);
+        const currentBet = Math.max(0, Number(player.betAmount || 0));
         const amount = Math.max(0, Number(payload.amount) || 0);
+        const delta = amount - currentBet;
+        if (delta > 0 && balance < delta) {
+          await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Not enough credits." });
+          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+        }
+        const nextBalance = await persistBalance(session, user, balance - delta);
         player.betAmount = amount;
         if (amount > 0) player.lastBet = amount;
         player.status = "waiting";
         await saveRoomState(roomId, state);
         await updateRoomMeta(roomId, state);
+        await sendToConnection(endpoint, connectionId, { type: "BALANCE_UPDATE", balance: nextBalance });
         await broadcastRoomState(endpoint, roomId, state);
         return jsonResponse(200, { ok: true }, CORS_ORIGIN);
       }
@@ -160,12 +179,6 @@ exports.handler = async (event) => {
             entry.status = "sitting";
             return;
           }
-          if (context.balance < entry.betAmount) {
-            entry.betAmount = 0;
-            entry.status = "sitting";
-            return;
-          }
-          context.balance -= entry.betAmount;
         });
         if (!state.players.some((entry) => entry.betAmount > 0)) {
           await sendToConnection(endpoint, connectionId, {
@@ -173,15 +186,6 @@ exports.handler = async (event) => {
             error: "All players are sitting out. Place a bet to start.",
           });
           return jsonResponse(200, { ok: false }, CORS_ORIGIN);
-        }
-        for (const [playerId, context] of sessionMap.entries()) {
-          const entry = state.players.find((p) => p.id === playerId);
-          if (!entry || !entry.betAmount) continue;
-          const nextBalance = await persistBalance(context.session, context.user, context.balance);
-          if (context.user) {
-            context.user.balance = nextBalance;
-            await putUser(context.user);
-          }
         }
         result = startRound(state);
       } else if (payload.type === "HIT") {

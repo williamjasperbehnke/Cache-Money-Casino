@@ -183,6 +183,18 @@ const listRoomConnections = async (roomId) => {
   return (resp.Items || []).filter((item) => item.player_id && item.player_id !== "meta");
 };
 
+const hasOtherRoomConnectionForPlayer = async ({ roomId, playerId, excludeConnectionId }) => {
+  if (!roomId || !playerId) return false;
+  const entries = await listRoomConnections(roomId);
+  for (const entry of entries) {
+    const connectionId = entry.player_id;
+    if (!connectionId || connectionId === excludeConnectionId) continue;
+    const connection = await getConnection(connectionId);
+    if (connection?.player_id === playerId) return true;
+  }
+  return false;
+};
+
 const broadcastRoomState = async (endpoint, roomId, state) => {
   const connections = await listRoomConnections(roomId);
   const payload = {
@@ -193,10 +205,16 @@ const broadcastRoomState = async (endpoint, roomId, state) => {
   await Promise.all(connections.map((entry) => sendToConnection(endpoint, entry.player_id, payload)));
 };
 
-const cleanupRoomForConnection = async ({ roomId, playerId, endpoint }) => {
+const cleanupRoomForConnection = async ({ roomId, playerId, connectionId, endpoint }) => {
   if (!roomId || !playerId || !hasRoomsConfig()) return;
   const state = await getRoomState(roomId);
   if (!state) return;
+  const hasOtherConnection = await hasOtherRoomConnectionForPlayer({
+    roomId,
+    playerId,
+    excludeConnectionId: connectionId,
+  });
+  if (hasOtherConnection) return;
   removePlayer(state, playerId);
   if (state.players.length === 0) {
     await del({
