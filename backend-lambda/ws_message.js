@@ -102,6 +102,7 @@ exports.handler = async (event) => {
       playerId: connection.player_id,
       connectionId,
       endpoint,
+      reason: "leave",
     });
     await sendToConnection(endpoint, connectionId, { type: "ROOM_LEFT" });
     return jsonResponse(200, { ok: true }, CORS_ORIGIN);

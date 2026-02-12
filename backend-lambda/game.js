@@ -64,6 +64,14 @@ const roomSessionId = (roomId) => `room:${roomId}`;
 const playerIdFromToken = (token) =>
   crypto.createHash("sha256").update(token || "").digest("hex").slice(0, 12);
 
+const formatBlackjackMultiUsername = (session, playerId) => {
+  const raw = String(session?.username || "").trim();
+  if (!raw || raw.toLowerCase() === "guest") {
+    return `Guest ${String(playerId || "").slice(0, 4)}`;
+  }
+  return raw;
+};
+
 const parseGameFromPath = (path) => path.split("/games/")[1]?.split("/")[0] || "";
 
 const getGameState = async (token, game) => {
@@ -196,8 +204,8 @@ exports.handler = async (event) => {
     }
     const body = parseJson(event);
     const roomId = crypto.randomUUID().slice(0, 8);
-    const host = session.username || "Guest";
     const hostId = playerIdFromToken(token);
+    const host = formatBlackjackMultiUsername(session, hostId);
     const maxPlayers = Number(body.maxPlayers || 5);
     const state = createBlackjackMultiState({ roomId, host, hostId, maxPlayers });
     await saveRoomState(roomId, state);
@@ -244,7 +252,7 @@ exports.handler = async (event) => {
         return jsonResponse(404, { error: "Room expired due to inactivity." }, CORS_ORIGIN);
       }
       const playerId = playerIdFromToken(token);
-      const username = session.username || `Guest ${playerId.slice(0, 4)}`;
+      const username = formatBlackjackMultiUsername(session, playerId);
       const result = addBlackjackMultiPlayer(state, { id: playerId, username });
       if (result?.error) return jsonResponse(400, { error: result.error }, CORS_ORIGIN);
       await saveRoomState(roomId, state);

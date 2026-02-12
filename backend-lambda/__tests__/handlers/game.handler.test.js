@@ -2,12 +2,14 @@ process.env.LOCAL_DEV = "true";
 process.env.USERS_TABLE = "Users";
 process.env.SESSIONS_TABLE = "Sessions";
 process.env.GAME_SESSIONS_TABLE = "GameSessions";
+process.env.ROOMS_TABLE = "Rooms";
 process.env.CORS_ORIGIN = "*";
 
+const crypto = require("crypto");
 const { resetLocalTables, makeEvent, parseResponse } = require("../helpers/test-helpers");
 const { handler } = require("../../game");
 const { putSession, putUser, getUser } = require("../../lib/session");
-const { put } = require("../../lib/db");
+const { put, get } = require("../../lib/db");
 const { createHoldemState } = require("../../game/holdem");
 const { createPokerState } = require("../../game/poker");
 
@@ -58,6 +60,49 @@ describe("game handler", () => {
     const parsed = parseResponse(resp);
     expect(parsed.body.active).toBe(true);
     expect(parsed.body.state.foo).toBe(1);
+  });
+
+  it("formats guest host name on blackjack-multi room creation", async () => {
+    const resp = await handler(
+      makeEvent({
+        method: "POST",
+        path: "/games/blackjack-multi/rooms",
+        headers: authHeaders,
+        body: { name: "Test Room", public: true },
+      })
+    );
+    const parsed = parseResponse(resp);
+    expect(parsed.statusCode).toBe(200);
+    const roomId = parsed.body.roomId;
+    const expectedSuffix = crypto
+      .createHash("sha256")
+      .update("t1")
+      .digest("hex")
+      .slice(0, 4);
+    const meta = await get({ TableName: "Rooms", Key: { room_id: roomId, player_id: "meta" } });
+    expect(meta.Item?.host).toBe(`Guest ${expectedSuffix}`);
+  });
+
+  it("formats legacy guest username value on blackjack-multi room creation", async () => {
+    await putSession({ token: "t-guest", username: "guest", balance: 1000 });
+    const resp = await handler(
+      makeEvent({
+        method: "POST",
+        path: "/games/blackjack-multi/rooms",
+        headers: { authorization: "Bearer t-guest" },
+        body: { name: "Test Room", public: true },
+      })
+    );
+    const parsed = parseResponse(resp);
+    expect(parsed.statusCode).toBe(200);
+    const roomId = parsed.body.roomId;
+    const expectedSuffix = crypto
+      .createHash("sha256")
+      .update("t-guest")
+      .digest("hex")
+      .slice(0, 4);
+    const meta = await get({ TableName: "Rooms", Key: { room_id: roomId, player_id: "meta" } });
+    expect(meta.Item?.host).toBe(`Guest ${expectedSuffix}`);
   });
 
   it("roulette spin validates bets", async () => {

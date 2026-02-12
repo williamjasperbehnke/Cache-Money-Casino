@@ -3628,6 +3628,43 @@ body.small-win .topbar {
   color: #e2e8f0;
 }
 
+#blackjack-multi .bjmulti-room {
+  position: relative;
+}
+
+#blackjack-multi .bjmulti-connecting {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: rgba(2, 6, 23, 0.68);
+  backdrop-filter: blur(2px);
+}
+
+#blackjack-multi .bjmulti-connecting-card {
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(125, 211, 252, 0.45);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.95), rgba(15, 23, 42, 0.85));
+  box-shadow: 0 10px 20px rgba(2, 6, 23, 0.4);
+  text-align: center;
+}
+
+#blackjack-multi .bjmulti-connecting-title {
+  font-size: 11px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: #e2e8f0;
+}
+
+#blackjack-multi .bjmulti-connecting-subtitle {
+  margin-top: 6px;
+  font-size: 10px;
+  color: #93c5fd;
+}
+
 #blackjack-multi .bjmulti-id-tag,
 #blackjack-multi .bjmulti-host-tag,
 #blackjack-multi .bjmulti-count-tag {

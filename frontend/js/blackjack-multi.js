@@ -9,7 +9,7 @@ import {
 } from "./core.js";
 import { auth } from "./auth.js";
 
-const ROOM_POLL_INTERVAL = 8000;
+const BET_SYNC_DEBOUNCE_MS = 90;
 
 const getWsBase = () => {
   const fromStorage = localStorage.getItem("casino-ws-base");
@@ -34,6 +34,9 @@ export class BlackjackMultiGame {
     this.sawBustThisRound = false;
     this.authReadyPromise = null;
     this.rooms = [];
+    this.localBetDraft = null;
+    this.betCommitTimer = null;
+    this.connectionReady = false;
   }
 
   cacheElements() {
@@ -62,13 +65,14 @@ export class BlackjackMultiGame {
       betButtons: document.querySelectorAll("#blackjack-multi .bjmulti-bet-buttons .chip"),
       betClear: document.getElementById("bjMultiBetClear"),
       status: document.getElementById("bjMultiStatus"),
+      connecting: document.getElementById("bjMultiConnecting"),
     };
   }
 
   init() {
     this.cacheElements();
     this.bindControls();
-    window.addEventListener("beforeunload", () => this.closeSocket());
+    window.addEventListener("beforeunload", () => this.closeSocket(false));
     const params = new URLSearchParams(window.location.search);
     const room = params.get("room");
     if (room) {
@@ -248,6 +252,7 @@ export class BlackjackMultiGame {
       this.roomId = roomId;
       this.syncRoomQuery(roomId);
       this.playerId = payload.playerId || this.playerId;
+      this.setConnectionReady(false);
       this.applyState(payload.state);
       this.connectSocket();
       this.showRoom();
@@ -267,7 +272,9 @@ export class BlackjackMultiGame {
     } catch (err) {
       // ignore
     }
-    this.closeSocket();
+    this.closeSocket(true);
+    this.clearLocalBetDraft();
+    this.setConnectionReady(false);
     this.roomId = "";
     this.syncRoomQuery("");
     this.playerId = "";
@@ -308,6 +315,7 @@ export class BlackjackMultiGame {
         return;
       }
       if (msg.type === "ROOM_JOINED") {
+        this.setConnectionReady(true);
         return;
       }
       if (msg.type === "BLACKJACK_MULTI_STATE" && msg.roomId === this.roomId) {
@@ -324,18 +332,23 @@ export class BlackjackMultiGame {
     });
   }
 
-  closeSocket() {
+  closeSocket(sendLeave = true) {
+    this.clearLocalBetDraft();
+    this.setConnectionReady(false);
     if (!this.socket) return;
-    try {
-      this.socket.send(JSON.stringify({ action: "leave" }));
-    } catch (err) {
-      // ignore
+    if (sendLeave) {
+      try {
+        this.socket.send(JSON.stringify({ action: "leave" }));
+      } catch (err) {
+        // ignore
+      }
     }
     this.socket.close();
     this.socket = null;
   }
 
   sendAction(type, payload = {}) {
+    if (!this.connectionReady) return;
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
       showCenterToast("Connection not ready.", "danger");
       return;
@@ -359,9 +372,10 @@ export class BlackjackMultiGame {
     const cap = bank;
     const next = Math.min(cap, Math.max(0, Number(nextAmount) || 0));
     me.betAmount = next;
+    me.status = next > 0 ? "waiting" : "sitting";
+    this.localBetDraft = next;
     this.updateBet(this.state);
-    this.renderPlayers(this.state, false);
-    this.sendAction("BET", { amount: next });
+    this.queueBetCommit();
   }
 
   adjustLocalBet(delta) {
@@ -372,9 +386,57 @@ export class BlackjackMultiGame {
     this.setLocalBet(current + Number(delta || 0));
   }
 
+  queueBetCommit() {
+    if (this.betCommitTimer) {
+      clearTimeout(this.betCommitTimer);
+      this.betCommitTimer = null;
+    }
+    this.betCommitTimer = setTimeout(() => {
+      this.betCommitTimer = null;
+      if (this.localBetDraft === null) return;
+      const amount = Math.max(0, Number(this.localBetDraft) || 0);
+      this.sendAction("BET", { amount });
+    }, BET_SYNC_DEBOUNCE_MS);
+  }
+
+  clearLocalBetDraft() {
+    this.localBetDraft = null;
+    if (this.betCommitTimer) {
+      clearTimeout(this.betCommitTimer);
+      this.betCommitTimer = null;
+    }
+  }
+
+  setConnectionReady(ready) {
+    this.connectionReady = Boolean(ready);
+    if (this.ui.connecting) {
+      this.ui.connecting.classList.toggle("hidden", this.connectionReady);
+    }
+    if (this.state) {
+      this.updateControls(this.state);
+      this.updateStatus(this.state);
+    }
+  }
+
   applyState(state) {
     const prevInRound = this.lastInRound;
-    this.state = state || null;
+    const nextState = state || null;
+    if (nextState?.inRound) {
+      this.clearLocalBetDraft();
+    } else if (nextState && this.localBetDraft !== null) {
+      const meFromServer = nextState.players?.find((entry) => entry.id === this.playerId);
+      if (meFromServer) {
+        const serverBet = Math.max(0, Number(meFromServer.betAmount || 0));
+        const draftBet = Math.max(0, Number(this.localBetDraft || 0));
+        if (serverBet === draftBet) {
+          this.localBetDraft = null;
+        } else {
+          meFromServer.betAmount = draftBet;
+          meFromServer.status = draftBet > 0 ? "waiting" : "sitting";
+        }
+      }
+    }
+    this.state = nextState;
     if (!this.state) {
       this.showLobby();
       this.loadLobby();
@@ -511,28 +573,8 @@ export class BlackjackMultiGame {
       const header = document.createElement("div");
       header.className = "bjmulti-player-header";
       const hands = Array.isArray(player.hands) ? player.hands : [];
-      if (!state.inRound && !hideHands && hands.length > 0) {
-        const results = document.createElement("div");
-        results.className = "bjmulti-results";
-        const outcomes = Array.isArray(player.lastOutcomes) ? player.lastOutcomes : [];
-        const busted = Array.isArray(player.busted) ? player.busted : [];
-        if (outcomes.length > 0) {
-          outcomes.forEach((outcome) => {
-            const label = busted[outcome.index]
-              ? "BUST"
-              : outcome.result === "win"
-                ? "WIN"
-                : outcome.result === "push"
-                  ? "PUSH"
-                  : "LOSS";
-            const tag = document.createElement("div");
-            tag.className = `bjmulti-result ${label.toLowerCase()}`;
-            tag.textContent = label;
-            results.appendChild(tag);
-          });
-        }
-        if (results.childNodes.length > 0) header.appendChild(results);
-      }
+      const outcomes = Array.isArray(player.lastOutcomes) ? player.lastOutcomes : [];
+      const busted = Array.isArray(player.busted) ? player.busted : [];
       const name = document.createElement("div");
       name.className = "name";
       const username = document.createElement("span");
@@ -576,13 +618,27 @@ export class BlackjackMultiGame {
           if (showLabels) {
             const label = document.createElement("div");
             label.className = "hand-label";
-            if (Array.isArray(player.busted) && player.busted[idx]) {
-              label.textContent = "BUST";
-              label.classList.add("bust");
-            } else {
-              label.textContent = `Hand ${idx + 1}`;
-            }
+            label.textContent = `Hand ${idx + 1}`;
             block.appendChild(label);
+          }
+          if (!state.inRound) {
+            const outcome = outcomes.find((entry) => Number(entry?.index) === idx) || null;
+            let resultLabel = "";
+            if (busted[idx]) {
+              resultLabel = "BUST";
+            } else if (outcome?.result === "win") {
+              resultLabel = "WIN";
+            } else if (outcome?.result === "push") {
+              resultLabel = "PUSH";
+            } else if (outcome?.result === "loss") {
+              resultLabel = "LOSS";
+            }
+            if (resultLabel) {
+              const result = document.createElement("div");
+              result.className = `bjmulti-result ${resultLabel.toLowerCase()}`;
+              result.textContent = resultLabel;
+              block.appendChild(result);
+            }
           }
           const cards = document.createElement("div");
           cards.className = "cards";
@@ -619,16 +675,17 @@ export class BlackjackMultiGame {
     const current = players[state.turnIndex] || null;
     const myTurn = Boolean(state.inRound && current && current.id === this.playerId);
     const isHost = state.hostId ? state.hostId === this.playerId : false;
+    const controlsEnabled = this.connectionReady;
     if (this.ui.startBtn) {
-      this.ui.startBtn.disabled = state.inRound || players.length === 0 || !isHost;
+      this.ui.startBtn.disabled = !controlsEnabled || state.inRound || players.length === 0 || !isHost;
       this.ui.startBtn.classList.toggle("hidden", state.inRound || !isHost);
     }
     if (this.ui.hitBtn) {
-      this.ui.hitBtn.disabled = !myTurn;
+      this.ui.hitBtn.disabled = !controlsEnabled || !myTurn;
       this.ui.hitBtn.classList.toggle("hidden", !myTurn);
     }
     if (this.ui.standBtn) {
-      this.ui.standBtn.disabled = !myTurn;
+      this.ui.standBtn.disabled = !controlsEnabled || !myTurn;
       this.ui.standBtn.classList.toggle("hidden", !myTurn);
     }
     const canDouble =
@@ -645,23 +702,27 @@ export class BlackjackMultiGame {
       current.hands[current.activeHand]?.length === 2 &&
       current.hands[current.activeHand]?.[0]?.rank === current.hands[current.activeHand]?.[1]?.rank;
     if (this.ui.doubleBtn) {
-      this.ui.doubleBtn.disabled = !canDouble;
+      this.ui.doubleBtn.disabled = !controlsEnabled || !canDouble;
       this.ui.doubleBtn.classList.toggle("hidden", !canDouble);
     }
     if (this.ui.splitBtn) {
-      this.ui.splitBtn.disabled = !canSplit;
+      this.ui.splitBtn.disabled = !controlsEnabled || !canSplit;
       this.ui.splitBtn.classList.toggle("hidden", !canSplit);
     }
     if (this.ui.betButtons) {
       this.ui.betButtons.forEach((btn) => {
-        btn.disabled = state.inRound;
+        btn.disabled = !controlsEnabled || state.inRound;
       });
     }
-    if (this.ui.betClear) this.ui.betClear.disabled = state.inRound;
+    if (this.ui.betClear) this.ui.betClear.disabled = !controlsEnabled || state.inRound;
   }
 
   updateStatus(state) {
     if (!this.ui.status) return;
+    if (!this.connectionReady) {
+      this.ui.status.textContent = "Connecting to table...";
+      return;
+    }
     if (!state.inRound) {
       this.ui.status.textContent = "Waiting for the next round.";
       return;

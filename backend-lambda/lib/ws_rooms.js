@@ -205,7 +205,7 @@ const broadcastRoomState = async (endpoint, roomId, state) => {
   await Promise.all(connections.map((entry) => sendToConnection(endpoint, entry.player_id, payload)));
 };
 
-const cleanupRoomForConnection = async ({ roomId, playerId, connectionId, endpoint }) => {
+const cleanupRoomForConnection = async ({ roomId, playerId, connectionId, endpoint, reason = "disconnect" }) => {
   if (!roomId || !playerId || !hasRoomsConfig()) return;
   const state = await getRoomState(roomId);
   if (!state) return;
@@ -215,6 +215,12 @@ const cleanupRoomForConnection = async ({ roomId, playerId, connectionId, endpoi
     excludeConnectionId: connectionId,
   });
   if (hasOtherConnection) return;
+  const players = Array.isArray(state.players) ? state.players : [];
+  const isSoloPlayerRoom =
+    players.length === 1 &&
+    players[0]?.id === playerId;
+  // Preserve solo rooms on transient disconnect (refresh/reconnect path).
+  if (reason === "disconnect" && isSoloPlayerRoom) return;
   removePlayer(state, playerId);
   if (state.players.length === 0) {
     await del({
