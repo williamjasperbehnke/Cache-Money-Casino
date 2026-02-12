@@ -83,4 +83,15 @@ describe("sanitize", () => {
     const sanitized = sanitizeState("memory", state);
     expect(sanitized.cards.length).toBe(1);
   });
+
+  it("sanitizes holdem-multi by removing deck", () => {
+    const state = {
+      game: "holdem-multi",
+      deck: [{ rank: "A", suit: "S" }],
+      community: [{ rank: "K", suit: "H" }],
+    };
+    const sanitized = sanitizeState("holdem-multi", state);
+    expect(sanitized.deck).toBeUndefined();
+    expect(sanitized.community?.length).toBe(1);
+  });
 });

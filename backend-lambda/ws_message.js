@@ -26,6 +26,13 @@ const {
   isRoundClearPending,
   clearCompletedRound,
 } = require("./game/blackjack_multi");
+const {
+  startRound: startHoldemRound,
+  applyCheck: applyHoldemCheck,
+  applyFold: applyHoldemFold,
+  isRoundClearPending: isHoldemRoundClearPending,
+  clearCompletedRound: clearHoldemCompletedRound,
+} = require("./game/holdem_multi");
 const { handTotal, resolveOutcomes } = require("./game/blackjack_core");
 const { updateStats } = require("./lib/stats");
 const { getSession, resolveBalance, persistBalance, putUser } = require("./lib/session");
@@ -364,6 +371,189 @@ exports.handler = async (event) => {
           const latest = await getRoomState(roomId);
           if (latest && latest.phase === "complete" && !isRoundClearPending(latest)) {
             if (clearCompletedRound(latest)) {
+              await saveRoomState(roomId, latest);
+              await updateRoomMeta(roomId, latest);
+              await broadcastRoomState(endpoint, roomId, latest);
+            }
+          }
+        }
+      }
+      return jsonResponse(200, { ok: true }, CORS_ORIGIN);
+    }
+    if (payload.game === "holdem-multi") {
+      if (!hasRoomsConfig()) {
+        await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Server not configured." });
+        return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+      }
+      const roomId = payload.roomId || connection.room_id;
+      if (!roomId) {
+        await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Missing room." });
+        return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+      }
+      if (connection.room_id && connection.room_id !== roomId) {
+        await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Not in this room." });
+        return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+      }
+      if (await closeRoomIfExpired(roomId)) {
+        await sendToConnection(endpoint, connectionId, {
+          type: "ERROR",
+          error: "Room expired due to inactivity.",
+        });
+        return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+      }
+      const state = await getRoomState(roomId);
+      if (!state) {
+        await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Room not found." });
+        return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+      }
+      let settledThisAction = false;
+      const cooldownPending = isHoldemRoundClearPending(state);
+      if (state.phase === "showdown" && !cooldownPending) {
+        clearHoldemCompletedRound(state);
+      }
+      const player = state.players.find((entry) => entry.id === connection.player_id);
+      let result = { state };
+
+      if (payload.type === "BET") {
+        if (!player) {
+          await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Player not found." });
+          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+        }
+        if (state.inRound) {
+          await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Round already in progress." });
+          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+        }
+        if (cooldownPending) {
+          await sendToConnection(endpoint, connectionId, {
+            type: "ERROR",
+            error: "Round settling. Wait a moment.",
+          });
+          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+        }
+        if (!connection.token) {
+          await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Session missing." });
+          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+        }
+        const session = await getSession(connection.token);
+        if (!session) {
+          await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Session missing." });
+          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+        }
+        const amount = Math.max(0, Number(payload.amount) || 0);
+        const { balance } = await resolveBalance(session);
+        if (amount > balance) {
+          await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Not enough credits." });
+          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+        }
+        player.betAmount = amount;
+        if (amount > 0) player.lastBet = amount;
+        player.status = amount > 0 ? "waiting" : "sitting";
+        await saveRoomState(roomId, state);
+        await updateRoomMeta(roomId, state);
+        await broadcastRoomState(endpoint, roomId, state);
+        return jsonResponse(200, { ok: true }, CORS_ORIGIN);
+      }
+
+      if (!player && !["START", "BET"].includes(payload.type)) {
+        await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Player not found." });
+        return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+      }
+
+      if (payload.type === "START") {
+        if (state.hostId && state.hostId !== connection.player_id) {
+          await sendToConnection(endpoint, connectionId, {
+            type: "ERROR",
+            error: "Only the host can start the round.",
+          });
+          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+        }
+        if (cooldownPending) {
+          await sendToConnection(endpoint, connectionId, {
+            type: "ERROR",
+            error: "Round settling. Wait a moment.",
+          });
+          return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+        }
+        const sessionMap = await buildPlayerSessionMap(roomId);
+        const debitedPlayerIds = new Set();
+        for (const entry of state.players) {
+          const context = sessionMap.get(entry.id);
+          if (!entry.betAmount || entry.betAmount <= 0 || !context) {
+            entry.betAmount = 0;
+            entry.status = "sitting";
+            continue;
+          }
+          if (context.balance < entry.betAmount) {
+            entry.betAmount = 0;
+            entry.status = "sitting";
+            await sendToConnection(endpoint, context.connectionId, {
+              type: "ERROR",
+              error: "Not enough credits for current bet.",
+            });
+            continue;
+          }
+          context.balance -= entry.betAmount;
+          debitedPlayerIds.add(entry.id);
+        }
+        for (const [playerId, context] of sessionMap.entries()) {
+          if (!debitedPlayerIds.has(playerId)) continue;
+          const nextBalance = await persistBalance(context.session, context.user, context.balance);
+          await sendToConnection(endpoint, context.connectionId, {
+            type: "BALANCE_UPDATE",
+            balance: nextBalance,
+          });
+        }
+        result = startHoldemRound(state);
+      } else if (payload.type === "CHECK") {
+        result = applyHoldemCheck(state, connection.player_id);
+      } else if (payload.type === "FOLD") {
+        result = applyHoldemFold(state, connection.player_id);
+      } else {
+        await sendToConnection(endpoint, connectionId, { type: "ERROR", error: "Unknown action." });
+        return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+      }
+
+      if (result?.error) {
+        await sendToConnection(endpoint, connectionId, { type: "ERROR", error: result.error });
+        return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+      }
+
+      if (!state.inRound && state.phase === "showdown" && state.settled && !state.payoutApplied) {
+        const sessionMap = await buildPlayerSessionMap(roomId);
+        for (const [playerId, context] of sessionMap.entries()) {
+          const entry = state.players.find((p) => p.id === playerId);
+          if (!entry) continue;
+          const payout = Math.max(0, Number(entry.lastPayout || 0));
+          const nextBalance = await persistBalance(context.session, context.user, context.balance + payout);
+          await sendToConnection(endpoint, context.connectionId, {
+            type: "BALANCE_UPDATE",
+            balance: nextBalance,
+          });
+          if (context.user && Number(entry.betAmount || 0) > 0) {
+            const net = payout - Number(entry.betAmount || 0);
+            context.user.stats = updateStats(context.user.stats, {
+              game: "holdem",
+              bet: Number(entry.betAmount || 0),
+              net,
+              result: net > 0 ? "win" : net < 0 ? "loss" : "push",
+            });
+            await putUser(context.user);
+          }
+        }
+        state.payoutApplied = true;
+        settledThisAction = true;
+      }
+
+      await saveRoomState(roomId, state);
+      await updateRoomMeta(roomId, state);
+      await broadcastRoomState(endpoint, roomId, state);
+      if (settledThisAction && state.phase === "showdown") {
+        const clearAtMs = Date.parse(state.roundClearAt || "");
+        if (Number.isFinite(clearAtMs)) {
+          await delay(clearAtMs - Date.now() + 30);
+          const latest = await getRoomState(roomId);
+          if (latest && latest.phase === "showdown" && !isHoldemRoundClearPending(latest)) {
+            if (clearHoldemCompletedRound(latest)) {
               await saveRoomState(roomId, latest);
               await updateRoomMeta(roomId, latest);
               await broadcastRoomState(endpoint, roomId, latest);

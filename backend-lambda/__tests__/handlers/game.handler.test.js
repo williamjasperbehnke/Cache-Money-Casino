@@ -105,6 +105,56 @@ describe("game handler", () => {
     expect(meta.Item?.host).toBe(`Guest ${expectedSuffix}`);
   });
 
+  it("creates and lists holdem-multi room", async () => {
+    const createResp = await handler(
+      makeEvent({
+        method: "POST",
+        path: "/games/holdem-multi/rooms",
+        headers: authHeaders,
+        body: { name: "HE Table", public: true },
+      })
+    );
+    const created = parseResponse(createResp);
+    expect(created.statusCode).toBe(200);
+    expect(created.body.roomId).toBeTruthy();
+
+    const listResp = await handler(
+      makeEvent({
+        method: "GET",
+        path: "/games/holdem-multi/rooms",
+        headers: authHeaders,
+      })
+    );
+    const listed = parseResponse(listResp);
+    expect(listed.statusCode).toBe(200);
+    expect(Array.isArray(listed.body.rooms)).toBe(true);
+    expect(listed.body.rooms.some((room) => room.roomId === created.body.roomId)).toBe(true);
+  });
+
+  it("joins holdem-multi room", async () => {
+    const createResp = await handler(
+      makeEvent({
+        method: "POST",
+        path: "/games/holdem-multi/rooms",
+        headers: authHeaders,
+        body: { name: "HE Table", public: true },
+      })
+    );
+    const roomId = parseResponse(createResp).body.roomId;
+    const joinResp = await handler(
+      makeEvent({
+        method: "POST",
+        path: `/games/holdem-multi/rooms/${roomId}/join`,
+        headers: authHeaders,
+      })
+    );
+    const joined = parseResponse(joinResp);
+    expect(joined.statusCode).toBe(200);
+    expect(joined.body.playerId).toBeTruthy();
+    expect(joined.body.state?.game).toBe("holdem-multi");
+    expect(joined.body.state?.players?.length).toBe(1);
+  });
+
   it("roulette spin validates bets", async () => {
     const resp = await handler(
       makeEvent({

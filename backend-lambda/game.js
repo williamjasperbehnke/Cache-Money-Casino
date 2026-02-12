@@ -55,6 +55,11 @@ const {
   addPlayer: addBlackjackMultiPlayer,
   removePlayer: removeBlackjackMultiPlayer,
 } = require("./game/blackjack_multi");
+const {
+  createHoldemMultiState,
+  addPlayer: addHoldemMultiPlayer,
+  removePlayer: removeHoldemMultiPlayer,
+} = require("./game/holdem_multi");
 
 const { GAME_SESSIONS_TABLE, ROOMS_TABLE, CORS_ORIGIN = "*" } = process.env;
 
@@ -107,7 +112,7 @@ const saveRoomState = (roomId, state) =>
     TableName: GAME_SESSIONS_TABLE,
     Item: {
       session_id: roomSessionId(roomId),
-      game: "blackjack-multi",
+      game: state?.game || "blackjack-multi",
       state,
       updated_at: new Date().toISOString(),
     },
@@ -176,7 +181,10 @@ exports.handler = async (event) => {
     }
     const resp = await scan({ TableName: ROOMS_TABLE });
     const publicMeta = (resp.Items || []).filter(
-      (item) => item.player_id === "meta" && item.is_public
+      (item) =>
+        item.player_id === "meta" &&
+        item.is_public &&
+        (!item.game || item.game === "blackjack-multi")
     );
     const rooms = [];
     for (const item of publicMeta) {
@@ -212,6 +220,7 @@ exports.handler = async (event) => {
     await saveRoomMeta({
       room_id: roomId,
       player_id: "meta",
+      game: "blackjack-multi",
       name: body.name || "Blackjack Table",
       host,
       is_public: body.public !== false,
@@ -295,6 +304,137 @@ exports.handler = async (event) => {
         updated_at: new Date().toISOString(),
       });
       return respondWithState(200, "blackjack-multi", { state, playerId });
+    }
+  }
+
+  if (path.endsWith("/games/holdem-multi/rooms") && method === "GET") {
+    if (!ROOMS_TABLE) {
+      return jsonResponse(500, { error: "Rooms table not configured." }, CORS_ORIGIN);
+    }
+    const resp = await scan({ TableName: ROOMS_TABLE });
+    const publicMeta = (resp.Items || []).filter(
+      (item) => item.player_id === "meta" && item.is_public && item.game === "holdem-multi"
+    );
+    const rooms = [];
+    for (const item of publicMeta) {
+      const state = await getRoomState(item.room_id);
+      if (!state || isRoomExpired({ meta: item, state })) {
+        await closeRoom(item.room_id);
+        continue;
+      }
+      rooms.push({
+        roomId: item.room_id,
+        name: item.name || "Hold'em Table",
+        host: item.host || "host",
+        playerCount: Number(item.player_count || 0),
+        maxPlayers: Number(item.max_players || 0) || 6,
+        inRound: Boolean(item.in_round),
+        createdAt: item.created_at,
+      });
+    }
+    return jsonResponse(200, { rooms }, CORS_ORIGIN);
+  }
+
+  if (path.endsWith("/games/holdem-multi/rooms") && method === "POST") {
+    if (!ROOMS_TABLE) {
+      return jsonResponse(500, { error: "Rooms table not configured." }, CORS_ORIGIN);
+    }
+    const body = parseJson(event);
+    const roomId = crypto.randomUUID().slice(0, 8);
+    const hostId = playerIdFromToken(token);
+    const host = formatBlackjackMultiUsername(session, hostId);
+    const maxPlayers = Number(body.maxPlayers || 6);
+    const state = createHoldemMultiState({ roomId, host, hostId, maxPlayers });
+    await saveRoomState(roomId, state);
+    await saveRoomMeta({
+      room_id: roomId,
+      player_id: "meta",
+      game: "holdem-multi",
+      name: body.name || "Hold'em Table",
+      host,
+      is_public: body.public !== false,
+      max_players: maxPlayers,
+      player_count: 0,
+      in_round: false,
+      created_at: new Date().toISOString(),
+      last_activity_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+    return jsonResponse(200, { roomId }, CORS_ORIGIN);
+  }
+
+  const heMultiMatch = path.match(
+    /\/games\/holdem-multi\/rooms\/([^/]+)(?:\/(state|join|leave))?$/
+  );
+  if (heMultiMatch) {
+    if (!ROOMS_TABLE) {
+      return jsonResponse(500, { error: "Rooms table not configured." }, CORS_ORIGIN);
+    }
+    const roomId = heMultiMatch[1];
+    const action = heMultiMatch[2] || "";
+    if (method === "GET" && action === "state") {
+      const state = await getRoomState(roomId);
+      const meta = await getRoomMeta(roomId);
+      if (state && isRoomExpired({ meta, state })) {
+        await closeRoom(roomId);
+        return jsonResponse(404, { error: "Room expired due to inactivity." }, CORS_ORIGIN);
+      }
+      return respondWithState(200, "holdem-multi", { state });
+    }
+    if (method === "POST" && action === "join") {
+      const state = await getRoomState(roomId);
+      if (!state) return jsonResponse(404, { error: "Room not found." }, CORS_ORIGIN);
+      const meta = await getRoomMeta(roomId);
+      if (isRoomExpired({ meta, state })) {
+        await closeRoom(roomId);
+        return jsonResponse(404, { error: "Room expired due to inactivity." }, CORS_ORIGIN);
+      }
+      const playerId = playerIdFromToken(token);
+      const username = formatBlackjackMultiUsername(session, playerId);
+      const result = addHoldemMultiPlayer(state, { id: playerId, username });
+      if (result?.error) return jsonResponse(400, { error: result.error }, CORS_ORIGIN);
+      await saveRoomState(roomId, state);
+      await saveRoomMeta({
+        ...(meta || {}),
+        room_id: roomId,
+        player_id: "meta",
+        game: "holdem-multi",
+        host: state.host,
+        player_count: state.players.length,
+        in_round: Boolean(state.inRound),
+        last_activity_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+      return respondWithState(200, "holdem-multi", { state, playerId });
+    }
+    if (method === "POST" && action === "leave") {
+      const state = await getRoomState(roomId);
+      if (!state) return jsonResponse(404, { error: "Room not found." }, CORS_ORIGIN);
+      const meta = await getRoomMeta(roomId);
+      if (isRoomExpired({ meta, state })) {
+        await closeRoom(roomId);
+        return jsonResponse(404, { error: "Room expired due to inactivity." }, CORS_ORIGIN);
+      }
+      const playerId = playerIdFromToken(token);
+      removeHoldemMultiPlayer(state, playerId);
+      if (state.players.length === 0) {
+        await del({ TableName: GAME_SESSIONS_TABLE, Key: { session_id: roomSessionId(roomId) } });
+        await del({ TableName: ROOMS_TABLE, Key: { room_id: roomId, player_id: "meta" } });
+        return respondWithState(200, "holdem-multi", { state: null, playerId, closed: true });
+      }
+      await saveRoomState(roomId, state);
+      await saveRoomMeta({
+        ...(meta || {}),
+        room_id: roomId,
+        player_id: "meta",
+        game: "holdem-multi",
+        host: state.host,
+        player_count: state.players.length,
+        in_round: Boolean(state.inRound),
+        last_activity_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+      return respondWithState(200, "holdem-multi", { state, playerId });
     }
   }
 

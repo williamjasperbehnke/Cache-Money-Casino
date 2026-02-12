@@ -32,6 +32,13 @@ const sanitizeBlackjackMultiState = (state) => {
   return next;
 };
 
+const sanitizeHoldemMultiState = (state) => {
+  if (!state) return state;
+  const next = { ...state };
+  delete next.deck;
+  return next;
+};
+
 const sanitizePokerState = (state) => {
   if (!state) return state;
   const next = { ...state };
@@ -77,6 +84,7 @@ const sanitizeState = (game, state) => {
   if (!state) return state;
   if (game === "blackjack") return sanitizeBlackjackState(state);
   if (game === "blackjack-multi") return sanitizeBlackjackMultiState(state);
+  if (game === "holdem-multi") return sanitizeHoldemMultiState(state);
   if (game === "poker") return sanitizePokerState(state);
   if (game === "holdem") return sanitizeHoldemState(state);
   if (game === "memory") return sanitizeMemoryState(state);

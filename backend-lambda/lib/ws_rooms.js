@@ -1,7 +1,8 @@
 const { ApiGatewayManagementApiClient, PostToConnectionCommand } = require("@aws-sdk/client-apigatewaymanagementapi");
 const { get, put, del, query, scan, update } = require("./db");
 const { sanitizeState } = require("../game/sanitize");
-const { removePlayer } = require("../game/blackjack_multi");
+const { removePlayer: removeBlackjackMultiPlayer } = require("../game/blackjack_multi");
+const { removePlayer: removeHoldemMultiPlayer } = require("../game/holdem_multi");
 const { isRoomExpired } = require("./room_expiration");
 
 const { CONNECTIONS_TABLE, ROOMS_TABLE, GAME_SESSIONS_TABLE } = process.env;
@@ -117,7 +118,7 @@ const saveRoomState = (roomId, state) => {
     TableName: GAME_SESSIONS_TABLE,
     Item: {
       session_id: roomSessionId(roomId),
-      game: "blackjack-multi",
+      game: state?.game || "blackjack-multi",
       state,
       updated_at: new Date().toISOString(),
     },
@@ -209,12 +210,18 @@ const hasOtherActiveConnectionForPlayer = async ({ playerId, excludeConnectionId
 
 const broadcastRoomState = async (endpoint, roomId, state) => {
   const connections = await listRoomConnections(roomId);
+  const gameKey = state?.game || "blackjack-multi";
   const payload = {
-    type: "BLACKJACK_MULTI_STATE",
+    type: gameKey === "holdem-multi" ? "HOLDEM_MULTI_STATE" : "BLACKJACK_MULTI_STATE",
     roomId,
-    state: sanitizeState("blackjack-multi", state),
+    state: sanitizeState(gameKey, state),
   };
   await Promise.all(connections.map((entry) => sendToConnection(endpoint, entry.player_id, payload)));
+};
+
+const removeRoomPlayerByGame = (state, playerId) => {
+  if (state?.game === "holdem-multi") return removeHoldemMultiPlayer(state, playerId);
+  return removeBlackjackMultiPlayer(state, playerId);
 };
 
 const cleanupRoomForConnection = async ({
@@ -250,7 +257,7 @@ const cleanupRoomForConnection = async ({
     });
     if (stillHasOtherConnection) return;
   }
-  removePlayer(state, playerId);
+  removeRoomPlayerByGame(state, playerId);
   if (state.players.length === 0) {
     await del({
       TableName: GAME_SESSIONS_TABLE,

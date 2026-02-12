@@ -1,0 +1,474 @@
+import {
+  state as coreState,
+  updateBalance,
+  renderCards,
+  showCenterToast,
+  playSfx,
+} from "./core.js";
+import { auth } from "./auth.js";
+
+const getWsBase = () => {
+  const fromStorage = localStorage.getItem("casino-ws-base");
+  const fromWindow = window.WS_BASE || "";
+  const base = (fromStorage || fromWindow || "").trim();
+  return base ? base.replace(/\/+$/, "") : "";
+};
+
+export class HoldemMultiGame {
+  constructor() {
+    this.ui = {};
+    this.socket = null;
+    this.roomId = "";
+    this.playerId = "";
+    this.state = null;
+    this.connectionReady = false;
+    this.rooms = [];
+    this.authReadyPromise = null;
+  }
+
+  cacheElements() {
+    this.ui = {
+      lobby: document.getElementById("heMultiLobby"),
+      room: document.getElementById("heMultiRoom"),
+      connecting: document.getElementById("heMultiConnecting"),
+      roomId: document.getElementById("heMultiRoomId"),
+      roomName: document.getElementById("heMultiRoomName"),
+      roomPublic: document.getElementById("heMultiPublic"),
+      searchId: document.getElementById("heMultiSearchId"),
+      createBtn: document.getElementById("heMultiCreate"),
+      refreshBtn: document.getElementById("heMultiRefresh"),
+      rooms: document.getElementById("heMultiRooms"),
+      invite: document.getElementById("heMultiInvite"),
+      copyInvite: document.getElementById("heMultiCopy"),
+      leaveBtn: document.getElementById("heMultiLeave"),
+      community: document.getElementById("heMultiCommunity"),
+      pot: document.getElementById("heMultiPot"),
+      players: document.getElementById("heMultiPlayers"),
+      startBtn: document.getElementById("heMultiStart"),
+      checkBtn: document.getElementById("heMultiCheck"),
+      foldBtn: document.getElementById("heMultiFold"),
+      betAmount: document.getElementById("heMultiBetAmount"),
+      betButtons: document.querySelectorAll("#heMultiBetButtons .chip"),
+      betClear: document.getElementById("heMultiBetClear"),
+      status: document.getElementById("heMultiStatus"),
+    };
+  }
+
+  init() {
+    this.cacheElements();
+    this.bindControls();
+    window.addEventListener("beforeunload", () => this.closeSocket(false));
+    const params = new URLSearchParams(window.location.search);
+    const room = params.get("room");
+    if (room) {
+      this.ui.lobby?.classList.add("hidden");
+      this.ui.room?.classList.add("hidden");
+    }
+    void this.bootstrap(room);
+  }
+
+  async bootstrap(preferredRoom = "") {
+    await this.ensureAuthReady();
+    if (preferredRoom) {
+      await this.joinRoom(preferredRoom);
+      if (this.roomId) {
+        void this.loadLobby();
+        return;
+      }
+      this.showLobby();
+    }
+    await this.loadLobby();
+  }
+
+  async ensureAuthReady() {
+    if (auth.apiToken || auth.token || auth.guestToken) return;
+    if (!this.authReadyPromise) {
+      this.authReadyPromise = auth.ensureGuestSession().finally(() => {
+        this.authReadyPromise = null;
+      });
+    }
+    await this.authReadyPromise;
+  }
+
+  bindControls() {
+    this.ui.createBtn?.addEventListener("click", () => this.createRoom());
+    this.ui.refreshBtn?.addEventListener("click", () => this.loadLobby());
+    this.ui.searchId?.addEventListener("input", () => this.searchRooms());
+    this.ui.leaveBtn?.addEventListener("click", () => this.leaveRoom());
+    this.ui.copyInvite?.addEventListener("click", () => this.copyInvite());
+    this.ui.startBtn?.addEventListener("click", () => this.sendAction("START"));
+    this.ui.checkBtn?.addEventListener("click", () => this.sendAction("CHECK"));
+    this.ui.foldBtn?.addEventListener("click", () => this.sendAction("FOLD"));
+    this.ui.betButtons?.forEach((btn) => {
+      const amount = Number(btn.dataset.amount) || 0;
+      btn.addEventListener("click", () => this.adjustBet(amount));
+      btn.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        this.adjustBet(-amount);
+      });
+    });
+    this.ui.betClear?.addEventListener("click", () => this.setBet(0));
+  }
+
+  async loadLobby() {
+    try {
+      await this.ensureAuthReady();
+      const payload = await auth.request("/api/games/holdem-multi/rooms", { method: "GET" });
+      this.rooms = Array.isArray(payload.rooms) ? payload.rooms : [];
+      this.searchRooms();
+    } catch (err) {
+      showCenterToast("Unable to load rooms.", "danger");
+    }
+  }
+
+  searchRooms() {
+    const query = (this.ui.searchId?.value || "").trim().toLowerCase();
+    const list = !query
+      ? this.rooms
+      : this.rooms.filter((room) =>
+          String(room.roomId || "").toLowerCase().includes(query) ||
+          String(room.name || "").toLowerCase().includes(query)
+        );
+    this.renderRoomList(list, query);
+  }
+
+  renderRoomList(rooms, query = "") {
+    if (!this.ui.rooms) return;
+    this.ui.rooms.innerHTML = "";
+    if (!rooms.length) {
+      const empty = document.createElement("div");
+      empty.className = "bjmulti-empty";
+      empty.textContent = query ? `No tables found for: ${query}` : "No public tables yet.";
+      this.ui.rooms.appendChild(empty);
+      return;
+    }
+    rooms.forEach((room) => {
+      const card = document.createElement("div");
+      card.className = "bjmulti-room-card";
+      const meta = document.createElement("div");
+      meta.className = "bjmulti-room-meta";
+      const roomName = String(room.name || "").trim() || "Hold'em Table";
+      meta.innerHTML = `
+        <div class="title">${roomName}</div>
+        <div class="details">
+          <span class="bjmulti-id-tag">ID</span> ${room.roomId}
+          <span class="bjmulti-host-tag">HOST</span> ${room.host}
+          <span class="bjmulti-count-tag">${room.playerCount}/${room.maxPlayers}</span>
+        </div>
+      `;
+      const btn = document.createElement("button");
+      btn.className = "btn ghost";
+      btn.textContent = "Join";
+      btn.addEventListener("click", () => this.joinRoom(room.roomId));
+      card.appendChild(meta);
+      card.appendChild(btn);
+      this.ui.rooms.appendChild(card);
+    });
+  }
+
+  async createRoom() {
+    const name = this.ui.roomName?.value?.trim() || "Hold'em Table";
+    const isPublic = Boolean(this.ui.roomPublic?.checked);
+    try {
+      await this.ensureAuthReady();
+      const payload = await auth.request("/api/games/holdem-multi/rooms", {
+        method: "POST",
+        body: JSON.stringify({ name, public: isPublic }),
+      });
+      if (payload.roomId) await this.joinRoom(payload.roomId);
+    } catch (err) {
+      showCenterToast("Unable to create room.", "danger");
+    }
+  }
+
+  async joinRoom(roomId) {
+    try {
+      await this.ensureAuthReady();
+      const payload = await auth.request(`/api/games/holdem-multi/rooms/${roomId}/join`, {
+        method: "POST",
+      });
+      this.roomId = roomId;
+      this.playerId = payload.playerId || this.playerId;
+      this.syncRoomQuery(roomId);
+      this.setConnectionReady(false);
+      this.applyState(payload.state);
+      this.connectSocket();
+      this.showRoom();
+      this.setInviteLink(roomId);
+    } catch (err) {
+      showCenterToast("Unable to join room.", "danger");
+    }
+  }
+
+  async leaveRoom() {
+    if (!this.roomId) return;
+    try {
+      await auth.request(`/api/games/holdem-multi/rooms/${this.roomId}/leave`, { method: "POST" });
+    } catch (err) {
+      // ignore
+    }
+    this.closeSocket(true);
+    this.roomId = "";
+    this.playerId = "";
+    this.state = null;
+    this.syncRoomQuery("");
+    this.showLobby();
+    void this.loadLobby();
+  }
+
+  syncRoomQuery(roomId) {
+    try {
+      const url = new URL(window.location.href);
+      if (roomId) url.searchParams.set("room", roomId);
+      else url.searchParams.delete("room");
+      window.history.replaceState({}, "", url.toString());
+    } catch (err) {
+      // ignore
+    }
+  }
+
+  connectSocket() {
+    if (this.socket || !this.roomId) return;
+    const base = getWsBase();
+    if (!base) {
+      showCenterToast("Missing WebSocket endpoint.", "danger");
+      return;
+    }
+    const token = encodeURIComponent(auth.apiToken || "");
+    const ws = new WebSocket(`${base}?token=${token}`);
+    this.socket = ws;
+    ws.addEventListener("open", () => {
+      ws.send(JSON.stringify({ action: "join", roomId: this.roomId }));
+    });
+    ws.addEventListener("message", (event) => {
+      let msg = null;
+      try {
+        msg = JSON.parse(event.data || "{}");
+      } catch (err) {
+        return;
+      }
+      if (msg.type === "ROOM_JOINED") {
+        this.setConnectionReady(true);
+        return;
+      }
+      if (msg.type === "HOLDEM_MULTI_STATE" && msg.roomId === this.roomId) {
+        this.applyState(msg.state);
+      } else if (msg.type === "BALANCE_UPDATE" && Number.isFinite(Number(msg.balance))) {
+        coreState.balance = Number(msg.balance);
+        updateBalance();
+      } else if (msg.error) {
+        showCenterToast(msg.error, "danger");
+      }
+    });
+    ws.addEventListener("close", () => {
+      this.socket = null;
+      this.setConnectionReady(false);
+    });
+  }
+
+  closeSocket(sendLeave = true) {
+    if (!this.socket) return;
+    if (sendLeave) {
+      try {
+        this.socket.send(JSON.stringify({ action: "leave" }));
+      } catch (err) {
+        // ignore
+      }
+    }
+    this.socket.close();
+    this.socket = null;
+    this.setConnectionReady(false);
+  }
+
+  sendAction(type, payload = {}) {
+    if (!this.connectionReady || !this.socket || this.socket.readyState !== WebSocket.OPEN) return;
+    if (type === "START") playSfx("deal");
+    if (type === "CHECK" || type === "FOLD") playSfx("hit");
+    this.socket.send(
+      JSON.stringify({
+        action: "action",
+        payload: { game: "holdem-multi", type, roomId: this.roomId, ...payload },
+      })
+    );
+  }
+
+  setBet(amount) {
+    if (!this.state || this.state.inRound || this.state.phase === "showdown") return;
+    const me = this.state.players?.find((entry) => entry.id === this.playerId);
+    if (!me) return;
+    const bank = Math.max(0, Number(coreState.balance || 0));
+    const next = Math.min(bank, Math.max(0, Number(amount) || 0));
+    me.betAmount = next;
+    me.status = next > 0 ? "waiting" : "sitting";
+    this.updateBet();
+    this.sendAction("BET", { amount: next });
+  }
+
+  adjustBet(delta) {
+    const me = this.state?.players?.find((entry) => entry.id === this.playerId);
+    if (!me) return;
+    this.setBet(Number(me.betAmount || 0) + Number(delta || 0));
+  }
+
+  applyState(state) {
+    this.state = state || null;
+    if (!this.state) {
+      this.showLobby();
+      return;
+    }
+    this.renderRoom();
+  }
+
+  setInviteLink(roomId) {
+    if (!this.ui.invite) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("room", roomId);
+    this.ui.invite.value = url.toString();
+  }
+
+  copyInvite() {
+    if (!this.ui.invite) return;
+    this.ui.invite.select();
+    document.execCommand("copy");
+    showCenterToast("Invite link copied.", "win");
+  }
+
+  showRoom() {
+    this.ui.lobby?.classList.add("hidden");
+    this.ui.room?.classList.remove("hidden");
+  }
+
+  showLobby() {
+    this.ui.lobby?.classList.remove("hidden");
+    this.ui.room?.classList.add("hidden");
+  }
+
+  setConnectionReady(ready) {
+    this.connectionReady = Boolean(ready);
+    this.ui.connecting?.classList.toggle("hidden", this.connectionReady);
+    this.updateControls();
+  }
+
+  updateBet() {
+    const me = this.state?.players?.find((entry) => entry.id === this.playerId);
+    if (this.ui.betAmount) {
+      this.ui.betAmount.textContent = `$${Math.max(0, Number(me?.betAmount || 0))}`;
+    }
+  }
+
+  renderRoom() {
+    const state = this.state;
+    if (!state) return;
+    if (this.ui.roomId) this.ui.roomId.textContent = state.roomId || this.roomId;
+    renderCards(this.ui.community, state.community || []);
+    if (this.ui.pot) this.ui.pot.textContent = `Pot: $${Number(state.pot || 0)}`;
+    this.renderPlayers();
+    this.updateBet();
+    this.updateControls();
+    this.updateStatus();
+  }
+
+  renderPlayers() {
+    if (!this.ui.players || !this.state) return;
+    this.ui.players.innerHTML = "";
+    const players = Array.isArray(this.state.players) ? this.state.players : [];
+    players.forEach((player, index) => {
+      const wrapper = document.createElement("div");
+      wrapper.className = "bjmulti-player";
+      if (this.state.inRound && index === this.state.turnIndex) wrapper.classList.add("active");
+      const header = document.createElement("div");
+      header.className = "bjmulti-player-header";
+
+      const name = document.createElement("div");
+      name.className = "name";
+      const txt = document.createElement("span");
+      txt.className = "player-name-text";
+      txt.textContent = player.username || "Guest";
+      name.appendChild(txt);
+      if (player.id === this.playerId) {
+        const youTag = document.createElement("span");
+        youTag.className = "player-role-tag is-you";
+        youTag.textContent = "You";
+        name.appendChild(youTag);
+      }
+      if (this.state.hostId && player.id === this.state.hostId) {
+        const hostTag = document.createElement("span");
+        hostTag.className = "player-role-tag is-host";
+        hostTag.textContent = "Host";
+        name.appendChild(hostTag);
+      }
+      const status = document.createElement("div");
+      status.className = "status";
+      if (player.folded) {
+        status.textContent = "Folded";
+      } else if (this.state.inRound && player.status === "playing") {
+        status.textContent = "In hand";
+      } else if (player.lastResult) {
+        status.textContent = `${player.lastResult.toUpperCase()}${player.bestLabel ? ` (${player.bestLabel})` : ""}`;
+      } else {
+        status.textContent = `Bet $${Number(player.betAmount || 0)}`;
+      }
+      header.appendChild(name);
+      header.appendChild(status);
+
+      const block = document.createElement("div");
+      block.className = "hand-block";
+      const cards = document.createElement("div");
+      cards.className = "cards";
+      renderCards(cards, player.cards || []);
+      block.appendChild(cards);
+      wrapper.appendChild(header);
+      wrapper.appendChild(block);
+      this.ui.players.appendChild(wrapper);
+    });
+  }
+
+  updateControls() {
+    if (!this.state) return;
+    const players = Array.isArray(this.state.players) ? this.state.players : [];
+    const current = players[this.state.turnIndex] || null;
+    const myTurn = Boolean(this.state.inRound && current && current.id === this.playerId);
+    const isHost = this.state.hostId ? this.state.hostId === this.playerId : false;
+    const inCooldown = this.state.phase === "showdown";
+
+    if (this.ui.startBtn) {
+      this.ui.startBtn.disabled = !this.connectionReady || inCooldown || this.state.inRound || !isHost;
+      this.ui.startBtn.classList.toggle("hidden", inCooldown || this.state.inRound || !isHost);
+    }
+    if (this.ui.checkBtn) {
+      this.ui.checkBtn.disabled = !this.connectionReady || !myTurn;
+      this.ui.checkBtn.classList.toggle("hidden", !myTurn);
+    }
+    if (this.ui.foldBtn) {
+      this.ui.foldBtn.disabled = !this.connectionReady || !myTurn;
+      this.ui.foldBtn.classList.toggle("hidden", !myTurn);
+    }
+    this.ui.betButtons?.forEach((btn) => {
+      btn.disabled = !this.connectionReady || this.state.inRound || inCooldown;
+    });
+    if (this.ui.betClear) {
+      this.ui.betClear.disabled = !this.connectionReady || this.state.inRound || inCooldown;
+    }
+  }
+
+  updateStatus() {
+    if (!this.ui.status || !this.state) return;
+    if (!this.connectionReady) {
+      this.ui.status.textContent = "Connecting to table...";
+      return;
+    }
+    if (this.state.phase === "showdown") {
+      this.ui.status.textContent = "Round complete. Clearing soon...";
+      return;
+    }
+    if (!this.state.inRound) {
+      const isHost = this.state.hostId ? this.state.hostId === this.playerId : false;
+      this.ui.status.textContent = isHost
+        ? "PRESS START ROUND TO BEGIN NEXT ROUND"
+        : "WAITING FOR HOST TO START NEXT ROUND";
+      return;
+    }
+    const current = this.state.players?.[this.state.turnIndex];
+    this.ui.status.textContent = current ? `Turn: ${current.username}` : "Round in progress.";
+  }
+}
