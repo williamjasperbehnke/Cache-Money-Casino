@@ -232,6 +232,11 @@ const cleanupRoomForConnection = async ({
     excludeConnectionId: connectionId,
   });
   if (hasOtherConnection) return;
+  const hasAnyOtherActiveConnection = await hasOtherActiveConnectionForPlayer({
+    playerId,
+    excludeConnectionId: connectionId,
+  });
+  if (hasAnyOtherActiveConnection) return;
   if (reason === "disconnect") {
     await new Promise((resolve) => setTimeout(resolve, DISCONNECT_REJOIN_GRACE_MS));
     const stillHasOtherConnection = await hasOtherActiveConnectionForPlayer({
