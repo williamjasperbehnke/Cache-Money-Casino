@@ -554,10 +554,13 @@ export class BlackjackMultiGame {
       renderCards(this.ui.dealer, state.dealer || [], hideFirst);
     }
     if (this.ui.dealerTotal) {
-      if (state.inRound && !state.revealDealer) {
+      const dealerCards = Array.isArray(state.dealer) ? state.dealer : [];
+      if (!dealerCards.length) {
+        this.ui.dealerTotal.textContent = "";
+      } else if (state.inRound && !state.revealDealer) {
         this.ui.dealerTotal.textContent = "Total: ?";
       } else {
-        this.ui.dealerTotal.textContent = `Total: ${handTotal(state.dealer || [])}`;
+        this.ui.dealerTotal.textContent = `Total: ${handTotal(dealerCards)}`;
       }
     }
     this.renderPlayers(state, false);
