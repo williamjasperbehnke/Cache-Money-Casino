@@ -451,6 +451,21 @@ exports.handler = async (event) => {
           stackByPlayerId[entry.id] = Math.max(0, Number(context?.balance || 0));
         }
         result = startHoldemRound(state, stackByPlayerId);
+        if (!result?.error) {
+          for (const [playerId, context] of sessionMap.entries()) {
+            const entry = state.players.find((p) => p.id === playerId);
+            if (!entry || entry.status !== "playing") continue;
+            const nextBalance = await persistBalance(
+              context.session,
+              context.user,
+              Math.max(0, Number(entry.stack || 0))
+            );
+            await sendToConnection(endpoint, context.connectionId, {
+              type: "BALANCE_UPDATE",
+              balance: nextBalance,
+            });
+          }
+        }
       } else if (payload.type === "CHECK") {
         result = applyHoldemCheck(state, connection.player_id);
       } else if (payload.type === "CALL") {
@@ -467,6 +482,19 @@ exports.handler = async (event) => {
       if (result?.error) {
         await sendToConnection(endpoint, connectionId, { type: "ERROR", error: result.error });
         return jsonResponse(200, { ok: false }, CORS_ORIGIN);
+      }
+
+      if (["CALL", "RAISE"].includes(payload.type) && connection.token) {
+        const session = await getSession(connection.token);
+        const entry = state.players.find((p) => p.id === connection.player_id);
+        if (session && entry) {
+          const { user } = await resolveBalance(session);
+          const nextBalance = await persistBalance(session, user, Math.max(0, Number(entry.stack || 0)));
+          await sendToConnection(endpoint, connectionId, {
+            type: "BALANCE_UPDATE",
+            balance: nextBalance,
+          });
+        }
       }
 
       if (!state.inRound && state.phase === "showdown" && state.settled && !state.payoutApplied) {

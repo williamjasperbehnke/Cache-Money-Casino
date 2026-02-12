@@ -88,10 +88,16 @@ describe("sanitize", () => {
     const state = {
       game: "holdem-multi",
       deck: [{ rank: "A", suit: "S" }],
+      players: [
+        { id: "p1", cards: [{ rank: "A", suit: "S" }, { rank: "K", suit: "S" }] },
+        { id: "p2", cards: [{ rank: "Q", suit: "H" }, { rank: "J", suit: "H" }] },
+      ],
       community: [{ rank: "K", suit: "H" }],
     };
-    const sanitized = sanitizeState("holdem-multi", state);
+    const sanitized = sanitizeState("holdem-multi", state, "p1");
     expect(sanitized.deck).toBeUndefined();
     expect(sanitized.community?.length).toBe(1);
+    expect(sanitized.players?.[0]?.cards?.[0]?.rank).toBe("A");
+    expect(sanitized.players?.[1]?.cards?.[0]?.rank).toBe("?");
   });
 });

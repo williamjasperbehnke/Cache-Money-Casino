@@ -211,12 +211,20 @@ const hasOtherActiveConnectionForPlayer = async ({ playerId, excludeConnectionId
 const broadcastRoomState = async (endpoint, roomId, state) => {
   const connections = await listRoomConnections(roomId);
   const gameKey = state?.game || "blackjack-multi";
-  const payload = {
-    type: gameKey === "holdem-multi" ? "HOLDEM_MULTI_STATE" : "BLACKJACK_MULTI_STATE",
-    roomId,
-    state: sanitizeState(gameKey, state),
-  };
-  await Promise.all(connections.map((entry) => sendToConnection(endpoint, entry.player_id, payload)));
+  const type = gameKey === "holdem-multi" ? "HOLDEM_MULTI_STATE" : "BLACKJACK_MULTI_STATE";
+  await Promise.all(
+    connections.map(async (entry) => {
+      const connectionId = entry.player_id;
+      const connection = await getConnection(connectionId);
+      const viewerId = connection?.player_id || "";
+      const payload = {
+        type,
+        roomId,
+        state: sanitizeState(gameKey, state, viewerId),
+      };
+      await sendToConnection(endpoint, connectionId, payload);
+    })
+  );
 };
 
 const removeRoomPlayerByGame = (state, playerId) => {

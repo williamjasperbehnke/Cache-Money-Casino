@@ -32,10 +32,17 @@ const sanitizeBlackjackMultiState = (state) => {
   return next;
 };
 
-const sanitizeHoldemMultiState = (state) => {
+const sanitizeHoldemMultiState = (state, viewerId = "") => {
   if (!state) return state;
   const next = { ...state };
   delete next.deck;
+  if (Array.isArray(next.players)) {
+    next.players = next.players.map((entry) => {
+      const cards = Array.isArray(entry?.cards) ? entry.cards : [];
+      if (viewerId && entry?.id === viewerId) return { ...entry, cards: cards.slice() };
+      return { ...entry, cards: maskCards(cards.length) };
+    });
+  }
   return next;
 };
 
@@ -80,11 +87,11 @@ const sanitizeMemoryState = (state) => {
   return next;
 };
 
-const sanitizeState = (game, state) => {
+const sanitizeState = (game, state, viewerId = "") => {
   if (!state) return state;
   if (game === "blackjack") return sanitizeBlackjackState(state);
   if (game === "blackjack-multi") return sanitizeBlackjackMultiState(state);
-  if (game === "holdem-multi") return sanitizeHoldemMultiState(state);
+  if (game === "holdem-multi") return sanitizeHoldemMultiState(state, viewerId);
   if (game === "poker") return sanitizePokerState(state);
   if (game === "holdem") return sanitizeHoldemState(state);
   if (game === "memory") return sanitizeMemoryState(state);

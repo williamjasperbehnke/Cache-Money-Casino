@@ -135,8 +135,8 @@ const saveRoomMeta = (meta) => {
   });
 };
 
-const respondWithState = (status, game, payload) =>
-  jsonResponse(status, { ...payload, state: sanitizeState(game, payload.state) }, CORS_ORIGIN);
+const respondWithState = (status, game, payload, viewerId = "") =>
+  jsonResponse(status, { ...payload, state: sanitizeState(game, payload.state, viewerId) }, CORS_ORIGIN);
 
 exports.handler = async (event) => {
   const { method, path } = getRoute(event);
@@ -379,7 +379,8 @@ exports.handler = async (event) => {
         await closeRoom(roomId);
         return jsonResponse(404, { error: "Room expired due to inactivity." }, CORS_ORIGIN);
       }
-      return respondWithState(200, "holdem-multi", { state });
+      const viewerId = playerIdFromToken(token);
+      return respondWithState(200, "holdem-multi", { state }, viewerId);
     }
     if (method === "POST" && action === "join") {
       const state = await getRoomState(roomId);
@@ -405,7 +406,7 @@ exports.handler = async (event) => {
         last_activity_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
-      return respondWithState(200, "holdem-multi", { state, playerId });
+      return respondWithState(200, "holdem-multi", { state, playerId }, playerId);
     }
     if (method === "POST" && action === "leave") {
       const state = await getRoomState(roomId);
@@ -420,7 +421,7 @@ exports.handler = async (event) => {
       if (state.players.length === 0) {
         await del({ TableName: GAME_SESSIONS_TABLE, Key: { session_id: roomSessionId(roomId) } });
         await del({ TableName: ROOMS_TABLE, Key: { room_id: roomId, player_id: "meta" } });
-        return respondWithState(200, "holdem-multi", { state: null, playerId, closed: true });
+        return respondWithState(200, "holdem-multi", { state: null, playerId, closed: true }, playerId);
       }
       await saveRoomState(roomId, state);
       await saveRoomMeta({
@@ -434,7 +435,7 @@ exports.handler = async (event) => {
         last_activity_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
-      return respondWithState(200, "holdem-multi", { state, playerId });
+      return respondWithState(200, "holdem-multi", { state, playerId }, playerId);
     }
   }
 

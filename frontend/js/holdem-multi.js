@@ -302,6 +302,7 @@ export class HoldemMultiGame {
     if (!current || current.id !== this.playerId) return;
     this.raiseAmount = Math.max(0, Number(amount) || 0);
     this.updateBet();
+    this.updateControls();
   }
 
   adjustBet(delta) {
