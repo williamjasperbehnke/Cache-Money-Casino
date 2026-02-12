@@ -121,12 +121,12 @@ export class BlackjackMultiGame {
     this.ui.betButtons?.forEach((btn) => {
       const amount = Number(btn.dataset.amount) || 0;
       btn.addEventListener("click", () => {
-        this.adjustLocalBet(-amount);
+        this.adjustLocalBet(amount);
         playSfx("hit");
       });
       btn.addEventListener("contextmenu", (event) => {
         event.preventDefault();
-        this.adjustLocalBet(amount);
+        this.adjustLocalBet(-amount);
         playSfx("hit");
       });
     });
@@ -355,9 +355,8 @@ export class BlackjackMultiGame {
     if (!this.state || this.state.inRound) return;
     const me = this.state.players?.find((entry) => entry.id === this.playerId);
     if (!me) return;
-    const current = Math.max(0, Number(me.betAmount || 0));
     const bank = Math.max(0, Number(coreState.balance || 0));
-    const cap = bank + current;
+    const cap = bank;
     const next = Math.min(cap, Math.max(0, Number(nextAmount) || 0));
     me.betAmount = next;
     this.updateBet(this.state);
