@@ -26,6 +26,7 @@ export class HoldemMultiGame {
     this.rooms = [];
     this.authReadyPromise = null;
     this.raiseAmount = 0;
+    this.lastOutcomeToastKey = "";
   }
 
   cacheElements() {
@@ -315,6 +316,7 @@ export class HoldemMultiGame {
 
   applyState(state) {
     const prevTurn = this.state?.turnIndex;
+    const prevState = this.state;
     this.state = state || null;
     if (!this.state) {
       this.showLobby();
@@ -323,7 +325,38 @@ export class HoldemMultiGame {
     const current = this.state.players?.[this.state.turnIndex];
     const myTurn = Boolean(this.state.inRound && current && current.id === this.playerId);
     if (!this.state.inRound || !myTurn || prevTurn !== this.state.turnIndex) this.raiseAmount = 0;
+    this.maybeShowOutcomeToast(prevState, this.state);
     this.renderRoom();
+  }
+
+  maybeShowOutcomeToast(prevState, nextState) {
+    if (!nextState || nextState.phase !== "showdown" || !nextState.settled) return;
+    const me = nextState.players?.find((entry) => entry.id === this.playerId);
+    if (!me) return;
+    const roundKey = `${nextState.roomId || this.roomId}:${nextState.roundClearAt || ""}:${me.lastResult || ""}:${Number(me.lastPayout || 0)}`;
+    if (!roundKey || roundKey === this.lastOutcomeToastKey) return;
+    const wasAlreadyShowdown =
+      prevState &&
+      prevState.phase === "showdown" &&
+      prevState.settled &&
+      `${prevState.roomId || this.roomId}:${prevState.roundClearAt || ""}:${me.lastResult || ""}:${Number(me.lastPayout || 0)}` === roundKey;
+    if (wasAlreadyShowdown) return;
+
+    const committed = Math.max(0, Number(me.lastCommitted || 0));
+    const payout = Math.max(0, Number(me.lastPayout || 0));
+    const net = payout - committed;
+    if (me.lastResult === "win") {
+      playSfx("win");
+      const label = String(me.bestLabel || "").trim();
+      showCenterToast(label ? `You win with ${label}!` : `You win +$${Math.max(0, net)}`, "win");
+    } else if (me.lastResult === "loss") {
+      playSfx("lose");
+      showCenterToast(`You lose -$${Math.max(0, -net)}`, "danger");
+    } else if (me.lastResult === "push") {
+      playSfx("win");
+      showCenterToast("Push. Pot split.", "win");
+    }
+    this.lastOutcomeToastKey = roundKey;
   }
 
   setInviteLink(roomId) {

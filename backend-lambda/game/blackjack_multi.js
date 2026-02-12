@@ -9,7 +9,7 @@ const {
   playDealer,
 } = require("./blackjack_core");
 
-const ROUND_CLEAR_DELAY_MS = 5000;
+const ROUND_CLEAR_DELAY_MS = 4000;
 
 const normalizePlayer = (player) => ({
   id: player.id,

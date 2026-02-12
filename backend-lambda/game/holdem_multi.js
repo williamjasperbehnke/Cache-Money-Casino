@@ -1,6 +1,6 @@
 const { buildDeck, shuffle, draw, evaluateFiveCardHand } = require("./cards");
 
-const ROUND_CLEAR_DELAY_MS = 5000;
+const ROUND_CLEAR_DELAY_MS = 8000;
 
 const normalizePlayer = (player) => ({
   id: player.id,
