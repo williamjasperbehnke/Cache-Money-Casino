@@ -261,7 +261,7 @@ export class HoldemGame {
         this.setConnectionReady(true);
         return;
       }
-      if (msg.type === "HOLDEM_MULTI_STATE" && msg.roomId === this.roomId) {
+      if (msg.type === "HOLDEM_STATE" && msg.roomId === this.roomId) {
         this.applyState(msg.state);
       } else if (msg.type === "BALANCE_UPDATE" && Number.isFinite(Number(msg.balance))) {
         coreState.balance = Number(msg.balance);

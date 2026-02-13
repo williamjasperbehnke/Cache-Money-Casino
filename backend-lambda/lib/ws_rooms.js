@@ -219,7 +219,7 @@ const hasOtherActiveConnectionForPlayer = async ({ playerId, excludeConnectionId
 const broadcastRoomState = async (endpoint, roomId, state) => {
   const connections = await listRoomConnections(roomId);
   const gameKey = state?.game || "blackjack";
-  const type = gameKey === "holdem" ? "HOLDEM_MULTI_STATE" : "BLACKJACK_MULTI_STATE";
+  const type = gameKey === "holdem" ? "HOLDEM_STATE" : "BLACKJACK_STATE";
   await Promise.all(
     connections.map(async (entry) => {
       const connectionId = entry.player_id;

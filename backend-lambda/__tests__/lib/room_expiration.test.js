@@ -2,18 +2,14 @@ const { getRoomIdleTimeoutMs, getRoomLastActivityMs, isRoomExpired } = require("
 
 describe("room_expiration", () => {
   const originalTimeout = process.env.MULTI_ROOM_IDLE_TIMEOUT_SECONDS;
-  const originalLegacy = process.env.BLACKJACK_MULTI_ROOM_IDLE_SECONDS;
 
   afterEach(() => {
     if (originalTimeout === undefined) delete process.env.MULTI_ROOM_IDLE_TIMEOUT_SECONDS;
     else process.env.MULTI_ROOM_IDLE_TIMEOUT_SECONDS = originalTimeout;
-    if (originalLegacy === undefined) delete process.env.BLACKJACK_MULTI_ROOM_IDLE_SECONDS;
-    else process.env.BLACKJACK_MULTI_ROOM_IDLE_SECONDS = originalLegacy;
   });
 
   it("uses default timeout when env is not set", () => {
     delete process.env.MULTI_ROOM_IDLE_TIMEOUT_SECONDS;
-    delete process.env.BLACKJACK_MULTI_ROOM_IDLE_SECONDS;
     expect(getRoomIdleTimeoutMs()).toBe(60 * 60 * 1000);
   });
 

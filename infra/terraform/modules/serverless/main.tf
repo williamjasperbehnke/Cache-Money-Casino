@@ -404,111 +404,63 @@ resource "aws_apigatewayv2_route" "yahtzee_score" {
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
-resource "aws_apigatewayv2_route" "blackjack_deal" {
-  api_id    = aws_apigatewayv2_api.rest.id
-  route_key = "POST /api/games/blackjack/deal"
-  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
-}
-
-resource "aws_apigatewayv2_route" "blackjack_hit" {
-  api_id    = aws_apigatewayv2_api.rest.id
-  route_key = "POST /api/games/blackjack/hit"
-  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
-}
-
-resource "aws_apigatewayv2_route" "blackjack_stand" {
-  api_id    = aws_apigatewayv2_api.rest.id
-  route_key = "POST /api/games/blackjack/stand"
-  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
-}
-
-resource "aws_apigatewayv2_route" "blackjack_double" {
-  api_id    = aws_apigatewayv2_api.rest.id
-  route_key = "POST /api/games/blackjack/double"
-  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
-}
-
-resource "aws_apigatewayv2_route" "blackjack_split" {
-  api_id    = aws_apigatewayv2_api.rest.id
-  route_key = "POST /api/games/blackjack/split"
-  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
-}
-
-resource "aws_apigatewayv2_route" "blackjack_multi_rooms_get" {
+resource "aws_apigatewayv2_route" "blackjack_rooms_get" {
   api_id    = aws_apigatewayv2_api.rest.id
   route_key = "GET /api/games/blackjack/rooms"
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
-resource "aws_apigatewayv2_route" "blackjack_multi_rooms_post" {
+resource "aws_apigatewayv2_route" "blackjack_rooms_post" {
   api_id    = aws_apigatewayv2_api.rest.id
   route_key = "POST /api/games/blackjack/rooms"
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
-resource "aws_apigatewayv2_route" "blackjack_multi_state" {
+resource "aws_apigatewayv2_route" "blackjack_state" {
   api_id    = aws_apigatewayv2_api.rest.id
   route_key = "GET /api/games/blackjack/rooms/{roomId}/state"
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
-resource "aws_apigatewayv2_route" "blackjack_multi_join" {
+resource "aws_apigatewayv2_route" "blackjack_join" {
   api_id    = aws_apigatewayv2_api.rest.id
   route_key = "POST /api/games/blackjack/rooms/{roomId}/join"
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
-resource "aws_apigatewayv2_route" "blackjack_multi_leave" {
+resource "aws_apigatewayv2_route" "blackjack_leave" {
   api_id    = aws_apigatewayv2_api.rest.id
   route_key = "POST /api/games/blackjack/rooms/{roomId}/leave"
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
-resource "aws_apigatewayv2_route" "holdem_multi_rooms_get" {
+resource "aws_apigatewayv2_route" "holdem_rooms_get" {
   api_id    = aws_apigatewayv2_api.rest.id
   route_key = "GET /api/games/holdem/rooms"
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
-resource "aws_apigatewayv2_route" "holdem_multi_rooms_post" {
+resource "aws_apigatewayv2_route" "holdem_rooms_post" {
   api_id    = aws_apigatewayv2_api.rest.id
   route_key = "POST /api/games/holdem/rooms"
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
-resource "aws_apigatewayv2_route" "holdem_multi_state" {
+resource "aws_apigatewayv2_route" "holdem_state" {
   api_id    = aws_apigatewayv2_api.rest.id
   route_key = "GET /api/games/holdem/rooms/{roomId}/state"
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
-resource "aws_apigatewayv2_route" "holdem_multi_join" {
+resource "aws_apigatewayv2_route" "holdem_join" {
   api_id    = aws_apigatewayv2_api.rest.id
   route_key = "POST /api/games/holdem/rooms/{roomId}/join"
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
-resource "aws_apigatewayv2_route" "holdem_multi_leave" {
+resource "aws_apigatewayv2_route" "holdem_leave" {
   api_id    = aws_apigatewayv2_api.rest.id
   route_key = "POST /api/games/holdem/rooms/{roomId}/leave"
-  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
-}
-
-resource "aws_apigatewayv2_route" "holdem_deal" {
-  api_id    = aws_apigatewayv2_api.rest.id
-  route_key = "POST /api/games/holdem/deal"
-  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
-}
-
-resource "aws_apigatewayv2_route" "holdem_action" {
-  api_id    = aws_apigatewayv2_api.rest.id
-  route_key = "POST /api/games/holdem/action"
-  target    = "integrations/${aws_apigatewayv2_integration.game.id}"
-}
-
-resource "aws_apigatewayv2_route" "holdem_fold" {
-  api_id    = aws_apigatewayv2_api.rest.id
-  route_key = "POST /api/games/holdem/fold"
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
