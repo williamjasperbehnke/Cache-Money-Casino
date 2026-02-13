@@ -27,76 +27,76 @@
           <a class="back-link" href="index.html" aria-label="Back to games"><span class="back-arrow" aria-hidden="true">&larr;</span><span>Back to Games</span></a>
         </div>
         <div class="multi-grid">
-          <div class="multi-lobby" id="heMultiLobby">
+          <div class="multi-lobby" id="holdemLobby">
             <div class="multi-card">
               <h3>Create Table</h3>
               <div class="multi-create">
-                <input id="heMultiRoomName" type="text" placeholder="Table name (optional)" />
+                <input id="holdemRoomName" type="text" placeholder="Table name (optional)" />
                 <label class="auto-toggle auto-inline">
-                  <input id="heMultiPublic" type="checkbox" checked />
+                  <input id="holdemPublic" type="checkbox" checked />
                   <span class="toggle-track"></span>
                   <span class="toggle-label">Public</span>
                 </label>
-                <button id="heMultiCreate" class="btn">Create Table</button>
+                <button id="holdemCreate" class="btn">Create Table</button>
               </div>
             </div>
 
             <div class="multi-card">
               <h3>Public Tables</h3>
               <div class="multi-search">
-                <input id="heMultiSearchId" type="text" placeholder="Search by table ID or name" />
-                <button id="heMultiRefresh" class="btn ghost">Refresh</button>
+                <input id="holdemSearchId" type="text" placeholder="Search by table ID or name" />
+                <button id="holdemRefresh" class="btn ghost">Refresh</button>
               </div>
-              <div id="heMultiRooms" class="multi-room-list"></div>
+              <div id="holdemRooms" class="multi-room-list"></div>
             </div>
           </div>
 
-          <div class="multi-room hidden" id="heMultiRoom">
-            <div id="heMultiConnecting" class="multi-connecting hidden">
+          <div class="multi-room hidden" id="holdemRoom">
+            <div id="holdemConnecting" class="multi-connecting hidden">
               <div class="multi-connecting-card">
                 <div class="multi-connecting-title">Connecting to table...</div>
                 <div class="multi-connecting-subtitle">Please wait</div>
               </div>
             </div>
             <div class="multi-room-header">
-              <div class="multi-room-title">Room <span id="heMultiRoomId">-</span></div>
+              <div class="multi-room-title">Room <span id="holdemRoomId">-</span></div>
               <div class="multi-invite multi-invite-inline">
                 <div class="multi-invite-row">
-                  <input id="heMultiInvite" type="text" readonly />
-                  <button id="heMultiCopy" class="btn ghost">Copy</button>
+                  <input id="holdemInvite" type="text" readonly />
+                  <button id="holdemCopy" class="btn ghost">Copy</button>
                 </div>
               </div>
-              <button id="heMultiLeave" class="btn ghost">Leave</button>
+              <button id="holdemLeave" class="btn ghost">Leave</button>
             </div>
 
             <div class="multi-table">
               <div class="multi-dealer">
                 <h3>Community</h3>
-                <div id="heMultiCommunity" class="cards"></div>
-                <div id="heMultiPot" class="chip-stack"></div>
-                <div id="heMultiPotBreakdown" class="he-pot-breakdown"></div>
+                <div id="holdemCommunity" class="cards"></div>
+                <div id="holdemPot" class="chip-stack"></div>
+                <div id="holdemPotBreakdown" class="he-pot-breakdown"></div>
               </div>
-              <div id="heMultiPlayers" class="multi-players"></div>
+              <div id="holdemPlayers" class="multi-players"></div>
             </div>
 
             <div class="multi-actions">
-              <button id="heMultiStart" class="btn">Start Round</button>
-              <button id="heMultiBet" class="btn">Check</button>
-              <button id="heMultiFold" class="btn">Fold</button>
+              <button id="holdemStart" class="btn">Start Round</button>
+              <button id="holdemBet" class="btn">Check</button>
+              <button id="holdemFold" class="btn">Fold</button>
             </div>
 
             <div class="multi-bet-row">
               <div class="multi-bet-label">Bet</div>
-              <div id="heMultiBetAmount" class="total-bet">$0</div>
-              <div class="multi-bet-buttons" id="heMultiBetButtons">
+              <div id="holdemBetAmount" class="total-bet">$0</div>
+              <div class="multi-bet-buttons" id="holdemBetButtons">
                 <button class="chip" data-amount="5">$5</button>
                 <button class="chip" data-amount="25">$25</button>
                 <button class="chip" data-amount="50">$50</button>
                 <button class="chip" data-amount="100">$100</button>
-                <button id="heMultiBetClear" class="btn ghost">Clear</button>
+                <button id="holdemBetClear" class="btn ghost">Clear</button>
               </div>
             </div>
-            <div id="heMultiStatus" class="multi-status"></div>
+            <div id="holdemStatus" class="multi-status"></div>
           </div>
         </div>
       </section>

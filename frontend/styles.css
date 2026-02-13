@@ -3508,13 +3508,13 @@ body.small-win .topbar {
   align-items: center;
 }
 
-:is(#blackjack, #holdem) .multi-create #bjMultiRoomName,
-:is(#blackjack, #holdem) .multi-create #heMultiRoomName {
+:is(#blackjack, #holdem) .multi-create #blackjackRoomName,
+:is(#blackjack, #holdem) .multi-create #holdemRoomName {
   order: 2;
 }
 
-:is(#blackjack, #holdem) .multi-create #bjMultiCreate,
-:is(#blackjack, #holdem) .multi-create #heMultiCreate {
+:is(#blackjack, #holdem) .multi-create #blackjackCreate,
+:is(#blackjack, #holdem) .multi-create #holdemCreate {
   order: 3;
   justify-self: end;
 }
@@ -3577,8 +3577,8 @@ body.small-win .topbar {
   color: #7c8da8;
 }
 
-:is(#blackjack, #holdem) .multi-search #bjMultiRefresh,
-:is(#blackjack, #holdem) .multi-search #heMultiRefresh {
+:is(#blackjack, #holdem) .multi-search #blackjackRefresh,
+:is(#blackjack, #holdem) .multi-search #holdemRefresh {
   white-space: nowrap;
 }
 
@@ -3694,8 +3694,8 @@ body.small-win .topbar {
   margin-right: 0;
 }
 
-:is(#blackjack, #holdem) #bjMultiRoomId,
-:is(#blackjack, #holdem) #heMultiRoomId {
+:is(#blackjack, #holdem) #blackjackRoomId,
+:is(#blackjack, #holdem) #holdemRoomId {
   display: inline-flex;
   align-items: center;
   font-size: 13px;
@@ -3759,7 +3759,7 @@ body.small-win .topbar {
   padding: 4px 10px;
 }
 
-#holdem #heMultiPot {
+#holdem #holdemPot {
   margin-top: 14px;
 }
 
@@ -4041,8 +4041,8 @@ body.small-win .topbar {
     grid-template-columns: 1fr;
   }
 
-  :is(#blackjack, #holdem) .multi-search #bjMultiRefresh,
-  :is(#blackjack, #holdem) .multi-search #heMultiRefresh {
+  :is(#blackjack, #holdem) .multi-search #blackjackRefresh,
+  :is(#blackjack, #holdem) .multi-search #holdemRefresh {
     width: 100%;
   }
 }

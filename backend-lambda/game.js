@@ -220,15 +220,15 @@ exports.handler = async (event) => {
     return jsonResponse(200, { roomId }, CORS_ORIGIN);
   }
 
-  const bjMultiMatch = path.match(
+  const blackjackMatch = path.match(
     /\/games\/blackjack\/rooms\/([^/]+)(?:\/(state|join|leave))?$/
   );
-  if (bjMultiMatch) {
+  if (blackjackMatch) {
     if (!ROOMS_TABLE) {
       return jsonResponse(500, { error: "Rooms table not configured." }, CORS_ORIGIN);
     }
-    const roomId = bjMultiMatch[1];
-    const action = bjMultiMatch[2] || "";
+    const roomId = blackjackMatch[1];
+    const action = blackjackMatch[2] || "";
     if (method === "GET" && action === "state") {
       const state = await getRoomState(roomId);
       const meta = await getRoomMeta(roomId);
@@ -349,15 +349,15 @@ exports.handler = async (event) => {
     return jsonResponse(200, { roomId }, CORS_ORIGIN);
   }
 
-  const heMultiMatch = path.match(
+  const holdemMatch = path.match(
     /\/games\/holdem\/rooms\/([^/]+)(?:\/(state|join|leave))?$/
   );
-  if (heMultiMatch) {
+  if (holdemMatch) {
     if (!ROOMS_TABLE) {
       return jsonResponse(500, { error: "Rooms table not configured." }, CORS_ORIGIN);
     }
-    const roomId = heMultiMatch[1];
-    const action = heMultiMatch[2] || "";
+    const roomId = holdemMatch[1];
+    const action = holdemMatch[2] || "";
     if (method === "GET" && action === "state") {
       const state = await getRoomState(roomId);
       const meta = await getRoomMeta(roomId);

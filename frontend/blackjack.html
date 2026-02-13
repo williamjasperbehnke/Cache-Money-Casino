@@ -27,32 +27,32 @@
           <a class="back-link" href="index.html" aria-label="Back to games"><span class="back-arrow" aria-hidden="true">&larr;</span><span>Back to Games</span></a>
         </div>
         <div class="multi-grid">
-          <div class="multi-lobby" id="bjMultiLobby">
+          <div class="multi-lobby" id="blackjackLobby">
             <div class="multi-card">
               <h3>Create Table</h3>
               <div class="multi-create">
-                <input id="bjMultiRoomName" type="text" placeholder="Table name (optional)" />
+                <input id="blackjackRoomName" type="text" placeholder="Table name (optional)" />
                 <label class="auto-toggle auto-inline">
-                  <input id="bjMultiPublic" type="checkbox" checked />
+                  <input id="blackjackPublic" type="checkbox" checked />
                   <span class="toggle-track"></span>
                   <span class="toggle-label">Public</span>
                 </label>
-                <button id="bjMultiCreate" class="btn">Create Table</button>
+                <button id="blackjackCreate" class="btn">Create Table</button>
               </div>
             </div>
 
             <div class="multi-card">
               <h3>Public Tables</h3>
               <div class="multi-search">
-                <input id="bjMultiSearchId" type="text" placeholder="Search by table ID or name" />
-                <button id="bjMultiRefresh" class="btn ghost">Refresh</button>
+                <input id="blackjackSearchId" type="text" placeholder="Search by table ID or name" />
+                <button id="blackjackRefresh" class="btn ghost">Refresh</button>
               </div>
-              <div id="bjMultiRooms" class="multi-room-list"></div>
+              <div id="blackjackRooms" class="multi-room-list"></div>
             </div>
           </div>
 
-          <div class="multi-room hidden" id="bjMultiRoom">
-            <div id="bjMultiConnecting" class="multi-connecting hidden">
+          <div class="multi-room hidden" id="blackjackRoom">
+            <div id="blackjackConnecting" class="multi-connecting hidden">
               <div class="multi-connecting-card">
                 <div class="multi-connecting-title">Connecting to table...</div>
                 <div class="multi-connecting-subtitle">Please wait</div>
@@ -60,43 +60,43 @@
             </div>
             <div class="multi-room-header">
               <div class="multi-room-title">
-                Room <span id="bjMultiRoomId">-</span>
+                Room <span id="blackjackRoomId">-</span>
               </div>
               <div class="multi-invite multi-invite-inline">
                 <div class="multi-invite-row">
-                  <input id="bjMultiInvite" type="text" readonly />
-                  <button id="bjMultiCopy" class="btn ghost">Copy</button>
+                  <input id="blackjackInvite" type="text" readonly />
+                  <button id="blackjackCopy" class="btn ghost">Copy</button>
                 </div>
               </div>
-              <button id="bjMultiLeave" class="btn ghost">Leave</button>
+              <button id="blackjackLeave" class="btn ghost">Leave</button>
             </div>
             <div class="multi-table">
               <div class="multi-dealer">
                 <h3>Dealer</h3>
-                <div id="bjMultiDealer" class="cards"></div>
-                <div id="bjMultiDealerTotal" class="total"></div>
+                <div id="blackjackDealer" class="cards"></div>
+                <div id="blackjackDealerTotal" class="total"></div>
               </div>
-              <div id="bjMultiPlayers" class="multi-players"></div>
+              <div id="blackjackPlayers" class="multi-players"></div>
             </div>
             <div class="multi-actions">
-              <button id="bjMultiStart" class="btn">Start Round</button>
-              <button id="bjMultiHit" class="btn">Hit</button>
-              <button id="bjMultiStand" class="btn">Stand</button>
-              <button id="bjMultiDouble" class="btn">Double</button>
-              <button id="bjMultiSplit" class="btn">Split</button>
+              <button id="blackjackStart" class="btn">Start Round</button>
+              <button id="blackjackHit" class="btn">Hit</button>
+              <button id="blackjackStand" class="btn">Stand</button>
+              <button id="blackjackDouble" class="btn">Double</button>
+              <button id="blackjackSplit" class="btn">Split</button>
             </div>
             <div class="multi-bet-row">
               <div class="multi-bet-label">Your Bet</div>
-              <div id="bjMultiBetAmount" class="total-bet">$0</div>
+              <div id="blackjackBetAmount" class="total-bet">$0</div>
               <div class="multi-bet-buttons">
                 <button class="chip" data-amount="5">$5</button>
                 <button class="chip" data-amount="25">$25</button>
                 <button class="chip" data-amount="50">$50</button>
                 <button class="chip" data-amount="100">$100</button>
-                <button id="bjMultiBetClear" class="btn ghost">Clear</button>
+                <button id="blackjackBetClear" class="btn ghost">Clear</button>
               </div>
             </div>
-            <div id="bjMultiStatus" class="multi-status"></div>
+            <div id="blackjackStatus" class="multi-status"></div>
           </div>
         </div>
       </section>
