@@ -259,19 +259,39 @@ const maybeClearRoundAfterCooldown = async ({ roomId, state, endpoint }) => {
   const latestPhaseDone = latestIsHoldem ? latest.phase === "showdown" : latest.phase === "complete";
   if (!latestPhaseDone) return;
 
-  const pending = latestIsHoldem
+  const isPending = latestIsHoldem
     ? isHoldemRoundClearPending(latest)
     : isBlackjackRoundClearPending(latest);
-  if (pending) return;
+  if (isPending) {
+    const latestClearAtMs = Date.parse(latest.roundClearAt || "");
+    if (!Number.isFinite(latestClearAtMs)) return;
+    const remainingMs = latestClearAtMs - Date.now() + 30;
+    if (remainingMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, remainingMs));
+    }
+  }
 
-  const cleared = latestIsHoldem
-    ? clearHoldemCompletedRound(latest)
-    : clearBlackjackCompletedRound(latest);
+  const afterWait = await getRoomState(roomId);
+  if (!afterWait) return;
+  const afterWaitGame = afterWait.game || "blackjack";
+  const afterWaitIsHoldem = afterWaitGame === "holdem";
+  const afterWaitPhaseDone = afterWaitIsHoldem
+    ? afterWait.phase === "showdown"
+    : afterWait.phase === "complete";
+  if (!afterWaitPhaseDone) return;
+  const stillPending = afterWaitIsHoldem
+    ? isHoldemRoundClearPending(afterWait)
+    : isBlackjackRoundClearPending(afterWait);
+  if (stillPending) return;
+
+  const cleared = afterWaitIsHoldem
+    ? clearHoldemCompletedRound(afterWait)
+    : clearBlackjackCompletedRound(afterWait);
   if (!cleared) return;
 
-  await saveRoomState(roomId, latest);
-  await updateRoomMeta(roomId, latest);
-  await broadcastRoomState(endpoint, roomId, latest);
+  await saveRoomState(roomId, afterWait);
+  await updateRoomMeta(roomId, afterWait);
+  await broadcastRoomState(endpoint, roomId, afterWait);
 };
 
 const cleanupRoomForConnection = async ({
