@@ -134,6 +134,21 @@ const buildPlayerSessionMap = async (roomId) => {
   return map;
 };
 
+const applyRoundStat = (user, { game, bet, net, result }) => {
+  if (!user) return;
+  const wager = Math.max(0, Number(bet) || 0);
+  if (wager <= 0) return;
+  const amountNet = Number(net) || 0;
+  const resultLabel =
+    result || (amountNet > 0 ? "win" : amountNet < 0 ? "loss" : "push");
+  user.stats = updateStats(user.stats, {
+    game,
+    bet: wager,
+    net: amountNet,
+    result: resultLabel,
+  });
+};
+
 const handleBlackjackAction = async ({
   endpoint,
   connectionId,
@@ -302,13 +317,11 @@ const handleBlackjackAction = async ({
       if (context.user) {
         resolved.outcomes.forEach((outcome) => {
           const bet = entry.bets[outcome.index] || 0;
-          const net = outcome.net;
-          const resultLabel = net > 0 ? "win" : net < 0 ? "loss" : "push";
-          context.user.stats = updateStats(context.user.stats, {
+          applyRoundStat(context.user, {
             game: "blackjack",
             bet,
-            net,
-            result: resultLabel,
+            net: outcome.net,
+            result: outcome.result,
           });
         });
         await putUser(context.user);
@@ -437,12 +450,14 @@ const handleHoldemAction = async ({
         balance: nextBalance,
       });
       if (context.user) {
-        const net = finalBalance - Number(context.balance || 0);
-        context.user.stats = updateStats(context.user.stats, {
+        const stackBeforePayout = Math.max(0, Number(entry.stack || 0));
+        const grossWinnings = Math.max(0, finalBalance - stackBeforePayout);
+        const net = grossWinnings - committed;
+        applyRoundStat(context.user, {
           game: "holdem",
           bet: committed,
           net,
-          result: net > 0 ? "win" : net < 0 ? "loss" : "push",
+          result: entry.lastResult,
         });
         await putUser(context.user);
       }
