@@ -42,8 +42,8 @@ and only returns visible information.
 
 - Blackjack: dealer hole card hidden until `revealDealer` is true
 - 5-Card Poker: dealer hand hidden until `phase === "reveal"`
-- Texas Hold'em: community cards only up to the current phase, dealer hole cards
-  hidden until `phase === "showdown"`
+- Texas Hold'em: community cards only up to the current phase, opponents' hole
+  cards hidden until `phase === "showdown"`
 
 The frontend should not send full state back to the server. Only minimal inputs
 (e.g., bet amounts or discard indexes) are required.
@@ -591,106 +591,6 @@ Spin the slots.
 }
 ```
 
-### Blackjack
-
-#### POST /api/games/blackjack/deal
-Start a round.
-
-**Body**
-```
-{ "bet": 10 }
-```
-
-**Response 200**
-```
-{
-  "state": {
-    "hands": [[{ "rank": "K", "suit": "♠" }, { "rank": "6", "suit": "♦" }]],
-    "dealer": [{ "rank": "?", "suit": "?" }, { "rank": "9", "suit": "♣" }],
-    "bets": [10],
-    "doubled": [false],
-    "busted": [false],
-    "activeHand": 0,
-    "splitUsed": false,
-    "inRound": true,
-    "revealDealer": false
-  },
-  "balance": 990,
-  "message": null
-}
-```
-
-#### POST /api/games/blackjack/hit
-Draw a card for the active hand.
-
-**Body**
-```
-{}
-```
-
-**Response 200**
-```
-{
-  "state": {
-    "hands": [[{ "rank": "K", "suit": "♠" }, { "rank": "6", "suit": "♦" }, { "rank": "2", "suit": "♣" }]],
-    "dealer": [{ "rank": "?", "suit": "?" }, { "rank": "9", "suit": "♣" }],
-    "bets": [10],
-    "doubled": [false],
-    "busted": [false],
-    "activeHand": 0,
-    "splitUsed": false,
-    "inRound": true,
-    "revealDealer": false
-  },
-  "messages": []
-}
-```
-
-#### POST /api/games/blackjack/stand
-Stand on the active hand.
-
-**Body**
-```
-{}
-```
-
-**Response 200**
-```
-{
-  "state": {
-    "hands": [[{ "rank": "K", "suit": "♠" }, { "rank": "6", "suit": "♦" }]],
-    "dealer": [{ "rank": "10", "suit": "♥" }, { "rank": "7", "suit": "♣" }],
-    "bets": [10],
-    "doubled": [false],
-    "busted": [false],
-    "activeHand": 0,
-    "splitUsed": false,
-    "inRound": false,
-    "revealDealer": true
-  },
-  "outcomes": [{ "index": 0, "result": "win", "net": 10 }],
-  "payoutTotal": 20,
-  "messages": [],
-  "balance": 1010
-}
-```
-
-#### POST /api/games/blackjack/double
-Double down on the active hand.
-
-**Body**
-```
-{}
-```
-
-#### POST /api/games/blackjack/split
-Split the active hand when allowed.
-
-**Body**
-```
-{}
-```
-
 ### 5-Card Poker
 
 #### POST /api/games/poker/deal
@@ -867,84 +767,67 @@ Fold the current hand.
 }
 ```
 
-### Texas Hold'em
+### Multiplayer Rooms (Blackjack + Hold'em)
 
-#### POST /api/games/holdem/deal
-Start a new hand (posts blinds).
+These endpoints manage room lifecycle. In-hand actions are sent via WebSocket.
+
+#### GET /api/games/blackjack/rooms
+List public Blackjack rooms.
+
+**Response 200**
+```
+{
+  "rooms": [
+    {
+      "roomId": "bdf926c9",
+      "name": "Blackjack Table",
+      "host": "Guest aff8",
+      "playerCount": 2,
+      "maxPlayers": 5,
+      "inRound": false,
+      "createdAt": "2026-02-13T19:00:00.000Z"
+    }
+  ]
+}
+```
+
+#### POST /api/games/blackjack/rooms
+Create a Blackjack room.
 
 **Body**
 ```
-{ "state": { "blindSmall": 5, "blindBig": 10, "dealerButton": false } }
+{
+  "name": "Blackjack Table",
+  "public": true,
+  "maxPlayers": 5
+}
 ```
+
+**Response 200**
+```
+{ "roomId": "bdf926c9" }
+```
+
+#### GET /api/games/blackjack/rooms/{roomId}/state
+Get sanitized Blackjack room state.
 
 **Response 200**
 ```
 {
   "state": {
-    "pot": 15,
-    "playerPaid": 10,
-    "playerBet": 10,
-    "dealerBet": 5,
-    "currentBet": 10,
-    "betAmount": 0,
-    "blindSmall": 5,
-    "blindBig": 10,
-    "dealerButton": true,
-    "awaitingRaise": false,
-    "player": [
-      { "rank": "A", "suit": "♠" },
-      { "rank": "9", "suit": "♦" }
-    ],
-    "dealer": [
-      { "rank": "?", "suit": "?" },
-      { "rank": "?", "suit": "?" }
-    ],
-    "community": [],
-    "phase": "preflop",
-    "inRound": true,
-    "dealerRaised": false
-  },
-  "balance": 990,
-  "messages": [{ "text": "Blinds in. You: $10, Dealer: $5.", "tone": "win", "duration": 1600 }]
+    "game": "blackjack",
+    "roomId": "bdf926c9",
+    "hostId": "abc123",
+    "players": [],
+    "dealer": [],
+    "inRound": false,
+    "phase": "lobby"
+  }
 }
 ```
 
-#### POST /api/games/holdem/action
-Place a bet or call.
-
-**Body**
-```
-{ "betAmount": 10 }
-```
-
-**Response 200**
-```
-{
-  "state": {
-    "pot": 35,
-    "playerPaid": 20,
-    "playerBet": 20,
-    "dealerBet": 15,
-    "currentBet": 20,
-    "phase": "flop",
-    "community": [
-      { "rank": "K", "suit": "♣" },
-      { "rank": "7", "suit": "♥" },
-      { "rank": "2", "suit": "♦" }
-    ],
-    "dealer": [
-      { "rank": "?", "suit": "?" },
-      { "rank": "?", "suit": "?" }
-    ],
-    "awaitingRaise": false,
-  },
-  "balance": 980,
-  "messages": [{ "text": "Flop dealt.", "tone": "win", "duration": 1400 }]
-}
-```
-
-#### POST /api/games/holdem/fold
-Fold the current hand.
+#### POST /api/games/blackjack/rooms/{roomId}/join
+Join a Blackjack room.
 
 **Body**
 ```
@@ -954,31 +837,130 @@ Fold the current hand.
 **Response 200**
 ```
 {
+  "playerId": "4f2d0e18a9bc",
   "state": {
-    "phase": "showdown",
-    "inRound": false,
-  },
-  "balance": 980,
-  "messages": [{ "text": "You folded. Dealer wins.", "tone": "danger", "duration": 2000 }]
+    "game": "blackjack",
+    "roomId": "bdf926c9",
+    "players": [{ "id": "4f2d0e18a9bc", "username": "Guest aff8" }]
+  }
 }
 ```
+
+#### POST /api/games/blackjack/rooms/{roomId}/leave
+Leave a Blackjack room.
+
+**Body**
+```
+{}
+```
+
+**Response 200**
+```
+{
+  "playerId": "4f2d0e18a9bc",
+  "closed": false,
+  "state": {
+    "game": "blackjack",
+    "roomId": "bdf926c9",
+    "players": []
+  }
+}
+```
+
+#### GET /api/games/holdem/rooms
+List public Hold'em rooms.
+
+**Response 200**
+```
+{
+  "rooms": [
+    {
+      "roomId": "d5729b42",
+      "name": "Hold'em Table",
+      "host": "Guest b482",
+      "playerCount": 2,
+      "maxPlayers": 6,
+      "inRound": true,
+      "createdAt": "2026-02-13T19:05:00.000Z"
+    }
+  ]
+}
+```
+
+#### POST /api/games/holdem/rooms
+Create a Hold'em room.
+
+**Body**
+```
+{
+  "name": "Hold'em Table",
+  "public": true,
+  "maxPlayers": 6
+}
+```
+
+**Response 200**
+```
+{ "roomId": "d5729b42" }
+```
+
+#### GET /api/games/holdem/rooms/{roomId}/state
+Get sanitized Hold'em room state (viewer-specific hidden cards).
+
 **Response 200**
 ```
 {
   "state": {
-    "pot": 15,
-    "playerPaid": 10,
-    "playerBet": 10,
-    "dealerBet": 5,
-    "currentBet": 10,
-    "blindSmall": 5,
-    "blindBig": 10,
-    "dealerButton": true,
+    "game": "holdem",
+    "roomId": "d5729b42",
     "phase": "preflop",
-    "inRound": true
-  },
-  "balance": 980,
-  "messages": [{ "text": "Pre-flop betting.", "tone": "win", "duration": 1400 }]
+    "community": [],
+    "players": [
+      { "id": "p1", "cards": [{ "rank": "A", "suit": "S" }, { "rank": "K", "suit": "D" }] },
+      { "id": "p2", "cards": [{ "rank": "?", "suit": "?" }, { "rank": "?", "suit": "?" }] }
+    ]
+  }
+}
+```
+
+#### POST /api/games/holdem/rooms/{roomId}/join
+Join a Hold'em room.
+
+**Body**
+```
+{}
+```
+
+**Response 200**
+```
+{
+  "playerId": "4f2d0e18a9bc",
+  "state": {
+    "game": "holdem",
+    "roomId": "d5729b42",
+    "players": [{ "id": "4f2d0e18a9bc", "username": "Guest b482" }]
+  }
+}
+```
+
+#### POST /api/games/holdem/rooms/{roomId}/leave
+Leave a Hold'em room.
+
+**Body**
+```
+{}
+```
+
+**Response 200**
+```
+{
+  "playerId": "4f2d0e18a9bc",
+  "closed": false,
+  "state": {
+    "game": "holdem",
+    "roomId": "d5729b42",
+    "players": []
+  }
 }
 ```
 
@@ -989,21 +971,40 @@ Fold the current hand.
 
 Stores the connection in DynamoDB and associates it with the user (or "guest").
 
-### Messages
-Send JSON payloads:
+### Client -> Server messages
 
+Join/leave room:
 ```
-{ "action": "join", "roomId": "lobby" }
+{ "action": "join", "roomId": "bdf926c9" }
 { "action": "leave" }
-{ "action": "action", "payload": { "x": 1 } }
 ```
 
-Server responses:
-
+Blackjack room action:
 ```
-{ "type": "ROOM_JOINED", "roomId": "lobby" }
+{
+  "action": "action",
+  "payload": { "game": "blackjack", "type": "HIT", "roomId": "bdf926c9" }
+}
+```
+Valid Blackjack `type` values: `BET`, `START`, `HIT`, `STAND`, `DOUBLE`, `SPLIT`.
+
+Hold'em room action:
+```
+{
+  "action": "action",
+  "payload": { "game": "holdem", "type": "RAISE", "roomId": "d5729b42", "amount": 10 }
+}
+```
+Valid Hold'em `type` values: `START`, `CHECK`, `CALL`, `RAISE`, `FOLD`.
+
+### Server -> Client messages
+```
+{ "type": "ROOM_JOINED", "roomId": "bdf926c9" }
 { "type": "ROOM_LEFT" }
-{ "type": "ACTION_ACK", "payload": { "x": 1 } }
+{ "type": "BLACKJACK_STATE", "roomId": "bdf926c9", "state": { "...": "..." } }
+{ "type": "HOLDEM_STATE", "roomId": "d5729b42", "state": { "...": "..." } }
+{ "type": "BALANCE_UPDATE", "balance": 972 }
+{ "type": "ERROR", "error": "Not your turn." }
 ```
 
 ### Disconnect
