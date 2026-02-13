@@ -7,4 +7,4 @@ bucket_name = "your-unique-bucket-name"
 # aws_region     = "us-east-1"
 # project_name   = "cache-money-casino"
 # cors_origin       = "*"
-# blackjack_multi_room_idle_timeout_seconds = 3600
+# multi_room_idle_timeout_seconds = 3600

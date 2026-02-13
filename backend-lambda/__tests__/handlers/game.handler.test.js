@@ -10,7 +10,6 @@ const { resetLocalTables, makeEvent, parseResponse } = require("../helpers/test-
 const { handler } = require("../../game");
 const { putSession, putUser, getUser } = require("../../lib/session");
 const { put, get } = require("../../lib/db");
-const { createHoldemState } = require("../../game/holdem");
 const { createPokerState } = require("../../game/poker");
 
 const authHeaders = { authorization: "Bearer t1" };
@@ -62,11 +61,11 @@ describe("game handler", () => {
     expect(parsed.body.state.foo).toBe(1);
   });
 
-  it("formats guest host name on blackjack-multi room creation", async () => {
+  it("formats guest host name on blackjack room creation", async () => {
     const resp = await handler(
       makeEvent({
         method: "POST",
-        path: "/games/blackjack-multi/rooms",
+        path: "/games/blackjack/rooms",
         headers: authHeaders,
         body: { name: "Test Room", public: true },
       })
@@ -83,12 +82,12 @@ describe("game handler", () => {
     expect(meta.Item?.host).toBe(`Guest ${expectedSuffix}`);
   });
 
-  it("formats legacy guest username value on blackjack-multi room creation", async () => {
+  it("formats legacy guest username value on blackjack room creation", async () => {
     await putSession({ token: "t-guest", username: "guest", balance: 1000 });
     const resp = await handler(
       makeEvent({
         method: "POST",
-        path: "/games/blackjack-multi/rooms",
+        path: "/games/blackjack/rooms",
         headers: { authorization: "Bearer t-guest" },
         body: { name: "Test Room", public: true },
       })
@@ -105,11 +104,11 @@ describe("game handler", () => {
     expect(meta.Item?.host).toBe(`Guest ${expectedSuffix}`);
   });
 
-  it("creates and lists holdem-multi room", async () => {
+  it("creates and lists holdem room", async () => {
     const createResp = await handler(
       makeEvent({
         method: "POST",
-        path: "/games/holdem-multi/rooms",
+        path: "/games/holdem/rooms",
         headers: authHeaders,
         body: { name: "HE Table", public: true },
       })
@@ -121,7 +120,7 @@ describe("game handler", () => {
     const listResp = await handler(
       makeEvent({
         method: "GET",
-        path: "/games/holdem-multi/rooms",
+        path: "/games/holdem/rooms",
         headers: authHeaders,
       })
     );
@@ -131,11 +130,11 @@ describe("game handler", () => {
     expect(listed.body.rooms.some((room) => room.roomId === created.body.roomId)).toBe(true);
   });
 
-  it("joins holdem-multi room", async () => {
+  it("joins holdem room", async () => {
     const createResp = await handler(
       makeEvent({
         method: "POST",
-        path: "/games/holdem-multi/rooms",
+        path: "/games/holdem/rooms",
         headers: authHeaders,
         body: { name: "HE Table", public: true },
       })
@@ -144,14 +143,14 @@ describe("game handler", () => {
     const joinResp = await handler(
       makeEvent({
         method: "POST",
-        path: `/games/holdem-multi/rooms/${roomId}/join`,
+        path: `/games/holdem/rooms/${roomId}/join`,
         headers: authHeaders,
       })
     );
     const joined = parseResponse(joinResp);
     expect(joined.statusCode).toBe(200);
     expect(joined.body.playerId).toBeTruthy();
-    expect(joined.body.state?.game).toBe("holdem-multi");
+    expect(joined.body.state?.game).toBe("holdem");
     expect(joined.body.state?.players?.length).toBe(1);
   });
 
@@ -319,180 +318,6 @@ describe("game handler", () => {
     expect(parseResponse(score).statusCode).toBe(200);
   });
 
-  it("blackjack deal/hit/stand/double/split", async () => {
-    const deal = await handler(
-      makeEvent({
-        method: "POST",
-        path: "/games/blackjack/deal",
-        headers: authHeaders,
-        body: { bet: 10 },
-      })
-    );
-    expect(parseResponse(deal).statusCode).toBe(200);
-
-    await put({
-      TableName: "GameSessions",
-      Item: {
-        session_id: "t1:blackjack",
-        state: {
-          deck: [
-            { rank: "2", suit: "S" },
-            { rank: "3", suit: "D" },
-            { rank: "4", suit: "C" },
-            { rank: "5", suit: "H" },
-          ],
-          hands: [[{ rank: "9", suit: "H" }, { rank: "7", suit: "D" }]],
-          dealer: [{ rank: "5", suit: "C" }, { rank: "6", suit: "S" }],
-          bets: [10],
-          doubled: [false],
-          busted: [false],
-          activeHand: 0,
-          splitUsed: false,
-          inRound: true,
-          revealDealer: false,
-        },
-      },
-    });
-    const hit = await handler(
-      makeEvent({ method: "POST", path: "/games/blackjack/hit", headers: authHeaders })
-    );
-    expect(parseResponse(hit).statusCode).toBe(200);
-
-    await put({
-      TableName: "GameSessions",
-      Item: {
-        session_id: "t1:blackjack",
-        state: {
-          deck: [
-            { rank: "2", suit: "S" },
-            { rank: "3", suit: "D" },
-            { rank: "4", suit: "C" },
-            { rank: "5", suit: "H" },
-          ],
-          hands: [[{ rank: "10", suit: "H" }, { rank: "7", suit: "D" }]],
-          dealer: [{ rank: "5", suit: "C" }, { rank: "6", suit: "S" }],
-          bets: [10],
-          doubled: [false],
-          busted: [false],
-          activeHand: 0,
-          splitUsed: false,
-          inRound: true,
-          revealDealer: false,
-        },
-      },
-    });
-    const stand = await handler(
-      makeEvent({ method: "POST", path: "/games/blackjack/stand", headers: authHeaders })
-    );
-    expect(parseResponse(stand).statusCode).toBe(200);
-
-    await put({
-      TableName: "GameSessions",
-      Item: {
-        session_id: "t1:blackjack",
-        state: {
-          deck: [
-            { rank: "2", suit: "S" },
-            { rank: "3", suit: "D" },
-            { rank: "4", suit: "C" },
-            { rank: "5", suit: "H" },
-          ],
-          hands: [[{ rank: "5", suit: "H" }, { rank: "6", suit: "D" }]],
-          dealer: [{ rank: "5", suit: "C" }, { rank: "6", suit: "S" }],
-          bets: [10],
-          doubled: [false],
-          busted: [false],
-          activeHand: 0,
-          splitUsed: false,
-          inRound: true,
-          revealDealer: false,
-        },
-      },
-    });
-    const double = await handler(
-      makeEvent({ method: "POST", path: "/games/blackjack/double", headers: authHeaders })
-    );
-    expect(parseResponse(double).statusCode).toBe(200);
-
-    await put({
-      TableName: "GameSessions",
-      Item: {
-        session_id: "t1:blackjack",
-        state: {
-          deck: [
-            { rank: "2", suit: "S" },
-            { rank: "3", suit: "D" },
-            { rank: "4", suit: "C" },
-            { rank: "5", suit: "H" },
-          ],
-          hands: [[{ rank: "8", suit: "H" }, { rank: "9", suit: "D" }]],
-          dealer: [{ rank: "5", suit: "C" }, { rank: "6", suit: "S" }],
-          bets: [10],
-          doubled: [false],
-          busted: [false],
-          activeHand: 0,
-          splitUsed: false,
-          inRound: true,
-          revealDealer: false,
-        },
-      },
-    });
-    const split = await handler(
-      makeEvent({ method: "POST", path: "/games/blackjack/split", headers: authHeaders })
-    );
-    expect(parseResponse(split).statusCode).toBe(400);
-  });
-
-  it("holdem deal/action/fold", async () => {
-    const deal = await handler(
-      makeEvent({
-        method: "POST",
-        path: "/games/holdem/deal",
-        headers: authHeaders,
-        body: { state: { blindSmall: 5, blindBig: 10, dealerButton: false } },
-      })
-    );
-    expect(parseResponse(deal).statusCode).toBe(200);
-
-    const holdemState = createHoldemState({
-      blindSmall: 5,
-      blindBig: 10,
-      dealerButton: false,
-      playerBlind: 10,
-      dealerBlind: 5,
-      balanceAfterBlind: 100,
-    });
-    await put({
-      TableName: "GameSessions",
-      Item: { session_id: "t1:holdem", state: holdemState },
-    });
-    const action = await handler(
-      makeEvent({
-        method: "POST",
-        path: "/games/holdem/action",
-        headers: authHeaders,
-        body: { betAmount: 0 },
-      })
-    );
-    expect(parseResponse(action).statusCode).toBe(200);
-
-    const holdemFoldState = createHoldemState({
-      blindSmall: 5,
-      blindBig: 10,
-      dealerButton: false,
-      playerBlind: 10,
-      dealerBlind: 5,
-      balanceAfterBlind: 100,
-    });
-    await put({
-      TableName: "GameSessions",
-      Item: { session_id: "t1:holdem", state: holdemFoldState },
-    });
-    const fold = await handler(
-      makeEvent({ method: "POST", path: "/games/holdem/fold", headers: authHeaders })
-    );
-    expect(parseResponse(fold).statusCode).toBe(200);
-  });
 
   it("poker deal/bet/draw/call/fold", async () => {
     const deal = await handler(
@@ -575,61 +400,6 @@ describe("game handler", () => {
       makeEvent({ method: "POST", path: "/games/poker/fold", headers: authHeaders })
     );
     expect(parseResponse(fold).statusCode).toBe(200);
-  });
-
-  it("holdem deal rejects zero balance", async () => {
-    await seedSession({ token: "t2", balance: 0 });
-    const resp = await handler(
-      makeEvent({
-        method: "POST",
-        path: "/games/holdem/deal",
-        headers: { authorization: "Bearer t2" },
-        body: { state: { blindSmall: 5, blindBig: 10, dealerButton: false } },
-      })
-    );
-    expect(parseResponse(resp).statusCode).toBe(400);
-  });
-
-  it("holdem action updates user stats on showdown", async () => {
-    await putUser({
-      username: "alice",
-      balance: 0,
-      stats: { totals: { bets: 0, wins: 0, losses: 0, net: 0 }, games: {}, recent: [] },
-    });
-    await seedSession({ username: "alice", balance: 0 });
-    const state = createHoldemState({
-      blindSmall: 5,
-      blindBig: 10,
-      dealerButton: false,
-      playerBlind: 10,
-      dealerBlind: 5,
-      balanceAfterBlind: 100,
-    });
-    state.phase = "preflop";
-    state.playerBet = state.currentBet;
-    state.dealerBet = state.currentBet;
-    await put({
-      TableName: "GameSessions",
-      Item: { session_id: "t1:holdem", state },
-    });
-    const resp = await handler(
-      makeEvent({
-        method: "POST",
-        path: "/games/holdem/action",
-        headers: authHeaders,
-        body: { betAmount: 0 },
-      })
-    );
-    expect(parseResponse(resp).statusCode).toBe(200);
-    const user = await getUser("alice");
-    expect(user.stats.totals.bets).toBeGreaterThan(0);
-  });
-
-  it("holdem fold returns error when no active state", async () => {
-    const resp = await handler(
-      makeEvent({ method: "POST", path: "/games/holdem/fold", headers: authHeaders })
-    );
-    expect(parseResponse(resp).statusCode).toBe(400);
   });
 
   it("poker deal rejects zero balance", async () => {

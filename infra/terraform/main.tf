@@ -80,5 +80,5 @@ module "serverless" {
   aws_region       = var.aws_region
   lambda_source_dir = abspath("${path.root}/../../backend-lambda")
   cors_origin      = var.cors_origin
-  blackjack_multi_room_idle_timeout_seconds = var.blackjack_multi_room_idle_timeout_seconds
+  multi_room_idle_timeout_seconds = var.multi_room_idle_timeout_seconds
 }

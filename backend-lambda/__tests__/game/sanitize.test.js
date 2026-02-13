@@ -84,9 +84,9 @@ describe("sanitize", () => {
     expect(sanitized.cards.length).toBe(1);
   });
 
-  it("sanitizes holdem-multi by removing deck", () => {
+  it("sanitizes holdem by removing deck", () => {
     const state = {
-      game: "holdem-multi",
+      game: "holdem",
       deck: [{ rank: "A", suit: "S" }],
       players: [
         { id: "p1", cards: [{ rank: "A", suit: "S" }, { rank: "K", suit: "S" }] },
@@ -94,16 +94,16 @@ describe("sanitize", () => {
       ],
       community: [{ rank: "K", suit: "H" }],
     };
-    const sanitized = sanitizeState("holdem-multi", state, "p1");
+    const sanitized = sanitizeState("holdem", state, "p1");
     expect(sanitized.deck).toBeUndefined();
     expect(sanitized.community?.length).toBe(1);
     expect(sanitized.players?.[0]?.cards?.[0]?.rank).toBe("A");
     expect(sanitized.players?.[1]?.cards?.[0]?.rank).toBe("?");
   });
 
-  it("reveals all holdem-multi cards on showdown", () => {
+  it("reveals all holdem cards on showdown", () => {
     const state = {
-      game: "holdem-multi",
+      game: "holdem",
       phase: "showdown",
       deck: [{ rank: "A", suit: "S" }],
       players: [
@@ -111,7 +111,7 @@ describe("sanitize", () => {
         { id: "p2", cards: [{ rank: "Q", suit: "H" }, { rank: "J", suit: "H" }] },
       ],
     };
-    const sanitized = sanitizeState("holdem-multi", state, "p1");
+    const sanitized = sanitizeState("holdem", state, "p1");
     expect(sanitized.deck).toBeUndefined();
     expect(sanitized.players?.[0]?.cards?.[0]?.rank).toBe("A");
     expect(sanitized.players?.[1]?.cards?.[0]?.rank).toBe("Q");

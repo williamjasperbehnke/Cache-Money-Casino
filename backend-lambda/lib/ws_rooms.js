@@ -2,15 +2,15 @@ const { ApiGatewayManagementApiClient, PostToConnectionCommand } = require("@aws
 const { get, put, del, query, scan, update } = require("./db");
 const { sanitizeState } = require("../game/sanitize");
 const {
-  removePlayer: removeBlackjackMultiPlayer,
+  removePlayer: removeBlackjackPlayer,
   isRoundClearPending: isBlackjackRoundClearPending,
   clearCompletedRound: clearBlackjackCompletedRound,
-} = require("../game/blackjack_multi");
+} = require("../game/blackjack");
 const {
-  removePlayer: removeHoldemMultiPlayer,
+  removePlayer: removeHoldemPlayer,
   isRoundClearPending: isHoldemRoundClearPending,
   clearCompletedRound: clearHoldemCompletedRound,
-} = require("../game/holdem_multi");
+} = require("../game/holdem");
 const { isRoomExpired } = require("./room_expiration");
 
 const { CONNECTIONS_TABLE, ROOMS_TABLE, GAME_SESSIONS_TABLE } = process.env;
@@ -126,7 +126,7 @@ const saveRoomState = (roomId, state) => {
     TableName: GAME_SESSIONS_TABLE,
     Item: {
       session_id: roomSessionId(roomId),
-      game: state?.game || "blackjack-multi",
+      game: state?.game || "blackjack",
       state,
       updated_at: new Date().toISOString(),
     },
@@ -218,8 +218,8 @@ const hasOtherActiveConnectionForPlayer = async ({ playerId, excludeConnectionId
 
 const broadcastRoomState = async (endpoint, roomId, state) => {
   const connections = await listRoomConnections(roomId);
-  const gameKey = state?.game || "blackjack-multi";
-  const type = gameKey === "holdem-multi" ? "HOLDEM_MULTI_STATE" : "BLACKJACK_MULTI_STATE";
+  const gameKey = state?.game || "blackjack";
+  const type = gameKey === "holdem" ? "HOLDEM_MULTI_STATE" : "BLACKJACK_MULTI_STATE";
   await Promise.all(
     connections.map(async (entry) => {
       const connectionId = entry.player_id;
@@ -236,14 +236,14 @@ const broadcastRoomState = async (endpoint, roomId, state) => {
 };
 
 const removeRoomPlayerByGame = (state, playerId) => {
-  if (state?.game === "holdem-multi") return removeHoldemMultiPlayer(state, playerId);
-  return removeBlackjackMultiPlayer(state, playerId);
+  if (state?.game === "holdem") return removeHoldemPlayer(state, playerId);
+  return removeBlackjackPlayer(state, playerId);
 };
 
 const maybeClearRoundAfterCooldown = async ({ roomId, state, endpoint }) => {
   if (!roomId || !state) return;
-  const gameKey = state.game || "blackjack-multi";
-  const isHoldem = gameKey === "holdem-multi";
+  const gameKey = state.game || "blackjack";
+  const isHoldem = gameKey === "holdem";
   const phaseDone = isHoldem ? state.phase === "showdown" : state.phase === "complete";
   if (!phaseDone || !state.settled) return;
 
@@ -254,8 +254,8 @@ const maybeClearRoundAfterCooldown = async ({ roomId, state, endpoint }) => {
 
   const latest = await getRoomState(roomId);
   if (!latest) return;
-  const latestGame = latest.game || "blackjack-multi";
-  const latestIsHoldem = latestGame === "holdem-multi";
+  const latestGame = latest.game || "blackjack";
+  const latestIsHoldem = latestGame === "holdem";
   const latestPhaseDone = latestIsHoldem ? latest.phase === "showdown" : latest.phase === "complete";
   if (!latestPhaseDone) return;
 

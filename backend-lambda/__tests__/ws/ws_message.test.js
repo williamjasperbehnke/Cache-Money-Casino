@@ -73,7 +73,7 @@ describe("ws_message", () => {
       TableName: "GameSessions",
       Item: {
         session_id: "room:r1",
-        game: "blackjack-multi",
+        game: "blackjack",
         state: { roomId: "r1", hostId: "p1", players: [{ id: "p1", username: "alice" }] },
       },
     });
@@ -103,7 +103,7 @@ describe("ws_message", () => {
       TableName: "GameSessions",
       Item: {
         session_id: "room:r1",
-        game: "blackjack-multi",
+        game: "blackjack",
         state: { roomId: "r1", hostId: "p1", players: [{ id: "p1", username: "alice" }] },
       },
     });

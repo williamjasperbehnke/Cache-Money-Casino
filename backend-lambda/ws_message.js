@@ -25,7 +25,9 @@ const {
   applySplit,
   isRoundClearPending,
   clearCompletedRound,
-} = require("./game/blackjack_multi");
+  handTotal,
+  resolveOutcomes,
+} = require("./game/blackjack");
 const {
   startRound: startHoldemRound,
   applyCheck: applyHoldemCheck,
@@ -34,8 +36,7 @@ const {
   applyFold: applyHoldemFold,
   isRoundClearPending: isHoldemRoundClearPending,
   clearCompletedRound: clearHoldemCompletedRound,
-} = require("./game/holdem_multi");
-const { handTotal, resolveOutcomes } = require("./game/blackjack_core");
+} = require("./game/holdem");
 const { updateStats } = require("./lib/stats");
 const { getSession, resolveBalance, persistBalance, putUser } = require("./lib/session");
 
@@ -133,7 +134,7 @@ const buildPlayerSessionMap = async (roomId) => {
   return map;
 };
 
-const handleBlackjackMultiAction = async ({
+const handleBlackjackAction = async ({
   endpoint,
   connectionId,
   connection,
@@ -331,7 +332,7 @@ const handleBlackjackMultiAction = async ({
   return okResponse();
 };
 
-const handleHoldemMultiAction = async ({
+const handleHoldemAction = async ({
   endpoint,
   connectionId,
   connection,
@@ -526,16 +527,16 @@ exports.handler = async (event) => {
 
   if (action === "action") {
     const payload = body.payload || {};
-    if (payload.game === "blackjack-multi") {
-      return handleBlackjackMultiAction({
+    if (payload.game === "blackjack") {
+      return handleBlackjackAction({
         endpoint,
         connectionId,
         connection,
         payload,
       });
     }
-    if (payload.game === "holdem-multi") {
-      return handleHoldemMultiAction({
+    if (payload.game === "holdem") {
+      return handleHoldemAction({
         endpoint,
         connectionId,
         connection,

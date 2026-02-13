@@ -21,9 +21,9 @@ variable "cors_origin" {
   default     = "*"
 }
 
-variable "blackjack_multi_room_idle_timeout_seconds" {
+variable "multi_room_idle_timeout_seconds" {
   type        = number
-  description = "Seconds of inactivity before a multiplayer blackjack room expires."
+  description = "Seconds of inactivity before a multiplayer room expires."
   default     = 3600
 }
 

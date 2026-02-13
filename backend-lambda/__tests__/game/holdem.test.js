@@ -1,322 +1,236 @@
 const {
   createHoldemState,
-  applyHoldemAction,
-  applyHoldemFold,
-  resolveHoldemShowdown,
-  holdemPhaseCommunityCount,
+  addPlayer,
+  startRound,
+  applyCheck,
+  applyCall,
+  applyRaise,
+  clearCompletedRound,
 } = require("../../game/holdem");
 
 describe("holdem", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("holdemPhaseCommunityCount maps phases", () => {
-    expect(holdemPhaseCommunityCount("flop")).toBe(3);
-    expect(holdemPhaseCommunityCount("river")).toBe(5);
-  });
-
-  it("createHoldemState initializes", () => {
-    const state = createHoldemState({
-      blindSmall: 5,
-      blindBig: 10,
-      dealerButton: false,
-      playerBlind: 10,
-      dealerBlind: 5,
-      balanceAfterBlind: 100,
+  it("rotates button and blinds each round", () => {
+    const state = createHoldemState({ roomId: "r1", host: "Host", hostId: "p1" });
+    addPlayer(state, { id: "p1", username: "A" });
+    addPlayer(state, { id: "p2", username: "B" });
+    addPlayer(state, { id: "p3", username: "C" });
+    state.players.forEach((p) => {
+      p.betAmount = 100;
     });
-    expect(state.player.length).toBe(2);
-    expect(state.community.length).toBe(5);
-  });
 
-  it("applyHoldemFold ends round", () => {
-    const state = createHoldemState({
-      blindSmall: 5,
-      blindBig: 10,
-      dealerButton: false,
-      playerBlind: 10,
-      dealerBlind: 5,
-      balanceAfterBlind: 100,
-    });
-    const res = applyHoldemFold(state, 80);
-    expect(res.state.inRound).toBe(false);
-    expect(res.net).toBeLessThan(0);
-  });
+    const first = startRound(state);
+    expect(first.error).toBeUndefined();
+    expect(state.buttonIndex).toBe(0);
+    expect(state.smallBlindIndex).toBe(1);
+    expect(state.bigBlindIndex).toBe(2);
 
-  it("applyHoldemAction validates betting", () => {
-    const state = createHoldemState({
-      blindSmall: 5,
-      blindBig: 10,
-      dealerButton: false,
-      playerBlind: 10,
-      dealerBlind: 5,
-      balanceAfterBlind: 100,
-    });
-    state.inRound = false;
-    const res = applyHoldemAction(state, 0, 50);
-    expect(res.error).toBe("Round not running.");
-  });
-
-  it("applyHoldemAction rejects betting when closed", () => {
-    const state = createHoldemState({
-      blindSmall: 5,
-      blindBig: 10,
-      dealerButton: false,
-      playerBlind: 10,
-      dealerBlind: 5,
-      balanceAfterBlind: 100,
-    });
     state.phase = "showdown";
-    const res = applyHoldemAction(state, 0, 50);
-    expect(res.error).toBe("Betting is closed.");
+    clearCompletedRound(state);
+
+    const second = startRound(state);
+    expect(second.error).toBeUndefined();
+    expect(state.buttonIndex).toBe(1);
+    expect(state.smallBlindIndex).toBe(2);
+    expect(state.bigBlindIndex).toBe(0);
   });
 
-  it("applyHoldemAction rejects raise when short", () => {
-    const state = createHoldemState({
-      blindSmall: 5,
-      blindBig: 10,
-      dealerButton: false,
-      playerBlind: 10,
-      dealerBlind: 5,
-      balanceAfterBlind: 100,
-    });
-    state.playerBet = 0;
-    state.currentBet = 20;
-    const res = applyHoldemAction(state, 20, 5);
-    expect(res.error).toBe("Not enough credits to raise.");
-  });
-
-  it("applyHoldemAction triggers dealer raise when strong", () => {
-    const state = createHoldemState({
-      blindSmall: 5,
-      blindBig: 10,
-      dealerButton: false,
-      playerBlind: 10,
-      dealerBlind: 5,
-      balanceAfterBlind: 100,
-    });
-    state.dealer = [
-      { rank: "A", suit: "S" },
-      { rank: "A", suit: "H" },
-    ];
-    state.playerBet = state.currentBet;
-    state.dealerBet = state.currentBet;
-    const res = applyHoldemAction(state, 0, 100, () => 0.99);
-    expect(res.state.awaitingRaise).toBe(true);
-  });
-
-  it("applyHoldemAction handles all-in call", () => {
-    const state = createHoldemState({
-      blindSmall: 5,
-      blindBig: 10,
-      dealerButton: false,
-      playerBlind: 10,
-      dealerBlind: 5,
-      balanceAfterBlind: 100,
-    });
-    state.currentBet = 50;
-    state.playerBet = 0;
-    const res = applyHoldemAction(state, 0, 10, () => 0.0);
-    expect(res.messages.some((msg) => msg.text.includes("All-in"))).toBe(true);
-  });
-
-  it("applyHoldemAction resolves showdown when broke", () => {
-    const state = createHoldemState({
-      blindSmall: 5,
-      blindBig: 10,
-      dealerButton: false,
-      playerBlind: 10,
-      dealerBlind: 5,
-      balanceAfterBlind: 100,
-    });
-    const res = applyHoldemAction(state, 0, 0, () => 0.0);
-    expect(res.showdown).toBeTruthy();
-  });
-
-  it("applyHoldemAction can trigger dealer fold", () => {
-    const state = createHoldemState({
-      blindSmall: 5,
-      blindBig: 10,
-      dealerButton: false,
-      playerBlind: 10,
-      dealerBlind: 5,
-      balanceAfterBlind: 100,
-    });
-    state.dealer = [
-      { rank: "2", suit: "H" },
-      { rank: "3", suit: "D" },
-    ];
-    state.community = [
-      { rank: "4", suit: "S" },
-      { rank: "7", suit: "C" },
-      { rank: "9", suit: "D" },
-      { rank: "J", suit: "H" },
-      { rank: "Q", suit: "S" },
-    ];
-    state.playerBet = state.currentBet;
-    state.dealerBet = 0;
-    const res = applyHoldemAction(state, 0, 50, () => 0.99);
-    expect(res.folded).toBe(true);
-  });
-
-  it("resolveHoldemShowdown compares hands", () => {
-    const state = createHoldemState({
-      blindSmall: 5,
-      blindBig: 10,
-      dealerButton: false,
-      playerBlind: 10,
-      dealerBlind: 5,
-      balanceAfterBlind: 100,
-    });
-    state.player = [
-      { rank: "A", suit: "S" },
-      { rank: "K", suit: "S" },
-    ];
-    state.dealer = [
-      { rank: "2", suit: "H" },
-      { rank: "3", suit: "D" },
-    ];
-    state.community = [
-      { rank: "Q", suit: "S" },
-      { rank: "J", suit: "S" },
-      { rank: "10", suit: "S" },
-      { rank: "5", suit: "C" },
-      { rank: "7", suit: "D" },
-    ];
-    const res = resolveHoldemShowdown(state, 100, []);
-    expect(res.net).toBeGreaterThan(0);
-    expect(res.showdown.playerLabel).toMatch(/Straight/);
-  });
-
-  it("resolveHoldemShowdown handles push", () => {
-    const state = createHoldemState({
-      blindSmall: 5,
-      blindBig: 10,
-      dealerButton: false,
-      playerBlind: 10,
-      dealerBlind: 5,
-      balanceAfterBlind: 100,
-    });
-    state.player = [
-      { rank: "A", suit: "S" },
-      { rank: "K", suit: "S" },
-    ];
-    state.dealer = [
-      { rank: "A", suit: "H" },
-      { rank: "K", suit: "H" },
-    ];
-    state.community = [
-      { rank: "Q", suit: "D" },
-      { rank: "J", suit: "C" },
-      { rank: "10", suit: "S" },
-      { rank: "2", suit: "C" },
-      { rank: "3", suit: "D" },
-    ];
-    const res = resolveHoldemShowdown(state, 100, []);
-    expect(res.net).toBe(0);
-  });
-
-  it("applyHoldemAction raises when player raises to call", () => {
-    const state = createHoldemState({
-      blindSmall: 5,
-      blindBig: 10,
-      dealerButton: false,
-      playerBlind: 10,
-      dealerBlind: 5,
-      balanceAfterBlind: 100,
-    });
-    state.currentBet = 20;
-    state.playerBet = 5;
-    const res = applyHoldemAction(state, 10, 100, () => 0.0);
-    expect(res.balance).toBeLessThan(100);
-  });
-
-  it("applyHoldemAction handles awaiting raise with no balance", () => {
-    const state = createHoldemState({
-      blindSmall: 5,
-      blindBig: 10,
-      dealerButton: false,
-      playerBlind: 10,
-      dealerBlind: 5,
-      balanceAfterBlind: 100,
-    });
-    state.currentBet = 10;
-    state.playerBet = 0;
-    state.awaitingRaise = true;
-    const res = applyHoldemAction(state, 0, 0, () => 0.0);
-    expect(res.state.phase).not.toBe("preflop");
-  });
-
-  it("applyHoldemAction handles awaiting raise with partial call", () => {
-    const state = createHoldemState({
-      blindSmall: 5,
-      blindBig: 10,
-      dealerButton: false,
-      playerBlind: 10,
-      dealerBlind: 5,
-      balanceAfterBlind: 100,
-    });
-    state.currentBet = 20;
-    state.playerBet = 0;
-    state.awaitingRaise = true;
-    const res = applyHoldemAction(state, 0, 5, () => 0.0);
-    expect(res.messages.some((msg) => msg.text.includes("All-in"))).toBe(true);
-  });
-
-  it("applyHoldemAction handles bet with no toCall", () => {
-    const state = createHoldemState({
-      blindSmall: 5,
-      blindBig: 10,
-      dealerButton: false,
-      playerBlind: 10,
-      dealerBlind: 5,
-      balanceAfterBlind: 100,
-    });
+  it("settles side pots when short stack wins only main pot", () => {
+    const state = createHoldemState({ roomId: "r2", host: "Host", hostId: "p1" });
+    state.phase = "river";
+    state.inRound = true;
+    state.settled = false;
     state.currentBet = 0;
-    state.playerBet = 0;
-    const res = applyHoldemAction(state, 10, 100, () => 0.0);
-    expect(res.balance).toBeLessThan(100);
+    state.pot = 250;
+
+    state.community = [
+      { rank: "2", suit: "H" },
+      { rank: "3", suit: "D" },
+      { rank: "4", suit: "S" },
+      { rank: "9", suit: "C" },
+      { rank: "K", suit: "D" },
+    ];
+
+    state.players = [
+      {
+        id: "p1",
+        username: "Short",
+        status: "playing",
+        cards: [
+          { rank: "5", suit: "H" },
+          { rank: "6", suit: "C" },
+        ],
+        folded: false,
+        allIn: true,
+        acted: true,
+        stack: 0,
+        roundBet: 0,
+        committed: 50,
+        betAmount: 50,
+      },
+      {
+        id: "p2",
+        username: "Deep1",
+        status: "playing",
+        cards: [
+          { rank: "K", suit: "H" },
+          { rank: "K", suit: "S" },
+        ],
+        folded: false,
+        allIn: true,
+        acted: true,
+        stack: 0,
+        roundBet: 0,
+        committed: 100,
+        betAmount: 100,
+      },
+      {
+        id: "p3",
+        username: "Deep2",
+        status: "playing",
+        cards: [
+          { rank: "Q", suit: "H" },
+          { rank: "Q", suit: "S" },
+        ],
+        folded: false,
+        allIn: false,
+        acted: false,
+        stack: 1,
+        roundBet: 0,
+        committed: 100,
+        betAmount: 101,
+      },
+    ];
+
+    state.turnIndex = 2;
+
+    const result = applyCheck(state, "p3");
+    expect(result.error).toBeUndefined();
+    expect(state.phase).toBe("showdown");
+    expect(state.settled).toBe(true);
+    expect(Array.isArray(state.potBreakdown)).toBe(true);
+    expect(state.potBreakdown.length).toBe(2);
+    expect(state.potBreakdown[0]?.label).toBe("Main Pot");
+    expect(state.potBreakdown[1]?.label).toBe("Side Pot 1");
+
+    const p1 = state.players[0];
+    const p2 = state.players[1];
+    const p3 = state.players[2];
+
+    expect(p1.lastPayout).toBe(150);
+    expect(p2.lastPayout).toBe(100);
+    expect(p3.lastPayout).toBe(1);
+    expect(Array.isArray(p1.bestIndexes)).toBe(true);
+    expect(p1.bestIndexes.length).toBeGreaterThan(0);
   });
 
-  it("applyHoldemAction uses community strength in flop", () => {
-    const state = createHoldemState({
-      blindSmall: 5,
-      blindBig: 10,
-      dealerButton: false,
-      playerBlind: 10,
-      dealerBlind: 5,
-      balanceAfterBlind: 100,
-    });
-    state.phase = "flop";
-    state.dealer = [
-      { rank: "A", suit: "S" },
-      { rank: "A", suit: "H" },
-    ];
-    state.community = [
-      { rank: "A", suit: "D" },
-      { rank: "K", suit: "C" },
-      { rank: "Q", suit: "S" },
-      { rank: "2", suit: "C" },
-      { rank: "3", suit: "D" },
-    ];
-    state.currentBet = 10;
-    state.playerBet = 10;
-    state.dealerBet = 0;
-    const res = applyHoldemAction(state, 0, 100, () => 0.99);
-    expect(res.state).toBeDefined();
+  it("advances turn after each action", () => {
+    const state = createHoldemState({ roomId: "r3", host: "Host", hostId: "p1" });
+    addPlayer(state, { id: "p1", username: "A" });
+    addPlayer(state, { id: "p2", username: "B" });
+    addPlayer(state, { id: "p3", username: "C" });
+
+    const started = startRound(state, { p1: 100, p2: 100, p3: 100 });
+    expect(started.error).toBeUndefined();
+    expect(state.turnIndex).toBe(0);
+
+    const acted = applyCall(state, "p1");
+    expect(acted.error).toBeUndefined();
+    expect(state.turnIndex).toBe(1);
   });
-  it("applyHoldemAction can proceed with no raise", () => {
-    const state = createHoldemState({
-      blindSmall: 5,
-      blindBig: 10,
-      dealerButton: false,
-      playerBlind: 10,
-      dealerBlind: 5,
-      balanceAfterBlind: 100,
-    });
-    vi.spyOn(Math, "random").mockReturnValue(0);
-    const res = applyHoldemAction(state, 0, 50);
-    expect(res.state).toBeDefined();
-    expect(res.balance).toBeGreaterThanOrEqual(0);
+
+  it("allows raise when call portion already satisfies most of minimum", () => {
+    const state = createHoldemState({ roomId: "r4", host: "Host", hostId: "p1" });
+    addPlayer(state, { id: "p1", username: "A" });
+    addPlayer(state, { id: "p2", username: "B" });
+    addPlayer(state, { id: "p3", username: "C" });
+    const started = startRound(state, { p1: 100, p2: 100, p3: 100 });
+    expect(started.error).toBeUndefined();
+    expect(state.currentBet).toBe(10);
+    expect(state.turnIndex).toBe(0);
+
+    const invalid = applyRaise(state, "p1", 5);
+    expect(invalid.error).toBe("Minimum raise is $10.");
+
+    const raised = applyRaise(state, "p1", 10);
+    expect(raised.error).toBeUndefined();
+    expect(state.currentBet).toBe(20);
+  });
+
+  it("enforces minimum raise correctly after prior raises", () => {
+    const state = createHoldemState({ roomId: "r5", host: "Host", hostId: "p1" });
+    addPlayer(state, { id: "p1", username: "A" });
+    addPlayer(state, { id: "p2", username: "B" });
+    addPlayer(state, { id: "p3", username: "C" });
+    const started = startRound(state, { p1: 200, p2: 200, p3: 200 });
+    expect(started.error).toBeUndefined();
+
+    const firstRaise = applyRaise(state, "p1", 10);
+    expect(firstRaise.error).toBeUndefined();
+    expect(state.currentBet).toBe(20);
+
+    expect(state.turnIndex).toBe(1);
+    const badReRaise = applyRaise(state, "p2", 5);
+    expect(badReRaise.error).toBe("Minimum raise is $10.");
+
+    const goodReRaise = applyRaise(state, "p2", 10);
+    expect(goodReRaise.error).toBeUndefined();
+    expect(state.currentBet).toBe(30);
+  });
+
+  it("marks loser as loss even when they have uncommitted stack refunded", () => {
+    const state = createHoldemState({ roomId: "r6", host: "Host", hostId: "p1" });
+    state.phase = "river";
+    state.inRound = true;
+    state.settled = false;
+    state.currentBet = 0;
+    state.pot = 100;
+    state.community = [
+      { rank: "2", suit: "H" },
+      { rank: "3", suit: "D" },
+      { rank: "7", suit: "S" },
+      { rank: "9", suit: "C" },
+      { rank: "K", suit: "D" },
+    ];
+    state.players = [
+      {
+        id: "p1",
+        username: "Winner",
+        status: "playing",
+        cards: [
+          { rank: "A", suit: "H" },
+          { rank: "A", suit: "C" },
+        ],
+        folded: false,
+        allIn: false,
+        acted: false,
+        stack: 50,
+        roundBet: 0,
+        committed: 50,
+        betAmount: 100,
+      },
+      {
+        id: "p2",
+        username: "Loser",
+        status: "playing",
+        cards: [
+          { rank: "Q", suit: "H" },
+          { rank: "J", suit: "C" },
+        ],
+        folded: false,
+        allIn: true,
+        acted: true,
+        stack: 0,
+        roundBet: 0,
+        committed: 50,
+        betAmount: 50,
+      },
+    ];
+    state.turnIndex = 0;
+
+    const result = applyCheck(state, "p1");
+    expect(result.error).toBeUndefined();
+    expect(state.phase).toBe("showdown");
+    expect(state.players[0].lastResult).toBe("win");
+    expect(state.players[1].lastResult).toBe("loss");
   });
 });

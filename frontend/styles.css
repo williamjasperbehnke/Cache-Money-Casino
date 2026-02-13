@@ -3485,12 +3485,12 @@ body.small-win .topbar {
   gap: 10px;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-grid {
+:is(#blackjack, #holdem) .multi-grid {
   display: grid;
   gap: 18px;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-card {
+:is(#blackjack, #holdem) .multi-card {
   background: linear-gradient(180deg, rgba(15, 23, 42, 0.66), rgba(15, 23, 42, 0.42));
   border-radius: 14px;
   padding: 16px;
@@ -3501,26 +3501,26 @@ body.small-win .topbar {
   margin-bottom: 16px;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-create {
+:is(#blackjack, #holdem) .multi-create {
   display: grid;
   grid-template-columns: auto minmax(260px, 1fr) auto;
   gap: 10px;
   align-items: center;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-create #bjMultiRoomName,
-:is(#blackjack-multi, #holdem-multi) .bjmulti-create #heMultiRoomName {
+:is(#blackjack, #holdem) .multi-create #bjMultiRoomName,
+:is(#blackjack, #holdem) .multi-create #heMultiRoomName {
   order: 2;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-create #bjMultiCreate,
-:is(#blackjack-multi, #holdem-multi) .bjmulti-create #heMultiCreate {
+:is(#blackjack, #holdem) .multi-create #bjMultiCreate,
+:is(#blackjack, #holdem) .multi-create #heMultiCreate {
   order: 3;
   justify-self: end;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-create input,
-:is(#blackjack-multi, #holdem-multi) .bjmulti-invite input {
+:is(#blackjack, #holdem) .multi-create input,
+:is(#blackjack, #holdem) .multi-invite input {
   width: 100%;
   border-radius: 10px;
   border: 1px solid rgba(148, 163, 184, 0.4);
@@ -3530,24 +3530,24 @@ body.small-win .topbar {
   font-size: 13px;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-create .auto-toggle {
+:is(#blackjack, #holdem) .multi-create .auto-toggle {
   order: 1;
   margin: 0;
   white-space: nowrap;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-create input::placeholder {
+:is(#blackjack, #holdem) .multi-create input::placeholder {
   color: #94a3b8;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-room-list {
+:is(#blackjack, #holdem) .multi-room-list {
   display: flex;
   flex-direction: column;
   gap: 10px;
   margin: 12px 0 16px;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-search {
+:is(#blackjack, #holdem) .multi-search {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
@@ -3555,7 +3555,7 @@ body.small-win .topbar {
   margin: 10px 0 14px;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-search input {
+:is(#blackjack, #holdem) .multi-search input {
   width: 100%;
   border-radius: 12px;
   border: 1px solid rgba(148, 163, 184, 0.35);
@@ -3566,23 +3566,23 @@ body.small-win .topbar {
   transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-search input:focus {
+:is(#blackjack, #holdem) .multi-search input:focus {
   outline: none;
   border-color: rgba(125, 211, 252, 0.9);
   background: rgba(15, 23, 42, 0.8);
   box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18);
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-search input::placeholder {
+:is(#blackjack, #holdem) .multi-search input::placeholder {
   color: #7c8da8;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-search #bjMultiRefresh,
-:is(#blackjack-multi, #holdem-multi) .bjmulti-search #heMultiRefresh {
+:is(#blackjack, #holdem) .multi-search #bjMultiRefresh,
+:is(#blackjack, #holdem) .multi-search #heMultiRefresh {
   white-space: nowrap;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-room-card {
+:is(#blackjack, #holdem) .multi-room-card {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3594,13 +3594,13 @@ body.small-win .topbar {
   transition: border-color 0.2s ease, transform 0.12s ease, box-shadow 0.2s ease;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-room-card:hover {
+:is(#blackjack, #holdem) .multi-room-card:hover {
   border-color: rgba(125, 211, 252, 0.75);
   transform: translateY(-1px);
   box-shadow: 0 6px 14px rgba(2, 6, 23, 0.28);
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-room-card .title {
+:is(#blackjack, #holdem) .multi-room-card .title {
   font-weight: 700;
   font-size: 12px;
   color: #f8fafc;
@@ -3609,19 +3609,19 @@ body.small-win .topbar {
   gap: 8px;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-room-card .details {
+:is(#blackjack, #holdem) .multi-room-card .details {
   color: #94a3b8;
   font-size: 10px;
   margin-top: 3px;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-empty {
+:is(#blackjack, #holdem) .multi-empty {
   color: #94a3b8;
   font-size: 12px;
   padding: 10px 0;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-room-header {
+:is(#blackjack, #holdem) .multi-room-header {
   display: grid;
   grid-template-columns: auto minmax(280px, 1fr) auto;
   align-items: center;
@@ -3631,17 +3631,17 @@ body.small-win .topbar {
   border-bottom: 1px solid rgba(148, 163, 184, 0.18);
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-room-title {
+:is(#blackjack, #holdem) .multi-room-title {
   font-size: 15px;
   font-weight: 700;
   color: #e2e8f0;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-room {
+:is(#blackjack, #holdem) .multi-room {
   position: relative;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-connecting {
+:is(#blackjack, #holdem) .multi-connecting {
   position: absolute;
   inset: 0;
   z-index: 6;
@@ -3652,7 +3652,7 @@ body.small-win .topbar {
   backdrop-filter: blur(2px);
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-connecting-card {
+:is(#blackjack, #holdem) .multi-connecting-card {
   padding: 14px 16px;
   border-radius: 12px;
   border: 1px solid rgba(125, 211, 252, 0.45);
@@ -3661,22 +3661,22 @@ body.small-win .topbar {
   text-align: center;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-connecting-title {
+:is(#blackjack, #holdem) .multi-connecting-title {
   font-size: 11px;
   letter-spacing: 0.07em;
   text-transform: uppercase;
   color: #e2e8f0;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-connecting-subtitle {
+:is(#blackjack, #holdem) .multi-connecting-subtitle {
   margin-top: 6px;
   font-size: 10px;
   color: #93c5fd;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-id-tag,
-:is(#blackjack-multi, #holdem-multi) .bjmulti-host-tag,
-:is(#blackjack-multi, #holdem-multi) .bjmulti-count-tag {
+:is(#blackjack, #holdem) .multi-id-tag,
+:is(#blackjack, #holdem) .multi-host-tag,
+:is(#blackjack, #holdem) .multi-count-tag {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3690,18 +3690,18 @@ body.small-win .topbar {
   margin-right: 4px;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-count-tag {
+:is(#blackjack, #holdem) .multi-count-tag {
   margin-right: 0;
 }
 
-:is(#blackjack-multi, #holdem-multi) #bjMultiRoomId,
-:is(#blackjack-multi, #holdem-multi) #heMultiRoomId {
+:is(#blackjack, #holdem) #bjMultiRoomId,
+:is(#blackjack, #holdem) #heMultiRoomId {
   display: inline-flex;
   align-items: center;
   font-size: 13px;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-invite {
+:is(#blackjack, #holdem) .multi-invite {
   margin-bottom: 16px;
   padding: 12px;
   border-radius: 12px;
@@ -3709,7 +3709,7 @@ body.small-win .topbar {
   background: rgba(15, 23, 42, 0.4);
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-invite.bjmulti-invite-inline {
+:is(#blackjack, #holdem) .multi-invite.multi-invite-inline {
   margin: 0;
   padding: 0;
   border: 0;
@@ -3717,7 +3717,7 @@ body.small-win .topbar {
   min-width: 0;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-invite label {
+:is(#blackjack, #holdem) .multi-invite label {
   display: block;
   margin-bottom: 8px;
   font-size: 10px;
@@ -3726,31 +3726,31 @@ body.small-win .topbar {
   color: #94a3b8;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-invite-row {
+:is(#blackjack, #holdem) .multi-invite-row {
   display: flex;
   gap: 8px;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-table {
+:is(#blackjack, #holdem) .multi-table {
   display: grid;
   gap: 14px;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-dealer {
+:is(#blackjack, #holdem) .multi-dealer {
   padding: 12px;
   border-radius: 12px;
   border: 1px solid rgba(148, 163, 184, 0.2);
   background: rgba(15, 23, 42, 0.45);
 }
 
-#holdem-multi .he-pot-breakdown {
+#holdem .he-pot-breakdown {
   margin-top: 8px;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-#holdem-multi .he-pot-row {
+#holdem .he-pot-row {
   font-size: 11px;
   color: #cbd5e1;
   background: rgba(15, 23, 42, 0.46);
@@ -3759,66 +3759,66 @@ body.small-win .topbar {
   padding: 4px 10px;
 }
 
-#holdem-multi #heMultiPot {
+#holdem #heMultiPot {
   margin-top: 14px;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-players {
+:is(#blackjack, #holdem) .multi-players {
   display: grid;
   gap: 10px;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-hands {
+:is(#blackjack, #holdem) .multi-hands {
   display: grid;
   gap: 8px;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-hands .hand-block {
+:is(#blackjack, #holdem) .multi-hands .hand-block {
   padding: 10px;
   border-radius: 10px;
   background: rgba(15, 23, 42, 0.34);
   border: 1px solid rgba(148, 163, 184, 0.2);
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-hands .hand-block.active-hand {
+:is(#blackjack, #holdem) .multi-hands .hand-block.active-hand {
   border-color: rgba(59, 130, 246, 0.7);
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-player {
+:is(#blackjack, #holdem) .multi-player {
   padding: 12px;
   border-radius: 14px;
   border: 1px solid rgba(148, 163, 184, 0.24);
   background: linear-gradient(180deg, rgba(15, 23, 42, 0.55), rgba(15, 23, 42, 0.38));
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-player.sitting-out {
+:is(#blackjack, #holdem) .multi-player.sitting-out {
   border-style: dashed;
   border-color: rgba(148, 163, 184, 0.38);
   background: linear-gradient(180deg, rgba(30, 41, 59, 0.45), rgba(15, 23, 42, 0.3));
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-player.active {
+:is(#blackjack, #holdem) .multi-player.active {
   border-color: rgba(59, 130, 246, 0.9);
   box-shadow:
     0 0 0 2px rgba(59, 130, 246, 0.26),
     0 6px 14px rgba(2, 6, 23, 0.26);
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-player-header {
+:is(#blackjack, #holdem) .multi-player-header {
   display: flex;
   justify-content: space-between;
   margin-bottom: 8px;
   color: #e2e8f0;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-player-header .name {
+:is(#blackjack, #holdem) .multi-player-header .name {
   display: inline-flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
 }
 
-:is(#blackjack-multi, #holdem-multi) .player-role-tag {
+:is(#blackjack, #holdem) .player-role-tag {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3831,44 +3831,44 @@ body.small-win .topbar {
   line-height: 1;
 }
 
-:is(#blackjack-multi, #holdem-multi) .player-role-tag.is-you {
+:is(#blackjack, #holdem) .player-role-tag.is-you {
   color: #bae6fd;
   border: 1px solid rgba(125, 211, 252, 0.45);
   background: rgba(14, 116, 144, 0.2);
 }
 
-:is(#blackjack-multi, #holdem-multi) .player-role-tag.is-host {
+:is(#blackjack, #holdem) .player-role-tag.is-host {
   color: #fecaca;
   border: 1px solid rgba(248, 113, 113, 0.45);
   background: rgba(127, 29, 29, 0.28);
 }
 
-:is(#blackjack-multi, #holdem-multi) .player-role-tag.is-dealer {
+:is(#blackjack, #holdem) .player-role-tag.is-dealer {
   color: #f5d0fe;
   border: 1px solid rgba(217, 70, 239, 0.45);
   background: rgba(112, 26, 117, 0.28);
 }
 
-:is(#blackjack-multi, #holdem-multi) .player-role-tag.is-big-blind {
+:is(#blackjack, #holdem) .player-role-tag.is-big-blind {
   color: #86efac;
   border: 1px solid rgba(34, 197, 94, 0.45);
   background: rgba(22, 101, 52, 0.28);
 }
 
-:is(#blackjack-multi, #holdem-multi) .player-role-tag.is-small-blind {
+:is(#blackjack, #holdem) .player-role-tag.is-small-blind {
   color: #fde68a;
   border: 1px solid rgba(251, 191, 36, 0.45);
   background: rgba(120, 53, 15, 0.26);
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-player-header .status {
+:is(#blackjack, #holdem) .multi-player-header .status {
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: #94a3b8;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-player-header .status.is-sitting {
+:is(#blackjack, #holdem) .multi-player-header .status.is-sitting {
   color: #fcd34d;
   border: 1px solid rgba(252, 211, 77, 0.35);
   border-radius: 999px;
@@ -3876,7 +3876,7 @@ body.small-win .topbar {
   background: rgba(120, 53, 15, 0.22);
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-player-header .status.is-bet {
+:is(#blackjack, #holdem) .multi-player-header .status.is-bet {
   color: #bbf7d0;
   border: 1px solid rgba(74, 222, 128, 0.45);
   border-radius: 999px;
@@ -3884,49 +3884,49 @@ body.small-win .topbar {
   background: rgba(20, 83, 45, 0.28);
 }
 
-#holdem-multi .bjmulti-player-header .status.is-win {
+#holdem .multi-player-header .status.is-win {
   color: #22c55e;
 }
 
-#holdem-multi .bjmulti-player-header .status.is-loss {
+#holdem .multi-player-header .status.is-loss {
   color: #ef4444;
 }
 
-#holdem-multi .bjmulti-player-header .status.is-push {
+#holdem .multi-player-header .status.is-push {
   color: #f59e0b;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-result {
+:is(#blackjack, #holdem) .multi-result {
   margin-bottom: 6px;
   font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-results {
+:is(#blackjack, #holdem) .multi-results {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 6px;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-result.win { color: #22c55e; }
-:is(#blackjack-multi, #holdem-multi) .bjmulti-result.loss,
-:is(#blackjack-multi, #holdem-multi) .bjmulti-result.bust { color: #ef4444; }
-:is(#blackjack-multi, #holdem-multi) .bjmulti-result.push { color: #f59e0b; }
+:is(#blackjack, #holdem) .multi-result.win { color: #22c55e; }
+:is(#blackjack, #holdem) .multi-result.loss,
+:is(#blackjack, #holdem) .multi-result.bust { color: #ef4444; }
+:is(#blackjack, #holdem) .multi-result.push { color: #f59e0b; }
 
-#holdem-multi .he-result-hand {
+#holdem .he-result-hand {
   margin-top: 2px;
   font-size: 11px;
   letter-spacing: 0.04em;
   color: #cbd5e1;
 }
 
-#holdem-multi .he-result-wrap {
+#holdem .he-result-wrap {
   margin-top: 14px;
 }
 
-#holdem-multi .he-status-pill {
+#holdem .he-status-pill {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
@@ -3936,33 +3936,33 @@ body.small-win .topbar {
   letter-spacing: 0.06em;
 }
 
-#holdem-multi .he-player-meta {
+#holdem .he-player-meta {
   margin-top: 10px;
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
 }
 
-#holdem-multi .he-status-stack {
+#holdem .he-status-stack {
   color: #bfdbfe;
   border: 1px solid rgba(96, 165, 250, 0.45);
   background: rgba(30, 64, 175, 0.2);
 }
 
-#holdem-multi .he-status-in {
+#holdem .he-status-in {
   color: #86efac;
   border: 1px solid rgba(34, 197, 94, 0.45);
   background: rgba(21, 128, 61, 0.2);
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-actions {
+:is(#blackjack, #holdem) .multi-actions {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 8px;
   margin-top: 14px;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-bet-row {
+:is(#blackjack, #holdem) .multi-bet-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -3974,20 +3974,20 @@ body.small-win .topbar {
   background: rgba(15, 23, 42, 0.35);
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-bet-label {
+:is(#blackjack, #holdem) .multi-bet-label {
   font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #94a3b8;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-bet-buttons {
+:is(#blackjack, #holdem) .multi-bet-buttons {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-status {
+:is(#blackjack, #holdem) .multi-status {
   margin-top: 12px;
   color: #94a3b8;
   font-size: 10px;
@@ -3995,7 +3995,7 @@ body.small-win .topbar {
   text-transform: uppercase;
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-sitting-note {
+:is(#blackjack, #holdem) .multi-sitting-note {
   border: 1px dashed rgba(148, 163, 184, 0.4);
   border-radius: 10px;
   padding: 9px 10px;
@@ -4004,7 +4004,7 @@ body.small-win .topbar {
   background: rgba(2, 6, 23, 0.28);
 }
 
-:is(#blackjack-multi, #holdem-multi) .bjmulti-waiting-note {
+:is(#blackjack, #holdem) .multi-waiting-note {
   border: 1px solid rgba(125, 211, 252, 0.35);
   border-radius: 10px;
   padding: 9px 10px;
@@ -4014,35 +4014,35 @@ body.small-win .topbar {
 }
 
 @media (min-width: 960px) {
-  :is(#blackjack-multi, #holdem-multi) .bjmulti-grid {
+  :is(#blackjack, #holdem) .multi-grid {
     grid-template-columns: 1fr;
     align-items: start;
   }
 }
 
 @media (max-width: 700px) {
-  :is(#blackjack-multi, #holdem-multi) .bjmulti-actions {
+  :is(#blackjack, #holdem) .multi-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  :is(#blackjack-multi, #holdem-multi) .bjmulti-room-header {
+  :is(#blackjack, #holdem) .multi-room-header {
     grid-template-columns: 1fr;
   }
 
-  :is(#blackjack-multi, #holdem-multi) .bjmulti-invite-row {
+  :is(#blackjack, #holdem) .multi-invite-row {
     flex-direction: column;
   }
 
-  :is(#blackjack-multi, #holdem-multi) .bjmulti-invite-row .btn {
+  :is(#blackjack, #holdem) .multi-invite-row .btn {
     width: 100%;
   }
 
-  :is(#blackjack-multi, #holdem-multi) .bjmulti-search {
+  :is(#blackjack, #holdem) .multi-search {
     grid-template-columns: 1fr;
   }
 
-  :is(#blackjack-multi, #holdem-multi) .bjmulti-search #bjMultiRefresh,
-  :is(#blackjack-multi, #holdem-multi) .bjmulti-search #heMultiRefresh {
+  :is(#blackjack, #holdem) .multi-search #bjMultiRefresh,
+  :is(#blackjack, #holdem) .multi-search #heMultiRefresh {
     width: 100%;
   }
 }

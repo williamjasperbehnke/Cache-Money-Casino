@@ -1,5 +1,3 @@
-const { holdemPhaseCommunityCount } = require("./holdem");
-
 const maskCard = () => ({ rank: "?", suit: "?" });
 
 const maskCards = (count) => Array.from({ length: count }, () => maskCard());
@@ -18,24 +16,26 @@ const sanitizeBlackjackState = (state) => {
   return next;
 };
 
-const sanitizeBlackjackMultiState = (state) => {
+const sanitizeHoldemState = (state, viewerId = "") => {
   if (!state) return state;
   const next = { ...state };
   delete next.deck;
-  if (Array.isArray(next.dealer)) {
-    if (!next.revealDealer && next.dealer.length > 0) {
-      next.dealer = next.dealer.map((card, index) => (index === 0 ? maskCard() : card));
-    } else {
-      next.dealer = next.dealer.slice();
-    }
+  if (Array.isArray(next.community)) {
+    const visibleByPhase = {
+      preflop: 0,
+      flop: 3,
+      turn: 4,
+      river: 5,
+      showdown: 5,
+    };
+    const visibleCount = Number.isFinite(visibleByPhase[next.phase])
+      ? visibleByPhase[next.phase]
+      : next.community.length;
+    next.community = next.community.slice(0, Math.max(0, visibleCount));
   }
-  return next;
-};
-
-const sanitizeHoldemMultiState = (state, viewerId = "") => {
-  if (!state) return state;
-  const next = { ...state };
-  delete next.deck;
+  if (Array.isArray(next.dealer)) {
+    next.dealer = next.phase === "showdown" ? next.dealer.slice() : maskCards(next.dealer.length);
+  }
   if (Array.isArray(next.players)) {
     next.players = next.players.map((entry) => {
       const cards = Array.isArray(entry?.cards) ? entry.cards : [];
@@ -58,21 +58,6 @@ const sanitizePokerState = (state) => {
   return next;
 };
 
-const sanitizeHoldemState = (state) => {
-  if (!state) return state;
-  const next = { ...state };
-  delete next.deck;
-  if (Array.isArray(next.community)) {
-    const visible = holdemPhaseCommunityCount(next.phase);
-    next.community = next.community.slice(0, visible);
-  }
-  if (Array.isArray(next.dealer)) {
-    next.dealer =
-      next.phase === "showdown" ? next.dealer.slice() : maskCards(next.dealer.length);
-  }
-  return next;
-};
-
 const sanitizeMemoryState = (state) => {
   if (!state) return state;
   const next = { ...state };
@@ -90,11 +75,13 @@ const sanitizeMemoryState = (state) => {
 
 const sanitizeState = (game, state, viewerId = "") => {
   if (!state) return state;
-  if (game === "blackjack") return sanitizeBlackjackState(state);
-  if (game === "blackjack-multi") return sanitizeBlackjackMultiState(state);
-  if (game === "holdem-multi") return sanitizeHoldemMultiState(state, viewerId);
+  if (game === "blackjack") {
+    return sanitizeBlackjackState(state);
+  }
+  if (game === "holdem") {
+    return sanitizeHoldemState(state, viewerId);
+  }
   if (game === "poker") return sanitizePokerState(state);
-  if (game === "holdem") return sanitizeHoldemState(state);
   if (game === "memory") return sanitizeMemoryState(state);
   return state;
 };

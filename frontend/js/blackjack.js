@@ -1,518 +1,775 @@
 import {
-  state,
+  state as coreState,
   updateBalance,
-  updateBetTotal,
-  playSfx,
+  renderCards,
+  handTotal,
   showCenterToast,
   showCenterToasts,
-  renderCards,
-  revealDealer,
-  handTotal,
-  makeChipStack,
-  bindBetChips,
-  lockPanel,
+  playSfx,
 } from "./core.js";
 import { auth } from "./auth.js";
 
-const MAX_BET = 100;
-const AUTO_DEAL_DELAY = 200;
-const ROUND_RESET_DELAY = 1800;
+const BET_SYNC_DEBOUNCE_MS = 90;
+
+const getWsBase = () => {
+  const fromStorage = localStorage.getItem("casino-ws-base");
+  const fromWindow = window.WS_BASE || "";
+  const base = (fromStorage || fromWindow || "").trim();
+  return base ? base.replace(/\/+$/, "") : "";
+};
 
 export class BlackjackGame {
   constructor() {
     this.ui = {};
-  }
-
-  toastGuard() {
-    const snapshot = {
-      inRound: state.blackjack.inRound,
-      reveal: state.blackjack.revealDealer,
-      awaitingClear: state.blackjack.awaitingClear,
-    };
-    return () =>
-      state.blackjack.inRound === snapshot.inRound &&
-      state.blackjack.revealDealer === snapshot.reveal &&
-      state.blackjack.awaitingClear === snapshot.awaitingClear;
-  }
-
-  showToast(message, tone, duration) {
-    showCenterToast(message, tone, duration, this.toastGuard());
-  }
-
-  showToasts(messages) {
-    const guard = this.toastGuard();
-    showCenterToasts(messages.map((msg) => ({ ...msg, guard })));
+    this.socket = null;
+    this.roomId = "";
+    this.playerId = "";
+    this.state = null;
+    this.lastInRound = false;
+    this.prevMe = null;
+    this.sawBustThisRound = false;
+    this.authReadyPromise = null;
+    this.rooms = [];
+    this.localBetDraft = null;
+    this.betCommitTimer = null;
+    this.connectionReady = false;
   }
 
   cacheElements() {
     this.ui = {
-      dealBtn: document.getElementById("bjDeal"),
-      hitBtn: document.getElementById("bjHit"),
-      standBtn: document.getElementById("bjStand"),
-      doubleBtn: document.getElementById("bjDouble"),
-      splitBtn: document.getElementById("bjSplit"),
-      clearBtn: document.getElementById("bjClear"),
-      maxBtn: document.getElementById("bjMax"),
-      dealerEl: document.getElementById("bjDealer"),
-      playerEl: document.getElementById("bjPlayer"),
-      dealerTotal: document.getElementById("bjDealerTotal"),
-      playerTotal: document.getElementById("bjPlayerTotal"),
-      chipsWrap: document.querySelector("#blackjack .chips"),
-      chips: document.querySelectorAll("#blackjack .chip"),
-      autoBet: document.getElementById("bjAuto"),
+      lobby: document.getElementById("bjMultiLobby"),
+      room: document.getElementById("bjMultiRoom"),
+      roomId: document.getElementById("bjMultiRoomId"),
+      roomName: document.getElementById("bjMultiRoomName"),
+      roomPublic: document.getElementById("bjMultiPublic"),
+      searchId: document.getElementById("bjMultiSearchId"),
+      createBtn: document.getElementById("bjMultiCreate"),
+      refreshBtn: document.getElementById("bjMultiRefresh"),
+      rooms: document.getElementById("bjMultiRooms"),
+      invite: document.getElementById("bjMultiInvite"),
+      copyInvite: document.getElementById("bjMultiCopy"),
+      leaveBtn: document.getElementById("bjMultiLeave"),
+      dealer: document.getElementById("bjMultiDealer"),
+      dealerTotal: document.getElementById("bjMultiDealerTotal"),
+      players: document.getElementById("bjMultiPlayers"),
+      startBtn: document.getElementById("bjMultiStart"),
+      hitBtn: document.getElementById("bjMultiHit"),
+      standBtn: document.getElementById("bjMultiStand"),
+      doubleBtn: document.getElementById("bjMultiDouble"),
+      splitBtn: document.getElementById("bjMultiSplit"),
+      betRow: document.querySelector("#bjMultiRoom .multi-bet-row"),
+      betAmount: document.getElementById("bjMultiBetAmount"),
+      betButtons: document.querySelectorAll("#blackjack .multi-bet-buttons .chip"),
+      betClear: document.getElementById("bjMultiBetClear"),
+      status: document.getElementById("bjMultiStatus"),
+      connecting: document.getElementById("bjMultiConnecting"),
     };
-  }
-
-  updateTotal() {
-    const total =
-      state.blackjack.inRound && state.blackjack.bets.length > 0
-        ? state.blackjack.bets.reduce((sum, val) => sum + val, 0)
-        : state.blackjack.betAmount;
-    updateBetTotal(total, "bjBetTotal");
-  }
-
-  scheduleAutoBet() {
-    const { autoBet, dealBtn } = this.ui;
-    if (!autoBet?.checked || state.blackjack.lastBet <= 0) return;
-    setTimeout(() => {
-      if (state.blackjack.inRound) return;
-      state.blackjack.betAmount = state.blackjack.lastBet;
-      this.updateTotal();
-      dealBtn?.click();
-    }, AUTO_DEAL_DELAY);
-  }
-
-  renderHands() {
-    const playerEl = this.ui.playerEl;
-    if (!playerEl) return;
-    playerEl.innerHTML = "";
-    const showLabels = state.blackjack.hands.length > 1;
-    state.blackjack.hands.forEach((hand, index) => {
-      const wrapper = document.createElement("div");
-      wrapper.className = showLabels ? "hand-block" : "hand-block single";
-      if (index === state.blackjack.activeHand) wrapper.classList.add("active-hand");
-      if (showLabels) {
-        const label = document.createElement("div");
-        label.className = "hand-label";
-        label.textContent = `Hand ${index + 1}`;
-        wrapper.appendChild(label);
-      }
-      const cardsEl = document.createElement("div");
-      cardsEl.className = "cards";
-      renderCards(cardsEl, hand);
-      const totalEl = document.createElement("div");
-      totalEl.className = "total";
-      totalEl.textContent = `Total: ${handTotal(hand)}`;
-      const stackEl = document.createElement("div");
-      stackEl.className = "chip-stack inline hand-stack";
-      makeChipStack(stackEl, state.blackjack.bets[index] || 0);
-      wrapper.appendChild(cardsEl);
-      wrapper.appendChild(totalEl);
-      wrapper.appendChild(stackEl);
-      playerEl.appendChild(wrapper);
-    });
-  }
-
-  updateControls() {
-    const {
-      dealBtn,
-      hitBtn,
-      standBtn,
-      doubleBtn,
-      splitBtn,
-      clearBtn,
-      maxBtn,
-      chipsWrap,
-    } = this.ui;
-    if (!state.blackjack.inRound) {
-      hitBtn?.classList.add("hidden");
-      standBtn?.classList.add("hidden");
-      doubleBtn?.classList.add("hidden");
-      splitBtn?.classList.add("hidden");
-      dealBtn?.classList.remove("hidden");
-      clearBtn?.classList.remove("hidden");
-      maxBtn?.classList.remove("hidden");
-      if (!state.blackjack.awaitingClear) chipsWrap?.classList.remove("hidden");
-      else chipsWrap?.classList.add("hidden");
-      return;
-    }
-    dealBtn?.classList.add("hidden");
-    clearBtn?.classList.add("hidden");
-    maxBtn?.classList.add("hidden");
-    chipsWrap?.classList.add("hidden");
-    hitBtn?.classList.remove("hidden");
-    standBtn?.classList.remove("hidden");
-    const hand = state.blackjack.hands[state.blackjack.activeHand] || [];
-    const canDouble = hand.length === 2 && !state.blackjack.doubled[state.blackjack.activeHand];
-    doubleBtn?.classList.toggle("hidden", !canDouble);
-    const canSplit =
-      !state.blackjack.splitUsed && hand.length === 2 && hand[0].rank === hand[1].rank;
-    splitBtn?.classList.toggle("hidden", !canSplit);
-  }
-
-  resetRound(keepBet = false) {
-    state.blackjack.bet = 0;
-    if (!keepBet) {
-      state.blackjack.betAmount = 0;
-      updateBetTotal(0, "bjBetTotal");
-    }
-    state.blackjack.hands = [];
-    state.blackjack.bets = [];
-    state.blackjack.doubled = [];
-    state.blackjack.busted = [];
-    state.blackjack.pendingMessages = [];
-    state.blackjack.activeHand = 0;
-    state.blackjack.splitUsed = false;
-    state.blackjack.deck = [];
-    state.blackjack.player = [];
-    state.blackjack.dealer = [];
-    state.blackjack.inRound = false;
-    state.blackjack.revealDealer = false;
-    state.blackjack.awaitingClear = false;
-    this.ui.hitBtn?.classList.add("hidden");
-    this.ui.standBtn?.classList.add("hidden");
-    this.ui.doubleBtn?.classList.add("hidden");
-    this.ui.splitBtn?.classList.add("hidden");
-    if (this.ui.dealerEl) this.ui.dealerEl.innerHTML = "";
-    if (this.ui.playerEl) this.ui.playerEl.innerHTML = "";
-    if (this.ui.dealerTotal) this.ui.dealerTotal.textContent = "";
-    if (this.ui.playerTotal) this.ui.playerTotal.textContent = "";
-    if (keepBet) updateBetTotal(state.blackjack.betAmount, "bjBetTotal");
-  }
-
-  applyServerState(serverState, balance) {
-    if (!serverState) return;
-    state.blackjack.hands = serverState.hands || [];
-    state.blackjack.dealer = serverState.dealer || [];
-    state.blackjack.bets = serverState.bets || [];
-    state.blackjack.doubled = serverState.doubled || [];
-    state.blackjack.busted = serverState.busted || [];
-    state.blackjack.activeHand = serverState.activeHand || 0;
-    state.blackjack.splitUsed = Boolean(serverState.splitUsed);
-    state.blackjack.inRound = Boolean(serverState.inRound);
-    state.blackjack.revealDealer = Boolean(serverState.revealDealer);
-    state.blackjack.awaitingClear = !state.blackjack.inRound;
-    state.blackjack.deck = serverState.deck || [];
-    if (Number.isFinite(balance)) {
-      state.balance = balance;
-      updateBalance();
-    }
-  }
-
-  serializeState() {
-    return { ...state.blackjack };
-  }
-
-  restoreFromSaved(saved) {
-    if (!saved) return;
-    Object.assign(state.blackjack, saved);
-    state.blackjack.hands = Array.isArray(state.blackjack.hands) ? state.blackjack.hands : [];
-    state.blackjack.dealer = Array.isArray(state.blackjack.dealer) ? state.blackjack.dealer : [];
-    state.blackjack.bets = Array.isArray(state.blackjack.bets) ? state.blackjack.bets : [];
-    state.blackjack.doubled = Array.isArray(state.blackjack.doubled)
-      ? state.blackjack.doubled
-      : [];
-    state.blackjack.busted = Array.isArray(state.blackjack.busted) ? state.blackjack.busted : [];
-    state.blackjack.inRound = Boolean(state.blackjack.inRound);
-    state.blackjack.revealDealer = Boolean(state.blackjack.revealDealer);
-    state.blackjack.awaitingClear = Boolean(state.blackjack.awaitingClear);
-    this.updateTotal();
-    this.renderHands();
-    this.renderDealer();
-    this.updateControls();
-  }
-
-  renderDealer() {
-    if (!this.ui.dealerEl) return;
-    if (!state.blackjack.inRound && state.blackjack.dealer.length === 0) {
-      renderCards("bjDealer", []);
-      if (this.ui.dealerTotal) this.ui.dealerTotal.textContent = "";
-      return;
-    }
-    if (state.blackjack.revealDealer) {
-      renderCards("bjDealer", state.blackjack.dealer);
-      revealDealer("bjDealer");
-      if (this.ui.dealerTotal) {
-        this.ui.dealerTotal.textContent = `Total: ${handTotal(state.blackjack.dealer)}`;
-      }
-      return;
-    }
-    renderCards("bjDealer", state.blackjack.dealer, true);
-    if (this.ui.dealerTotal) this.ui.dealerTotal.textContent = "Total: ?";
-  }
-
-  handleOutcome(outcomes = [], messages = []) {
-    const combined = [...messages];
-    if (outcomes.length > 0) {
-      const multiple = outcomes.length > 1;
-      outcomes.forEach((outcome) => {
-        const labelPrefix = multiple ? `Hand ${outcome.index + 1} ` : "";
-        if (outcome.result === "win") {
-          combined.push({
-            text: multiple ? `${labelPrefix}wins!` : "You win!",
-            tone: "win",
-          });
-        } else if (outcome.result === "push") {
-          combined.push({
-            text: multiple ? `${labelPrefix}pushes.` : "Push.",
-            tone: "win",
-          });
-        } else {
-          combined.push({
-            text: multiple ? `${labelPrefix}loses.` : "You lose.",
-            tone: "danger",
-          });
-        }
-      });
-      const hasWin = outcomes.some((o) => o.result === "win");
-      const hasPush = outcomes.some((o) => o.result === "push");
-      playSfx(hasWin || hasPush ? "win" : "lose");
-    } else if (messages.length > 0) {
-      playSfx("lose");
-    }
-    if (combined.length > 0) this.showToasts(combined);
-  }
-
-  handleRoundEnd(autoDeal) {
-    const { dealBtn } = this.ui;
-    state.blackjack.awaitingClear = true;
-    this.updateControls();
-    setTimeout(() => {
-      this.resetRound(autoDeal);
-      this.updateControls();
-      if (autoDeal) dealBtn?.click();
-      else this.scheduleAutoBet();
-    }, ROUND_RESET_DELAY);
-  }
-
-  addBet(amount) {
-    if (state.blackjack.inRound) {
-      this.showToast("Round running.", "danger");
-      return;
-    }
-    const next = Math.min(MAX_BET, state.blackjack.betAmount + amount);
-    if (next === state.blackjack.betAmount) {
-      this.showToast("Max bet is $100.", "danger");
-      return;
-    }
-    state.blackjack.betAmount = next;
-    this.updateTotal();
-  }
-
-  removeBet(amount) {
-    if (state.blackjack.inRound) {
-      this.showToast("Round running.", "danger");
-      return;
-    }
-    state.blackjack.betAmount = Math.max(0, state.blackjack.betAmount - amount);
-    this.updateTotal();
-  }
-
-  bindEvents() {
-    const { dealBtn, hitBtn, standBtn, doubleBtn, splitBtn, clearBtn, maxBtn } = this.ui;
-
-    bindBetChips({
-      chips: this.ui.chips,
-      canBet: () => !state.blackjack.inRound && state.balance > 0,
-      getBalance: () => Math.min(state.balance, MAX_BET),
-      getToCall: () => 0,
-      getBetAmount: () => state.blackjack.betAmount,
-      setBetAmount: (amount) => {
-        if (amount === state.blackjack.betAmount && amount === MAX_BET) {
-          this.showToast("Max bet is $100.", "danger");
-        }
-        state.blackjack.betAmount = amount;
-      },
-      onUpdate: () => this.updateTotal(),
-      onHit: () => playSfx("hit"),
-      onClosed: () => {
-        if (state.blackjack.inRound) {
-          this.showToast("Round running.", "danger");
-        } else {
-          this.showToast("Not enough credits.", "danger");
-        }
-      },
-    });
-
-    clearBtn?.addEventListener("click", () => {
-      if (state.blackjack.inRound) {
-        this.showToast("Round running.", "danger");
-        return;
-      }
-      state.blackjack.betAmount = 0;
-      this.updateTotal();
-    });
-
-    maxBtn?.addEventListener("click", () => {
-      if (state.blackjack.inRound) {
-        this.showToast("Round running.", "danger");
-        return;
-      }
-      state.blackjack.betAmount = Math.min(MAX_BET, state.balance);
-      this.updateTotal();
-    });
-
-    dealBtn?.addEventListener("click", async () => {
-      if (state.blackjack.inRound) {
-        this.showToast("Round already running.", "danger");
-        return;
-      }
-      const bet = state.blackjack.betAmount;
-      if (bet <= 0) {
-        this.showToast("Place a bet to deal.", "danger");
-        return;
-      }
-      if (bet > state.balance) {
-        this.showToast("Not enough credits.", "danger");
-        return;
-      }
-      playSfx("deal");
-      state.blackjack.lastBet = bet;
-      const unlock = lockPanel("blackjack");
-      try {
-        const payload = await auth.request("/api/games/blackjack/deal", {
-          method: "POST",
-          body: JSON.stringify({ bet }),
-        });
-        this.applyServerState(payload.state, payload.balance);
-        this.renderHands();
-        this.renderDealer();
-        this.updateControls();
-        this.updateTotal();
-      } catch (err) {
-        this.showToast(err.message || "Deal failed.", "danger");
-      } finally {
-        unlock();
-      }
-    });
-
-    hitBtn?.addEventListener("click", async () => {
-      if (!state.blackjack.inRound) return;
-      const unlock = lockPanel("blackjack");
-      try {
-        const payload = await auth.request("/api/games/blackjack/hit", {
-          method: "POST",
-          body: JSON.stringify({}),
-        });
-        this.applyServerState(payload.state, payload.balance);
-        this.renderHands();
-        this.renderDealer();
-        this.updateControls();
-        this.updateTotal();
-        this.handleOutcome(payload.outcomes || [], payload.messages || []);
-        if (!state.blackjack.inRound) {
-          const auto = this.ui.autoBet?.checked;
-          if (!auto) {
-            state.blackjack.betAmount = 0;
-            updateBetTotal(0, "bjBetTotal");
-          }
-          this.handleRoundEnd(auto);
-        }
-      } catch (err) {
-        this.showToast(err.message || "Hit failed.", "danger");
-      } finally {
-        unlock();
-      }
-    });
-
-    standBtn?.addEventListener("click", async () => {
-      if (!state.blackjack.inRound) return;
-      const unlock = lockPanel("blackjack");
-      try {
-        const payload = await auth.request("/api/games/blackjack/stand", {
-          method: "POST",
-          body: JSON.stringify({}),
-        });
-        this.applyServerState(payload.state, payload.balance);
-        this.renderHands();
-        this.renderDealer();
-        this.updateControls();
-        this.updateTotal();
-        this.handleOutcome(payload.outcomes || [], payload.messages || []);
-        if (!state.blackjack.inRound) {
-          const auto = this.ui.autoBet?.checked;
-          if (!auto) {
-            state.blackjack.betAmount = 0;
-            updateBetTotal(0, "bjBetTotal");
-          }
-          this.handleRoundEnd(auto);
-        }
-      } catch (err) {
-        this.showToast(err.message || "Stand failed.", "danger");
-      } finally {
-        unlock();
-      }
-    });
-
-    doubleBtn?.addEventListener("click", async () => {
-      if (!state.blackjack.inRound) return;
-      const currentBet = state.blackjack.bets[state.blackjack.activeHand] || 0;
-      if (currentBet > state.balance) {
-        this.showToast("Not enough credits to double.", "danger");
-        return;
-      }
-      state.balance -= currentBet;
-      updateBalance();
-      const unlock = lockPanel("blackjack");
-      try {
-        const payload = await auth.request("/api/games/blackjack/double", {
-          method: "POST",
-          body: JSON.stringify({}),
-        });
-        this.applyServerState(payload.state, payload.balance);
-        this.renderHands();
-        this.renderDealer();
-        this.updateControls();
-        this.updateTotal();
-        this.handleOutcome(payload.outcomes || [], payload.messages || []);
-        if (!state.blackjack.inRound) {
-          const auto = this.ui.autoBet?.checked;
-          if (!auto) {
-            state.blackjack.betAmount = 0;
-            updateBetTotal(0, "bjBetTotal");
-          }
-          this.handleRoundEnd(auto);
-        }
-      } catch (err) {
-        state.balance += currentBet;
-        updateBalance();
-        this.showToast(err.message || "Double failed.", "danger");
-      } finally {
-        unlock();
-      }
-    });
-
-    splitBtn?.addEventListener("click", async () => {
-      if (!state.blackjack.inRound || state.blackjack.splitUsed) return;
-      const unlock = lockPanel("blackjack");
-      try {
-        const payload = await auth.request("/api/games/blackjack/split", {
-          method: "POST",
-          body: JSON.stringify({}),
-        });
-        this.applyServerState(payload.state, payload.balance);
-        this.updateTotal();
-        this.renderHands();
-        this.renderDealer();
-        this.updateControls();
-        this.handleOutcome(payload.outcomes || [], payload.messages || []);
-      } catch (err) {
-        this.showToast(err.message || "Split failed.", "danger");
-      } finally {
-        unlock();
-      }
-    });
   }
 
   init() {
     this.cacheElements();
-    this.bindEvents();
-    this.resetRound(false);
-    this.updateTotal();
-    this.updateControls();
+    this.bindControls();
+    window.addEventListener("beforeunload", () => this.closeSocket(false));
+    const params = new URLSearchParams(window.location.search);
+    const room = params.get("room");
+    if (room) {
+      this.ui.lobby?.classList.add("hidden");
+      this.ui.room?.classList.add("hidden");
+    }
+    void this.bootstrap(room);
   }
 
-  reset() {
-    this.resetRound(false);
+  async bootstrap(preferredRoom = "") {
+    await this.ensureAuthReady();
+    if (preferredRoom) {
+      await this.joinRoom(preferredRoom);
+      if (this.roomId) {
+        void this.loadLobby();
+        return;
+      }
+      this.showLobby();
+    }
+    await this.loadLobby();
+  }
+
+  async ensureAuthReady() {
+    if (auth.apiToken || auth.token || auth.guestToken) return;
+    if (!this.authReadyPromise) {
+      this.authReadyPromise = auth.ensureGuestSession().finally(() => {
+        this.authReadyPromise = null;
+      });
+    }
+    await this.authReadyPromise;
+  }
+
+  bindControls() {
+    this.ui.createBtn?.addEventListener("click", () => this.createRoom());
+    this.ui.refreshBtn?.addEventListener("click", () => this.loadLobby());
+    this.ui.searchId?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        this.searchAndMaybeJoin();
+      }
+    });
+    this.ui.searchId?.addEventListener("input", () => this.searchRooms());
+    this.ui.leaveBtn?.addEventListener("click", () => this.leaveRoom());
+    this.ui.copyInvite?.addEventListener("click", () => this.copyInvite());
+    this.ui.startBtn?.addEventListener("click", () => this.sendAction("START"));
+    this.ui.hitBtn?.addEventListener("click", () => this.sendAction("HIT"));
+    this.ui.standBtn?.addEventListener("click", () => this.sendAction("STAND"));
+    this.ui.doubleBtn?.addEventListener("click", () => this.sendAction("DOUBLE"));
+    this.ui.splitBtn?.addEventListener("click", () => this.sendAction("SPLIT"));
+    this.ui.betButtons?.forEach((btn) => {
+      const amount = Number(btn.dataset.amount) || 0;
+      btn.addEventListener("click", () => {
+        this.adjustLocalBet(amount);
+        playSfx("hit");
+      });
+      btn.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        this.adjustLocalBet(-amount);
+        playSfx("hit");
+      });
+    });
+    this.ui.betClear?.addEventListener("click", () => {
+      this.setLocalBet(0);
+    });
+  }
+
+  async loadLobby() {
+    try {
+      await this.ensureAuthReady();
+      const payload = await auth.request("/api/games/blackjack/rooms", { method: "GET" });
+      this.rooms = Array.isArray(payload.rooms) ? payload.rooms : [];
+      this.searchRooms();
+    } catch (err) {
+      console.error("Failed to load multiplayer rooms", err);
+      showCenterToast("Unable to load rooms.", "danger");
+    }
+  }
+
+  searchRooms() {
+    const query = (this.ui.searchId?.value || "").trim().toLowerCase();
+    this.renderRoomList(this.filterRoomsByQuery(query), query);
+  }
+
+  async searchAndMaybeJoin() {
+    const query = (this.ui.searchId?.value || "").trim().toLowerCase();
+    const filtered = this.filterRoomsByQuery(query);
+    if (filtered.length > 0) {
+      this.renderRoomList(filtered, query);
+      return;
+    }
+    this.renderRoomList([], query);
+  }
+
+  filterRoomsByQuery(query) {
+    if (!query) return this.rooms;
+    return this.rooms.filter((room) =>
+      String(room.roomId || "")
+        .toLowerCase()
+        .includes(query) ||
+      String(room.name || "")
+        .toLowerCase()
+        .includes(query)
+    );
+  }
+
+  renderRoomList(rooms, query = "") {
+    if (!this.ui.rooms) return;
+    this.ui.rooms.innerHTML = "";
+    if (!rooms.length) {
+      const empty = document.createElement("div");
+      empty.className = "multi-empty";
+      empty.textContent = query
+        ? `No tables found for ID: ${query}`
+        : "No public tables yet.";
+      this.ui.rooms.appendChild(empty);
+      return;
+    }
+    rooms.forEach((room) => {
+      const card = document.createElement("div");
+      card.className = "multi-room-card";
+      const meta = document.createElement("div");
+      meta.className = "multi-room-meta";
+      const roomName = String(room.name || "").trim() || "Blackjack Table";
+      meta.innerHTML = `
+        <div class="title">${roomName}</div>
+        <div class="details">
+          <span class="multi-id-tag">ID</span> ${room.roomId}
+          <span class="multi-host-tag">HOST</span> ${room.host}
+          <span class="multi-count-tag">${room.playerCount}/${room.maxPlayers}</span>
+        </div>
+      `;
+      const btn = document.createElement("button");
+      btn.className = "btn ghost";
+      btn.textContent = "Join";
+      btn.addEventListener("click", () => this.joinRoom(room.roomId));
+      card.appendChild(meta);
+      card.appendChild(btn);
+      this.ui.rooms.appendChild(card);
+    });
+  }
+
+  async createRoom() {
+    const name = this.ui.roomName?.value?.trim() || "Blackjack Table";
+    const isPublic = Boolean(this.ui.roomPublic?.checked);
+    try {
+      await this.ensureAuthReady();
+      const payload = await auth.request("/api/games/blackjack/rooms", {
+        method: "POST",
+        body: JSON.stringify({ name, public: isPublic }),
+      });
+      if (payload.roomId) {
+        await this.joinRoom(payload.roomId);
+      }
+    } catch (err) {
+      console.error("Failed to create multiplayer room", err);
+      showCenterToast("Unable to create room.", "danger");
+    }
+  }
+
+  async joinRoom(roomId) {
+    try {
+      await this.ensureAuthReady();
+      const payload = await auth.request(`/api/games/blackjack/rooms/${roomId}/join`, {
+        method: "POST",
+      });
+      this.roomId = roomId;
+      this.syncRoomQuery(roomId);
+      this.playerId = payload.playerId || this.playerId;
+      this.setConnectionReady(false);
+      this.applyState(payload.state);
+      this.connectSocket();
+      this.showRoom();
+      this.setInviteLink(roomId);
+    } catch (err) {
+      console.error("Failed to join multiplayer room", { roomId, err });
+      showCenterToast("Unable to join room.", "danger");
+    }
+  }
+
+  async leaveRoom() {
+    if (!this.roomId) return;
+    try {
+      await auth.request(`/api/games/blackjack/rooms/${this.roomId}/leave`, {
+        method: "POST",
+      });
+    } catch (err) {
+      // ignore
+    }
+    this.closeSocket(true);
+    this.clearLocalBetDraft();
+    this.setConnectionReady(false);
+    this.roomId = "";
+    this.syncRoomQuery("");
+    this.playerId = "";
+    this.state = null;
+    this.showLobby();
+    this.loadLobby();
+  }
+
+  syncRoomQuery(roomId) {
+    try {
+      const url = new URL(window.location.href);
+      if (roomId) url.searchParams.set("room", roomId);
+      else url.searchParams.delete("room");
+      window.history.replaceState({}, "", url.toString());
+    } catch (err) {
+      // ignore history/url failures
+    }
+  }
+
+  connectSocket() {
+    if (this.socket || !this.roomId) return;
+    const base = getWsBase();
+    if (!base) {
+      showCenterToast("Missing WebSocket endpoint.", "danger");
+      return;
+    }
+    const token = encodeURIComponent(auth.apiToken || "");
+    const ws = new WebSocket(`${base}?token=${token}`);
+    this.socket = ws;
+    ws.addEventListener("open", () => {
+      ws.send(JSON.stringify({ action: "join", roomId: this.roomId }));
+    });
+    ws.addEventListener("message", (event) => {
+      let msg = null;
+      try {
+        msg = JSON.parse(event.data || "{}");
+      } catch (err) {
+        return;
+      }
+      if (msg.type === "ROOM_JOINED") {
+        this.setConnectionReady(true);
+        return;
+      }
+      if (msg.type === "BLACKJACK_MULTI_STATE" && msg.roomId === this.roomId) {
+        this.applyState(msg.state);
+      } else if (msg.type === "BALANCE_UPDATE" && Number.isFinite(Number(msg.balance))) {
+        coreState.balance = Number(msg.balance);
+        updateBalance();
+      } else if (msg.error) {
+        showCenterToast(msg.error, "danger");
+      }
+    });
+    ws.addEventListener("close", () => {
+      this.socket = null;
+    });
+  }
+
+  closeSocket(sendLeave = true) {
+    this.clearLocalBetDraft();
+    this.setConnectionReady(false);
+    if (!this.socket) return;
+    if (sendLeave) {
+      try {
+        this.socket.send(JSON.stringify({ action: "leave" }));
+      } catch (err) {
+        // ignore
+      }
+    }
+    this.socket.close();
+    this.socket = null;
+  }
+
+  sendAction(type, payload = {}) {
+    if (!this.connectionReady) return;
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      showCenterToast("Connection not ready.", "danger");
+      return;
+    }
+    if (type === "START") playSfx("deal");
+    if (type === "HIT" || type === "DOUBLE" || type === "SPLIT") playSfx("hit");
+    if (type === "STAND") playSfx("stop");
+    this.socket.send(
+      JSON.stringify({
+        action: "action",
+        payload: { game: "blackjack", type, roomId: this.roomId, ...payload },
+      })
+    );
+  }
+
+  setLocalBet(nextAmount) {
+    if (!this.state || this.state.inRound) return;
+    const me = this.state.players?.find((entry) => entry.id === this.playerId);
+    if (!me) return;
+    const bank = Math.max(0, Number(coreState.balance || 0));
+    const cap = bank;
+    const next = Math.min(cap, Math.max(0, Number(nextAmount) || 0));
+    me.betAmount = next;
+    me.status = next > 0 ? "waiting" : "sitting";
+    this.localBetDraft = next;
+    this.updateBet(this.state);
+    this.queueBetCommit();
+  }
+
+  adjustLocalBet(delta) {
+    if (!this.state || this.state.inRound) return;
+    const me = this.state.players?.find((entry) => entry.id === this.playerId);
+    if (!me) return;
+    const current = Math.max(0, Number(me.betAmount || 0));
+    this.setLocalBet(current + Number(delta || 0));
+  }
+
+  queueBetCommit() {
+    if (this.betCommitTimer) {
+      clearTimeout(this.betCommitTimer);
+      this.betCommitTimer = null;
+    }
+    this.betCommitTimer = setTimeout(() => {
+      this.betCommitTimer = null;
+      if (this.localBetDraft === null) return;
+      const amount = Math.max(0, Number(this.localBetDraft) || 0);
+      this.sendAction("BET", { amount });
+    }, BET_SYNC_DEBOUNCE_MS);
+  }
+
+  clearLocalBetDraft() {
+    this.localBetDraft = null;
+    if (this.betCommitTimer) {
+      clearTimeout(this.betCommitTimer);
+      this.betCommitTimer = null;
+    }
+  }
+
+  isRoundCooldownActive(state) {
+    return Boolean(state && state.phase === "complete");
+  }
+
+  setConnectionReady(ready) {
+    this.connectionReady = Boolean(ready);
+    if (this.ui.connecting) {
+      this.ui.connecting.classList.toggle("hidden", this.connectionReady);
+    }
+    if (this.state) {
+      this.updateControls(this.state);
+      this.updateStatus(this.state);
+    }
+  }
+
+  applyState(state) {
+    const prevInRound = this.lastInRound;
+    const nextState = state || null;
+    if (nextState?.inRound) {
+      this.clearLocalBetDraft();
+    } else if (nextState && this.localBetDraft !== null) {
+      const meFromServer = nextState.players?.find((entry) => entry.id === this.playerId);
+      if (meFromServer) {
+        const serverBet = Math.max(0, Number(meFromServer.betAmount || 0));
+        const draftBet = Math.max(0, Number(this.localBetDraft || 0));
+        if (serverBet === draftBet) {
+          this.localBetDraft = null;
+        } else {
+          meFromServer.betAmount = draftBet;
+          meFromServer.status = draftBet > 0 ? "waiting" : "sitting";
+        }
+      }
+    }
+    this.state = nextState;
+    if (!this.state) {
+      this.showLobby();
+      this.loadLobby();
+      return;
+    }
+    const me = this.state.players?.find((entry) => entry.id === this.playerId) || null;
+    this.lastInRound = Boolean(this.state.inRound);
+    if (this.lastInRound) {
+      this.sawBustThisRound = false;
+    }
+    if (this.lastInRound && me) {
+      const prevBusted = Array.isArray(this.prevMe?.busted) ? this.prevMe.busted : [];
+      const nextBusted = Array.isArray(me.busted) ? me.busted : [];
+      const newBusts = nextBusted
+        .map((busted, index) => (busted && !prevBusted[index] ? index : -1))
+        .filter((index) => index >= 0);
+      if (newBusts.length > 0) {
+        const multiple = nextBusted.length > 1;
+        const messages = newBusts.map((index) => ({
+          text: multiple ? `Hand ${index + 1} busts.` : "You bust.",
+          tone: "danger",
+        }));
+        showCenterToasts(messages);
+        playSfx("lose");
+        this.sawBustThisRound = true;
+      }
+    }
+    if (prevInRound && !this.lastInRound) {
+      if (!this.sawBustThisRound && me) {
+        const hasHands = Array.isArray(me.hands) && me.hands.length > 0;
+        if (!hasHands) {
+          // Player sat out; no outcome toasts or sounds.
+        } else if (Array.isArray(me.busted) && me.busted.some(Boolean)) {
+          const multiple = me.busted.length > 1;
+          const messages = me.busted
+            .map((busted, index) => (busted ? index : -1))
+            .filter((index) => index >= 0)
+            .map((index) => ({
+              text: multiple ? `Hand ${index + 1} busts.` : "You bust.",
+              tone: "danger",
+            }));
+          if (messages.length > 0) {
+            showCenterToasts(messages);
+            playSfx("lose");
+          }
+        } else if (!me.busted?.some(Boolean)) {
+          const outcomes = Array.isArray(me.lastOutcomes) ? me.lastOutcomes : [];
+          if (outcomes.length > 0) {
+            const multiple = outcomes.length > 1;
+            const messages = outcomes.map((outcome) => {
+              const prefix = multiple ? `Hand ${outcome.index + 1} ` : "";
+              if (outcome.result === "win") {
+                return { text: multiple ? `${prefix}wins!` : "You win!", tone: "win" };
+              }
+              if (outcome.result === "push") {
+                return { text: multiple ? `${prefix}pushes.` : "Push.", tone: "win" };
+              }
+              return { text: multiple ? `${prefix}loses.` : "You lose.", tone: "danger" };
+            });
+            showCenterToasts(messages);
+            const hasWin = outcomes.some((o) => o.result === "win");
+            const hasPush = outcomes.some((o) => o.result === "push");
+            playSfx(hasWin || hasPush ? "win" : "lose");
+          } else if (me.lastResult === "win") {
+            showCenterToasts([{ text: "You win!", tone: "win" }]);
+            playSfx("win");
+          } else if (me.lastResult === "push") {
+            showCenterToasts([{ text: "Push.", tone: "win" }]);
+            playSfx("win");
+          } else if (me.lastResult) {
+            showCenterToasts([{ text: "You lose.", tone: "danger" }]);
+            playSfx("lose");
+          }
+        }
+      }
+    }
+    this.prevMe = me ? { busted: me.busted, hands: me.hands } : null;
+    this.renderRoom();
+  }
+
+  setInviteLink(roomId) {
+    if (!this.ui.invite) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("room", roomId);
+    this.ui.invite.value = url.toString();
+  }
+
+  copyInvite() {
+    if (!this.ui.invite) return;
+    this.ui.invite.select();
+    document.execCommand("copy");
+    showCenterToast("Invite link copied.", "win");
+  }
+
+  showRoom() {
+    this.ui.lobby?.classList.add("hidden");
+    this.ui.room?.classList.remove("hidden");
+  }
+
+  showLobby() {
+    this.ui.lobby?.classList.remove("hidden");
+    this.ui.room?.classList.add("hidden");
+  }
+
+  renderRoom() {
+    const state = this.state;
+    if (!state) return;
+    if (this.ui.roomId) this.ui.roomId.textContent = state.roomId || this.roomId;
+    if (this.ui.dealer) {
+      const hideFirst = state.inRound && !state.revealDealer;
+      renderCards(this.ui.dealer, state.dealer || [], hideFirst);
+    }
+    if (this.ui.dealerTotal) {
+      const dealerCards = Array.isArray(state.dealer) ? state.dealer : [];
+      if (!dealerCards.length) {
+        this.ui.dealerTotal.textContent = "";
+      } else if (state.inRound && !state.revealDealer) {
+        this.ui.dealerTotal.textContent = "Total: ?";
+      } else {
+        this.ui.dealerTotal.textContent = `Total: ${handTotal(dealerCards)}`;
+      }
+    }
+    this.renderPlayers(state);
+    this.updateControls(state);
+    this.updateStatus(state);
+    this.updateBet(state);
+  }
+
+  getTurnContext(state) {
+    const players = Array.isArray(state.players) ? state.players : [];
+    const current = players[state.turnIndex] || null;
+    const myTurn = Boolean(state.inRound && current && current.id === this.playerId);
+    return { players, current, myTurn };
+  }
+
+  getPlayerBetView(state, player, hands) {
+    const showHandBets = state.inRound || state.phase === "complete";
+    const betTotal = Array.isArray(player.bets) && showHandBets
+      ? player.bets.reduce((sum, val) => sum + Number(val || 0), 0)
+      : Number(player.betAmount || 0);
+    const isSittingOut =
+      player.status === "sitting" || (!state.inRound && betTotal <= 0 && hands.length === 0);
+    if (isSittingOut) return { betTotal, isSittingOut, text: "Sitting out", tone: "sitting" };
+    if (betTotal > 0) return { betTotal, isSittingOut, text: `Bet $${betTotal}`, tone: "bet" };
+    return { betTotal, isSittingOut, text: "No bet", tone: "none" };
+  }
+
+  getOutcomeLabel(result) {
+    if (result === "win") return "WIN";
+    if (result === "push") return "PUSH";
+    if (result === "loss") return "LOSS";
+    return "";
+  }
+
+  appendHandResultTag(block, label) {
+    const result = document.createElement("div");
+    result.className = `multi-result ${label.toLowerCase()}`;
+    result.textContent = label;
+    block.appendChild(result);
+  }
+
+  renderPlayerHandBlock({ hand, handIndex, player, state, showLabels, outcomes, busted }) {
+    const block = document.createElement("div");
+    block.className = "hand-block";
+    if (handIndex === player.activeHand) block.classList.add("active-hand");
+
+    if (showLabels) {
+      const label = document.createElement("div");
+      label.className = "hand-label";
+      label.textContent = `Hand ${handIndex + 1}`;
+      block.appendChild(label);
+    }
+
+    if (busted[handIndex]) {
+      this.appendHandResultTag(block, "BUST");
+    } else if (!state.inRound) {
+      const outcome = outcomes.find((entry) => Number(entry?.index) === handIndex) || null;
+      const resultLabel = this.getOutcomeLabel(outcome?.result);
+      if (resultLabel) this.appendHandResultTag(block, resultLabel);
+    }
+
+    const cards = document.createElement("div");
+    cards.className = "cards";
+    renderCards(cards, hand);
+    const total = document.createElement("div");
+    total.className = "total";
+    total.textContent = `Total: ${handTotal(hand)}`;
+    block.appendChild(cards);
+    block.appendChild(total);
+    return block;
+  }
+
+  renderPlayers(state) {
+    if (!this.ui.players) return;
+    this.ui.players.innerHTML = "";
+    const { players } = this.getTurnContext(state);
+    players.forEach((player, index) => {
+      const wrapper = document.createElement("div");
+      wrapper.className = "multi-player";
+      if (index === state.turnIndex && state.inRound) wrapper.classList.add("active");
+      const header = document.createElement("div");
+      header.className = "multi-player-header";
+      const hands = Array.isArray(player.hands) ? player.hands : [];
+      const outcomes = Array.isArray(player.lastOutcomes) ? player.lastOutcomes : [];
+      const busted = Array.isArray(player.busted) ? player.busted : [];
+      const name = document.createElement("div");
+      name.className = "name";
+      const username = document.createElement("span");
+      username.className = "player-name-text";
+      username.textContent = player.username || "Guest";
+      name.appendChild(username);
+      if (player.id === this.playerId) {
+        const youTag = document.createElement("span");
+        youTag.className = "player-role-tag is-you";
+        youTag.textContent = "You";
+        name.appendChild(youTag);
+      }
+      if (state.hostId && player.id === state.hostId) {
+        const hostTag = document.createElement("span");
+        hostTag.className = "player-role-tag is-host";
+        hostTag.textContent = "Host";
+        name.appendChild(hostTag);
+      }
+      const bet = document.createElement("div");
+      bet.className = "status";
+      const betView = this.getPlayerBetView(state, player, hands);
+      const { isSittingOut } = betView;
+      if (isSittingOut) wrapper.classList.add("sitting-out");
+      bet.textContent = betView.text;
+      if (betView.tone === "sitting") bet.classList.add("is-sitting");
+      if (betView.tone === "bet") bet.classList.add("is-bet");
+      header.appendChild(name);
+      header.appendChild(bet);
+      const showLabels = hands.length > 1;
+      const cardsWrap = document.createElement("div");
+      cardsWrap.className = "multi-hands";
+      hands.forEach((hand, idx) => {
+        const block = this.renderPlayerHandBlock({
+          hand,
+          handIndex: idx,
+          player,
+          state,
+          showLabels,
+          outcomes,
+          busted,
+        });
+        cardsWrap.appendChild(block);
+      });
+      if (!hands.length) {
+        const empty = document.createElement("div");
+        const isWaitingForCards = !isSittingOut;
+        empty.className = `total ${isSittingOut ? "multi-sitting-note" : ""} ${
+          isWaitingForCards ? "multi-waiting-note" : ""
+        }`;
+        empty.textContent = isSittingOut
+          ? "Sitting out - place a bet to join next round"
+          : "Waiting for cards - bet to be dealt in";
+        cardsWrap.appendChild(empty);
+      }
+      wrapper.appendChild(header);
+      wrapper.appendChild(cardsWrap);
+      this.ui.players.appendChild(wrapper);
+    });
+  }
+
+  updateControls(state) {
+    const { players, current, myTurn } = this.getTurnContext(state);
+    const isHost = state.hostId ? state.hostId === this.playerId : false;
+    const roundCooldown = this.isRoundCooldownActive(state);
+    const controlsEnabled = this.connectionReady;
+    if (this.ui.startBtn) {
+      this.ui.startBtn.disabled =
+        !controlsEnabled || roundCooldown || state.inRound || players.length === 0 || !isHost;
+      this.ui.startBtn.classList.toggle("hidden", roundCooldown || state.inRound || !isHost);
+    }
+    if (this.ui.hitBtn) {
+      this.ui.hitBtn.disabled = !controlsEnabled || !myTurn;
+      this.ui.hitBtn.classList.toggle("hidden", !myTurn);
+    }
+    if (this.ui.standBtn) {
+      this.ui.standBtn.disabled = !controlsEnabled || !myTurn;
+      this.ui.standBtn.classList.toggle("hidden", !myTurn);
+    }
+    const activeHand = Array.isArray(current?.hands) ? current.hands[current.activeHand] : null;
+    const hasTwoCards = Array.isArray(activeHand) && activeHand.length === 2;
+    const canDouble = Boolean(myTurn && hasTwoCards && !current?.doubled?.[current?.activeHand]);
+    const canSplit = Boolean(
+      myTurn &&
+      hasTwoCards &&
+      !current?.splitUsed &&
+      activeHand?.[0]?.rank === activeHand?.[1]?.rank
+    );
+    if (this.ui.doubleBtn) {
+      this.ui.doubleBtn.disabled = !controlsEnabled || !canDouble;
+      this.ui.doubleBtn.classList.toggle("hidden", !canDouble);
+    }
+    if (this.ui.splitBtn) {
+      this.ui.splitBtn.disabled = !controlsEnabled || !canSplit;
+      this.ui.splitBtn.classList.toggle("hidden", !canSplit);
+    }
+    if (this.ui.betRow) {
+      this.ui.betRow.classList.toggle("hidden", state.inRound);
+    }
+    if (this.ui.betButtons) {
+      this.ui.betButtons.forEach((btn) => {
+        btn.disabled = !controlsEnabled || roundCooldown || state.inRound;
+      });
+    }
+    if (this.ui.betClear) this.ui.betClear.disabled = !controlsEnabled || roundCooldown || state.inRound;
+  }
+
+  updateStatus(state) {
+    if (!this.ui.status) return;
+    if (!this.connectionReady) {
+      this.ui.status.textContent = "Connecting to table...";
+      return;
+    }
+    if (this.isRoundCooldownActive(state)) {
+      this.ui.status.textContent = "Round complete. Next hand in a moment...";
+      return;
+    }
+    if (!state.inRound) {
+      const isHost = state.hostId ? state.hostId === this.playerId : false;
+      this.ui.status.textContent = isHost
+        ? "PRESS START ROUND TO BEGIN NEXT ROUND"
+        : "WAITING FOR HOST TO START NEXT ROUND";
+      return;
+    }
+    const current = state.players?.[state.turnIndex];
+    this.ui.status.textContent = current
+      ? `Turn: ${current.username}`
+      : "Round in progress.";
+  }
+
+  updateBet(state) {
+    const me = state.players?.find((entry) => entry.id === this.playerId);
+    if (this.ui.betAmount) {
+      const betTotal = Array.isArray(me?.bets)
+        ? me.bets.reduce((sum, val) => sum + Number(val || 0), 0)
+        : 0;
+      const showHandBets = state.inRound || state.phase === "complete";
+      const next = showHandBets ? betTotal : Number(me?.betAmount || 0);
+      this.ui.betAmount.textContent = `$${next}`;
+    }
   }
 }

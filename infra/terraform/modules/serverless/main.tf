@@ -184,7 +184,7 @@ resource "aws_lambda_function" "game" {
       USERS_TABLE         = aws_dynamodb_table.users.name
       SESSIONS_TABLE      = aws_dynamodb_table.sessions.name
       CORS_ORIGIN         = var.cors_origin
-      BLACKJACK_MULTI_ROOM_IDLE_TIMEOUT_SECONDS = tostring(var.blackjack_multi_room_idle_timeout_seconds)
+      MULTI_ROOM_IDLE_TIMEOUT_SECONDS = tostring(var.multi_room_idle_timeout_seconds)
     }
   }
 }
@@ -206,7 +206,7 @@ resource "aws_lambda_function" "ws_connect" {
       USERS_TABLE         = aws_dynamodb_table.users.name
       SESSIONS_TABLE      = aws_dynamodb_table.sessions.name
       CORS_ORIGIN         = var.cors_origin
-      BLACKJACK_MULTI_ROOM_IDLE_TIMEOUT_SECONDS = tostring(var.blackjack_multi_room_idle_timeout_seconds)
+      MULTI_ROOM_IDLE_TIMEOUT_SECONDS = tostring(var.multi_room_idle_timeout_seconds)
     }
   }
 }
@@ -228,7 +228,7 @@ resource "aws_lambda_function" "ws_disconnect" {
       USERS_TABLE         = aws_dynamodb_table.users.name
       SESSIONS_TABLE      = aws_dynamodb_table.sessions.name
       CORS_ORIGIN         = var.cors_origin
-      BLACKJACK_MULTI_ROOM_IDLE_TIMEOUT_SECONDS = tostring(var.blackjack_multi_room_idle_timeout_seconds)
+      MULTI_ROOM_IDLE_TIMEOUT_SECONDS = tostring(var.multi_room_idle_timeout_seconds)
     }
   }
 }
@@ -250,7 +250,7 @@ resource "aws_lambda_function" "ws_message" {
       USERS_TABLE         = aws_dynamodb_table.users.name
       SESSIONS_TABLE      = aws_dynamodb_table.sessions.name
       CORS_ORIGIN         = var.cors_origin
-      BLACKJACK_MULTI_ROOM_IDLE_TIMEOUT_SECONDS = tostring(var.blackjack_multi_room_idle_timeout_seconds)
+      MULTI_ROOM_IDLE_TIMEOUT_SECONDS = tostring(var.multi_room_idle_timeout_seconds)
     }
   }
 }
@@ -436,61 +436,61 @@ resource "aws_apigatewayv2_route" "blackjack_split" {
 
 resource "aws_apigatewayv2_route" "blackjack_multi_rooms_get" {
   api_id    = aws_apigatewayv2_api.rest.id
-  route_key = "GET /api/games/blackjack-multi/rooms"
+  route_key = "GET /api/games/blackjack/rooms"
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
 resource "aws_apigatewayv2_route" "blackjack_multi_rooms_post" {
   api_id    = aws_apigatewayv2_api.rest.id
-  route_key = "POST /api/games/blackjack-multi/rooms"
+  route_key = "POST /api/games/blackjack/rooms"
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
 resource "aws_apigatewayv2_route" "blackjack_multi_state" {
   api_id    = aws_apigatewayv2_api.rest.id
-  route_key = "GET /api/games/blackjack-multi/rooms/{roomId}/state"
+  route_key = "GET /api/games/blackjack/rooms/{roomId}/state"
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
 resource "aws_apigatewayv2_route" "blackjack_multi_join" {
   api_id    = aws_apigatewayv2_api.rest.id
-  route_key = "POST /api/games/blackjack-multi/rooms/{roomId}/join"
+  route_key = "POST /api/games/blackjack/rooms/{roomId}/join"
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
 resource "aws_apigatewayv2_route" "blackjack_multi_leave" {
   api_id    = aws_apigatewayv2_api.rest.id
-  route_key = "POST /api/games/blackjack-multi/rooms/{roomId}/leave"
+  route_key = "POST /api/games/blackjack/rooms/{roomId}/leave"
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
 resource "aws_apigatewayv2_route" "holdem_multi_rooms_get" {
   api_id    = aws_apigatewayv2_api.rest.id
-  route_key = "GET /api/games/holdem-multi/rooms"
+  route_key = "GET /api/games/holdem/rooms"
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
 resource "aws_apigatewayv2_route" "holdem_multi_rooms_post" {
   api_id    = aws_apigatewayv2_api.rest.id
-  route_key = "POST /api/games/holdem-multi/rooms"
+  route_key = "POST /api/games/holdem/rooms"
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
 resource "aws_apigatewayv2_route" "holdem_multi_state" {
   api_id    = aws_apigatewayv2_api.rest.id
-  route_key = "GET /api/games/holdem-multi/rooms/{roomId}/state"
+  route_key = "GET /api/games/holdem/rooms/{roomId}/state"
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
 resource "aws_apigatewayv2_route" "holdem_multi_join" {
   api_id    = aws_apigatewayv2_api.rest.id
-  route_key = "POST /api/games/holdem-multi/rooms/{roomId}/join"
+  route_key = "POST /api/games/holdem/rooms/{roomId}/join"
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 
 resource "aws_apigatewayv2_route" "holdem_multi_leave" {
   api_id    = aws_apigatewayv2_api.rest.id
-  route_key = "POST /api/games/holdem-multi/rooms/{roomId}/leave"
+  route_key = "POST /api/games/holdem/rooms/{roomId}/leave"
   target    = "integrations/${aws_apigatewayv2_integration.game.id}"
 }
 

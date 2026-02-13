@@ -1,392 +1,710 @@
 import {
-  state,
+  state as coreState,
   updateBalance,
-  playSfx,
-  showCenterToast,
-  showMessagesSequential,
-  phaseGuard,
-  withPhaseGuards,
   renderCards,
   renderHiddenCards,
-  revealDealer,
   makeChipStack,
-  updateBetTotal,
-  bindBetChips,
-  lockPanel,
+  showCenterToast,
+  playSfx,
 } from "./core.js";
 import { auth } from "./auth.js";
 
-const BETTING_PHASES = new Set(["preflop", "flop", "turn", "river"]);
+const getWsBase = () => {
+  const fromStorage = localStorage.getItem("casino-ws-base");
+  const fromWindow = window.WS_BASE || "";
+  const base = (fromStorage || fromWindow || "").trim();
+  return base ? base.replace(/\/+$/, "") : "";
+};
 
 export class HoldemGame {
   constructor() {
     this.ui = {};
-  }
-
-  toastGuard() {
-    return phaseGuard(() => state.holdem.phase);
-  }
-
-  showToast(message, tone, duration) {
-    showCenterToast(message, tone, duration, this.toastGuard());
-  }
-
-  showPhaseMessages(messages) {
-    showMessagesSequential(withPhaseGuards(messages, () => state.holdem.phase));
+    this.socket = null;
+    this.roomId = "";
+    this.playerId = "";
+    this.state = null;
+    this.connectionReady = false;
+    this.rooms = [];
+    this.authReadyPromise = null;
+    this.raiseAmount = 0;
+    this.lastOutcomeToastKey = "";
+    this.lastActionLabelByPlayer = {};
   }
 
   cacheElements() {
     this.ui = {
-      dealBtn: document.getElementById("holdemDeal"),
-      raiseBtn: document.getElementById("holdemRaise"),
-      clearBetBtn: document.getElementById("holdemClearBet"),
-      foldBtn: document.getElementById("holdemFold"),
-      clearBtn: document.getElementById("holdemClearTable"),
-      betTotal: document.getElementById("holdemBetTotal"),
-      betLabel: document.getElementById("holdemBetLabel"),
-      potStack: document.getElementById("holdemPotStack"),
-      chips: document.querySelectorAll("#holdem .chip"),
-      community: document.getElementById("holdemCommunity"),
-      player: document.getElementById("holdemPlayer"),
-      dealer: document.getElementById("holdemDealer"),
-      playerResult: document.getElementById("holdemPlayerResult"),
-      dealerResult: document.getElementById("holdemDealerResult"),
-      bettingPanel: document.getElementById("holdemBettingPanel"),
-      playerBlindTag: document.getElementById("holdemPlayerBlindTag"),
-      dealerBlindTag: document.getElementById("holdemDealerBlindTag"),
+      lobby: document.getElementById("heMultiLobby"),
+      room: document.getElementById("heMultiRoom"),
+      connecting: document.getElementById("heMultiConnecting"),
+      roomId: document.getElementById("heMultiRoomId"),
+      roomName: document.getElementById("heMultiRoomName"),
+      roomPublic: document.getElementById("heMultiPublic"),
+      searchId: document.getElementById("heMultiSearchId"),
+      createBtn: document.getElementById("heMultiCreate"),
+      refreshBtn: document.getElementById("heMultiRefresh"),
+      rooms: document.getElementById("heMultiRooms"),
+      invite: document.getElementById("heMultiInvite"),
+      copyInvite: document.getElementById("heMultiCopy"),
+      leaveBtn: document.getElementById("heMultiLeave"),
+      community: document.getElementById("heMultiCommunity"),
+      pot: document.getElementById("heMultiPot"),
+      potBreakdown: document.getElementById("heMultiPotBreakdown"),
+      players: document.getElementById("heMultiPlayers"),
+      startBtn: document.getElementById("heMultiStart"),
+      betBtn: document.getElementById("heMultiBet"),
+      foldBtn: document.getElementById("heMultiFold"),
+      betRow: document.querySelector("#heMultiRoom .multi-bet-row"),
+      betAmount: document.getElementById("heMultiBetAmount"),
+      betButtons: document.querySelectorAll("#heMultiBetButtons .chip"),
+      betClear: document.getElementById("heMultiBetClear"),
+      status: document.getElementById("heMultiStatus"),
     };
-  }
-
-  phaseCommunityCount() {
-    if (state.holdem.phase === "flop") return 3;
-    if (state.holdem.phase === "turn") return 4;
-    if (state.holdem.phase === "river" || state.holdem.phase === "showdown") return 5;
-    return 0;
-  }
-
-  updateCommunity() {
-    const count = this.phaseCommunityCount();
-    const cards = state.holdem.community.slice(0, count);
-    renderCards(this.ui.community, cards);
-  }
-
-  applyServerState(nextState, balance) {
-    if (!nextState) return;
-    Object.assign(state.holdem, nextState);
-    state.holdem.awaitingClear = !state.holdem.inRound && state.holdem.phase === "showdown";
-    if (Number.isFinite(balance)) {
-      state.balance = balance;
-      updateBalance();
-    }
-  }
-
-  serializeState() {
-    return { ...state.holdem };
-  }
-
-  restoreFromSaved(saved) {
-    if (!saved) return;
-    Object.assign(state.holdem, saved);
-    state.holdem.player = Array.isArray(state.holdem.player) ? state.holdem.player : [];
-    state.holdem.dealer = Array.isArray(state.holdem.dealer) ? state.holdem.dealer : [];
-    state.holdem.community = Array.isArray(state.holdem.community) ? state.holdem.community : [];
-    state.holdem.inRound = Boolean(state.holdem.inRound);
-    state.holdem.awaitingClear = !state.holdem.inRound && state.holdem.phase === "showdown";
-    this.updateCommunity();
-    if (state.holdem.inRound) {
-      renderCards(this.ui.player, state.holdem.player);
-      if (state.holdem.phase === "showdown" || state.holdem.awaitingClear) {
-        revealDealer("holdemDealer");
-        renderCards("holdemDealer", state.holdem.dealer);
-      } else {
-        renderHiddenCards("holdemDealer", state.holdem.dealer.length || 0);
-      }
-    } else {
-      renderCards(this.ui.player, []);
-      renderCards("holdemDealer", []);
-    }
-    this.updatePotUI();
-    this.updateButtons();
-  }
-
-  updatePotUI() {
-    if (state.holdem.inRound || state.holdem.awaitingClear) {
-      const total = state.holdem.pot;
-      updateBetTotal(total, "holdemBetTotal");
-      makeChipStack(this.ui.potStack, total);
-      if (this.ui.betLabel) this.ui.betLabel.textContent = "Total Pot";
-      this.updateBlindIndicators(state.holdem.dealerButton);
-      return;
-    }
-    const upcomingDealerButton = !state.holdem.dealerButton;
-    const defaultBlind = upcomingDealerButton ? state.holdem.blindBig : state.holdem.blindSmall;
-    const playerBlind = state.balance === 0 ? defaultBlind : Math.min(defaultBlind, state.balance);
-    updateBetTotal(playerBlind, "holdemBetTotal");
-    makeChipStack(this.ui.potStack, playerBlind);
-    if (this.ui.betLabel) this.ui.betLabel.textContent = "Blind";
-    this.updateBlindIndicators(upcomingDealerButton);
-  }
-
-  updateBlindIndicators(dealerButton) {
-    const playerIsBig = dealerButton;
-    if (this.ui.playerBlindTag) {
-      this.ui.playerBlindTag.textContent = playerIsBig ? "Big Blind" : "Small Blind";
-    }
-    if (this.ui.dealerBlindTag) {
-      this.ui.dealerBlindTag.textContent = playerIsBig ? "Small Blind" : "Big Blind";
-    }
-  }
-
-  toCallAmount() {
-    return Math.max(0, state.holdem.currentBet - state.holdem.playerBet);
-  }
-
-  updateButtons() {
-    const inBetting = state.holdem.inRound && BETTING_PHASES.has(state.holdem.phase);
-    const toCall = this.toCallAmount();
-    if (this.ui.raiseBtn) {
-      const amount = state.holdem.betAmount > 0 ? state.holdem.betAmount : 0;
-      if (toCall > 0) {
-        const callAmount = Math.min(toCall, state.balance);
-        this.ui.raiseBtn.textContent =
-          amount > 0 ? `Raise $${toCall + amount}` : `Call $${callAmount}`;
-      } else {
-        this.ui.raiseBtn.textContent = `Bet $${amount}`;
-      }
-    }
-
-    this.ui.dealBtn?.classList.toggle(
-      "hidden",
-      state.holdem.inRound || state.holdem.awaitingClear
-    );
-    this.ui.foldBtn?.classList.toggle("hidden", !state.holdem.inRound);
-    this.ui.raiseBtn?.classList.toggle(
-      "hidden",
-      !inBetting || state.holdem.awaitingClear
-    );
-    this.ui.clearBetBtn?.classList.toggle(
-      "hidden",
-      !inBetting || state.holdem.awaitingClear
-    );
-    this.ui.clearBtn?.classList.toggle("hidden", !state.holdem.awaitingClear);
-
-    if (this.ui.bettingPanel) {
-      this.ui.bettingPanel.classList.toggle(
-        "hidden",
-        !state.holdem.inRound && !state.holdem.awaitingClear
-      );
-    }
-
-    this.ui.chips?.forEach((chip) => {
-      if (!inBetting || state.holdem.awaitingClear) {
-        chip.setAttribute("disabled", "disabled");
-      } else {
-        chip.removeAttribute("disabled");
-      }
-    });
-  }
-
-  resetRound() {
-    state.holdem.pot = 0;
-    state.holdem.playerPaid = 0;
-    state.holdem.playerBet = 0;
-    state.holdem.dealerBet = 0;
-    state.holdem.currentBet = 0;
-    state.holdem.betAmount = 0;
-    state.holdem.awaitingRaise = false;
-    state.holdem.deck = [];
-    state.holdem.player = [];
-    state.holdem.dealer = [];
-    state.holdem.community = [];
-    state.holdem.phase = "idle";
-    state.holdem.awaitingClear = false;
-    state.holdem.inRound = false;
-    state.holdem.dealerRaised = false;
-    if (this.ui.playerResult) this.ui.playerResult.textContent = "";
-    if (this.ui.dealerResult) this.ui.dealerResult.textContent = "";
-    renderCards(this.ui.player, []);
-    renderCards(this.ui.dealer, []);
-    renderCards(this.ui.community, []);
-    this.updatePotUI();
-    this.updateButtons();
-  }
-
-  async startHand() {
-    if (state.holdem.inRound) {
-      this.showToast("Round already running.", "danger");
-      return;
-    }
-    if (state.balance <= 0) {
-      this.showToast("Need more credits to cover the blind.", "danger");
-      return;
-    }
-    const unlock = lockPanel("holdem");
-    try {
-      const payload = await auth.request("/api/games/holdem/deal", {
-        method: "POST",
-        body: JSON.stringify({ state: {
-          blindSmall: state.holdem.blindSmall,
-          blindBig: state.holdem.blindBig,
-          dealerButton: state.holdem.dealerButton,
-        } }),
-      });
-      playSfx("deal");
-      this.applyServerState(payload.state, payload.balance);
-      renderCards(this.ui.player, state.holdem.player);
-      renderHiddenCards("holdemDealer", state.holdem.dealer.length);
-      this.updateCommunity();
-      this.updatePotUI();
-      this.updateButtons();
-      if (payload.messages?.length) {
-        this.showPhaseMessages(payload.messages);
-      }
-      if (payload.showdown) {
-        this.renderShowdown(payload.showdown);
-      }
-    } catch (err) {
-      this.showToast(err.message || "Deal failed.", "danger");
-    } finally {
-      unlock();
-    }
-  }
-
-  async playerAction() {
-    if (!state.holdem.inRound || !BETTING_PHASES.has(state.holdem.phase)) return;
-    playSfx("hit");
-    const unlock = lockPanel("holdem");
-    try {
-      const payload = await auth.request("/api/games/holdem/action", {
-        method: "POST",
-        body: JSON.stringify({ betAmount: state.holdem.betAmount }),
-      });
-      this.applyServerState(payload.state, payload.balance);
-      this.updateCommunity();
-      this.updatePotUI();
-      this.updateButtons();
-      renderCards(this.ui.player, state.holdem.player);
-      renderHiddenCards("holdemDealer", state.holdem.dealer.length);
-      const hasShowdown = Boolean(payload.showdown);
-      const messages = payload.messages || [];
-      if (messages.length) {
-        this.showPhaseMessages(messages);
-      }
-      if (hasShowdown) {
-        this.renderShowdown(payload.showdown);
-      }
-    } catch (err) {
-      this.showToast(err.message || "Action failed.", "danger");
-    } finally {
-      unlock();
-    }
-  }
-
-  async playerFold() {
-    if (!state.holdem.inRound) return;
-    playSfx("lose");
-    const unlock = lockPanel("holdem");
-    try {
-      const payload = await auth.request("/api/games/holdem/fold", {
-        method: "POST",
-        body: JSON.stringify({}),
-      });
-      this.applyServerState(payload.state, payload.balance);
-      this.updatePotUI();
-      this.updateButtons();
-      if (payload.messages?.length) {
-        this.showPhaseMessages(payload.messages);
-      }
-    } catch (err) {
-      this.showToast(err.message || "Fold failed.", "danger");
-    } finally {
-      unlock();
-    }
-  }
-
-  renderShowdown(showdown) {
-    revealDealer("holdemDealer");
-    renderCards("holdemDealer", state.holdem.dealer);
-    if (this.ui.playerResult) {
-      this.ui.playerResult.textContent = `Player: ${showdown.playerLabel}`;
-    }
-    if (this.ui.dealerResult) {
-      this.ui.dealerResult.textContent = `Dealer: ${showdown.dealerLabel}`;
-    }
-    this.applyHighlights(showdown.playerIndexes, showdown.dealerIndexes, showdown.result);
-    const hasWin = showdown.result > 0;
-    const hasPush = showdown.result === 0;
-    playSfx(hasWin || hasPush ? "win" : "lose");
-  }
-
-  applyHighlights(playerIndexes, dealerIndexes, result) {
-    const playerEl = this.ui.player;
-    const dealerEl = this.ui.dealer;
-    const communityEl = this.ui.community;
-    if (!playerEl || !dealerEl || !communityEl) return;
-
-    const winningIndexes = result >= 0 ? playerIndexes : dealerIndexes;
-    const winningIsPlayer = result >= 0;
-    const winClass = winningIsPlayer ? "win" : "lose";
-    const holeSet = new Set(winningIndexes.filter((idx) => idx < 2));
-    const communitySet = new Set(winningIndexes.filter((idx) => idx >= 2).map((idx) => idx - 2));
-
-    playerEl.querySelectorAll(".card").forEach((cardEl, index) => {
-      if (winningIsPlayer && holeSet.has(index)) cardEl.classList.add(winClass);
-      else cardEl.classList.remove("win", "lose");
-    });
-
-    dealerEl.querySelectorAll(".card").forEach((cardEl, index) => {
-      if (!winningIsPlayer && holeSet.has(index)) cardEl.classList.add(winClass);
-      else cardEl.classList.remove("win", "lose");
-    });
-
-    communityEl.querySelectorAll(".card").forEach((cardEl, index) => {
-      if (communitySet.has(index)) cardEl.classList.add(winClass);
-      else cardEl.classList.remove("win", "lose");
-    });
-  }
-
-  bindChips() {
-    bindBetChips({
-      chips: this.ui.chips,
-      canBet: () =>
-        BETTING_PHASES.has(state.holdem.phase) &&
-        state.holdem.inRound &&
-        !state.holdem.awaitingClear,
-      getBalance: () => state.balance,
-      getToCall: () => this.toCallAmount(),
-      getBetAmount: () => state.holdem.betAmount,
-      setBetAmount: (amount) => {
-        state.holdem.betAmount = amount;
-      },
-      onUpdate: () => this.updateButtons(),
-      onHit: () => playSfx("hit"),
-      onClosed: () => this.showToast("Betting is closed.", "danger"),
-    });
-  }
-
-  bindEvents() {
-    this.ui.dealBtn?.addEventListener("click", () => this.startHand());
-    this.ui.raiseBtn?.addEventListener("click", () => this.playerAction());
-    this.ui.clearBetBtn?.addEventListener("click", () => {
-      if (!BETTING_PHASES.has(state.holdem.phase)) {
-        this.showToast("Betting is closed.", "danger");
-        return;
-      }
-      state.holdem.betAmount = 0;
-      this.updateButtons();
-    });
-    this.ui.foldBtn?.addEventListener("click", () => this.playerFold());
-    this.ui.clearBtn?.addEventListener("click", () => this.resetRound());
-    this.bindChips();
   }
 
   init() {
     this.cacheElements();
-    this.bindEvents();
-    this.resetRound();
+    this.bindControls();
+    window.addEventListener("beforeunload", () => this.closeSocket(false));
+    const params = new URLSearchParams(window.location.search);
+    const room = params.get("room");
+    if (room) {
+      this.ui.lobby?.classList.add("hidden");
+      this.ui.room?.classList.add("hidden");
+    }
+    void this.bootstrap(room);
   }
 
-  reset() {
-    this.resetRound();
+  async bootstrap(preferredRoom = "") {
+    await this.ensureAuthReady();
+    if (preferredRoom) {
+      await this.joinRoom(preferredRoom);
+      if (this.roomId) {
+        void this.loadLobby();
+        return;
+      }
+      this.showLobby();
+    }
+    await this.loadLobby();
+  }
+
+  async ensureAuthReady() {
+    if (auth.apiToken || auth.token || auth.guestToken) return;
+    if (!this.authReadyPromise) {
+      this.authReadyPromise = auth.ensureGuestSession().finally(() => {
+        this.authReadyPromise = null;
+      });
+    }
+    await this.authReadyPromise;
+  }
+
+  bindControls() {
+    this.ui.createBtn?.addEventListener("click", () => this.createRoom());
+    this.ui.refreshBtn?.addEventListener("click", () => this.loadLobby());
+    this.ui.searchId?.addEventListener("input", () => this.searchRooms());
+    this.ui.leaveBtn?.addEventListener("click", () => this.leaveRoom());
+    this.ui.copyInvite?.addEventListener("click", () => this.copyInvite());
+    this.ui.startBtn?.addEventListener("click", () => this.sendAction("START"));
+    this.ui.betBtn?.addEventListener("click", () => this.handleBetAction());
+    this.ui.foldBtn?.addEventListener("click", () => this.sendAction("FOLD"));
+    this.ui.betButtons?.forEach((btn) => {
+      const amount = Number(btn.dataset.amount) || 0;
+      btn.addEventListener("click", () => this.adjustBet(amount));
+      btn.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
+        this.adjustBet(-amount);
+      });
+    });
+    this.ui.betClear?.addEventListener("click", () => this.setBet(0));
+  }
+
+  async loadLobby() {
+    try {
+      await this.ensureAuthReady();
+      const payload = await auth.request("/api/games/holdem/rooms", { method: "GET" });
+      this.rooms = Array.isArray(payload.rooms) ? payload.rooms : [];
+      this.searchRooms();
+    } catch (err) {
+      showCenterToast("Unable to load rooms.", "danger");
+    }
+  }
+
+  searchRooms() {
+    const query = (this.ui.searchId?.value || "").trim().toLowerCase();
+    this.renderRoomList(this.filterRoomsByQuery(query), query);
+  }
+
+  filterRoomsByQuery(query) {
+    if (!query) return this.rooms;
+    return this.rooms.filter((room) =>
+      String(room.roomId || "").toLowerCase().includes(query) ||
+      String(room.name || "").toLowerCase().includes(query)
+    );
+  }
+
+  renderRoomList(rooms, query = "") {
+    if (!this.ui.rooms) return;
+    this.ui.rooms.innerHTML = "";
+    if (!rooms.length) {
+      const empty = document.createElement("div");
+      empty.className = "multi-empty";
+      empty.textContent = query ? `No tables found for: ${query}` : "No public tables yet.";
+      this.ui.rooms.appendChild(empty);
+      return;
+    }
+    rooms.forEach((room) => {
+      const card = document.createElement("div");
+      card.className = "multi-room-card";
+      const meta = document.createElement("div");
+      meta.className = "multi-room-meta";
+      const roomName = String(room.name || "").trim() || "Hold'em Table";
+      meta.innerHTML = `
+        <div class="title">${roomName}</div>
+        <div class="details">
+          <span class="multi-id-tag">ID</span> ${room.roomId}
+          <span class="multi-host-tag">HOST</span> ${room.host}
+          <span class="multi-count-tag">${room.playerCount}/${room.maxPlayers}</span>
+        </div>
+      `;
+      const btn = document.createElement("button");
+      btn.className = "btn ghost";
+      btn.textContent = "Join";
+      btn.addEventListener("click", () => this.joinRoom(room.roomId));
+      card.appendChild(meta);
+      card.appendChild(btn);
+      this.ui.rooms.appendChild(card);
+    });
+  }
+
+  async createRoom() {
+    const name = this.ui.roomName?.value?.trim() || "Hold'em Table";
+    const isPublic = Boolean(this.ui.roomPublic?.checked);
+    try {
+      await this.ensureAuthReady();
+      const payload = await auth.request("/api/games/holdem/rooms", {
+        method: "POST",
+        body: JSON.stringify({ name, public: isPublic }),
+      });
+      if (payload.roomId) await this.joinRoom(payload.roomId);
+    } catch (err) {
+      showCenterToast("Unable to create room.", "danger");
+    }
+  }
+
+  async joinRoom(roomId) {
+    try {
+      await this.ensureAuthReady();
+      const payload = await auth.request(`/api/games/holdem/rooms/${roomId}/join`, {
+        method: "POST",
+      });
+      this.roomId = roomId;
+      this.playerId = payload.playerId || this.playerId;
+      this.syncRoomQuery(roomId);
+      this.setConnectionReady(false);
+      this.applyState(payload.state);
+      this.connectSocket();
+      this.showRoom();
+      this.setInviteLink(roomId);
+    } catch (err) {
+      showCenterToast("Unable to join room.", "danger");
+    }
+  }
+
+  async leaveRoom() {
+    if (!this.roomId) return;
+    try {
+      await auth.request(`/api/games/holdem/rooms/${this.roomId}/leave`, { method: "POST" });
+    } catch (err) {
+      // ignore
+    }
+    this.closeSocket(true);
+    this.roomId = "";
+    this.playerId = "";
+    this.state = null;
+    this.lastActionLabelByPlayer = {};
+    this.syncRoomQuery("");
+    this.showLobby();
+    void this.loadLobby();
+  }
+
+  syncRoomQuery(roomId) {
+    try {
+      const url = new URL(window.location.href);
+      if (roomId) url.searchParams.set("room", roomId);
+      else url.searchParams.delete("room");
+      window.history.replaceState({}, "", url.toString());
+    } catch (err) {
+      // ignore
+    }
+  }
+
+  connectSocket() {
+    if (this.socket || !this.roomId) return;
+    const base = getWsBase();
+    if (!base) {
+      showCenterToast("Missing WebSocket endpoint.", "danger");
+      return;
+    }
+    const token = encodeURIComponent(auth.apiToken || "");
+    const ws = new WebSocket(`${base}?token=${token}`);
+    this.socket = ws;
+    ws.addEventListener("open", () => {
+      ws.send(JSON.stringify({ action: "join", roomId: this.roomId }));
+    });
+    ws.addEventListener("message", (event) => {
+      let msg = null;
+      try {
+        msg = JSON.parse(event.data || "{}");
+      } catch (err) {
+        return;
+      }
+      if (msg.type === "ROOM_JOINED") {
+        this.setConnectionReady(true);
+        return;
+      }
+      if (msg.type === "HOLDEM_MULTI_STATE" && msg.roomId === this.roomId) {
+        this.applyState(msg.state);
+      } else if (msg.type === "BALANCE_UPDATE" && Number.isFinite(Number(msg.balance))) {
+        coreState.balance = Number(msg.balance);
+        updateBalance();
+      } else if (msg.error) {
+        showCenterToast(msg.error, "danger");
+      }
+    });
+    ws.addEventListener("close", () => {
+      this.socket = null;
+      this.setConnectionReady(false);
+    });
+  }
+
+  closeSocket(sendLeave = true) {
+    if (!this.socket) return;
+    if (sendLeave) {
+      try {
+        this.socket.send(JSON.stringify({ action: "leave" }));
+      } catch (err) {
+        // ignore
+      }
+    }
+    this.socket.close();
+    this.socket = null;
+    this.setConnectionReady(false);
+  }
+
+  sendAction(type, payload = {}) {
+    if (!this.connectionReady || !this.socket || this.socket.readyState !== WebSocket.OPEN) return;
+    if (type === "START") playSfx("deal");
+    if (type === "CHECK" || type === "CALL" || type === "RAISE" || type === "FOLD") playSfx("hit");
+    this.socket.send(
+      JSON.stringify({
+        action: "action",
+        payload: { game: "holdem", type, roomId: this.roomId, ...payload },
+      })
+    );
+  }
+
+  setBet(amount) {
+    if (!this.state || this.state.phase === "showdown") return;
+    if (!this.state.inRound) return;
+    const { me, current, maxRaiseBy } = this.getPlayerTurnContext();
+    if (!me || !current || current.id !== this.playerId) return;
+    this.raiseAmount = Math.min(Math.max(0, Number(amount) || 0), maxRaiseBy);
+    this.updateBet();
+    this.updateControls();
+  }
+
+  adjustBet(delta) {
+    this.setBet(Number(this.raiseAmount || 0) + Number(delta || 0));
+  }
+
+  applyState(state) {
+    const prevTurn = this.state?.turnIndex;
+    const prevState = this.state;
+    this.state = state || null;
+    if (!this.state) {
+      this.lastActionLabelByPlayer = {};
+      this.showLobby();
+      return;
+    }
+    if (!this.state.inRound) this.lastActionLabelByPlayer = {};
+    const current = this.state.players?.[this.state.turnIndex];
+    const myTurn = Boolean(this.state.inRound && current && current.id === this.playerId);
+    if (!this.state.inRound || !myTurn || prevTurn !== this.state.turnIndex) this.raiseAmount = 0;
+    this.maybeShowOutcomeToast(prevState, this.state);
+    this.renderRoom();
+  }
+
+  maybeShowOutcomeToast(prevState, nextState) {
+    if (!nextState || nextState.phase !== "showdown" || !nextState.settled) return;
+    const me = nextState.players?.find((entry) => entry.id === this.playerId);
+    if (!me) return;
+    const roundKey = `${nextState.roomId || this.roomId}:${nextState.roundClearAt || ""}:${me.lastResult || ""}:${Number(me.lastPayout || 0)}`;
+    if (!roundKey || roundKey === this.lastOutcomeToastKey) return;
+    const wasAlreadyShowdown =
+      prevState &&
+      prevState.phase === "showdown" &&
+      prevState.settled &&
+      `${prevState.roomId || this.roomId}:${prevState.roundClearAt || ""}:${me.lastResult || ""}:${Number(me.lastPayout || 0)}` === roundKey;
+    if (wasAlreadyShowdown) return;
+
+    const myLabel = String(me.bestLabel || "").trim();
+    const winningEntry =
+      Array.isArray(nextState.players)
+        ? nextState.players.find((entry) => entry.lastResult === "win" && entry.bestLabel)
+        : null;
+    const winningLabel = String(winningEntry?.bestLabel || "").trim();
+    if (me.lastResult === "win") {
+      playSfx("win");
+      showCenterToast(myLabel ? `You win with ${myLabel}!` : "You win!", "win", 3000);
+    } else if (me.lastResult === "loss") {
+      playSfx("lose");
+      if (String(me.lastAction || "").toLowerCase() === "fold") {
+        showCenterToast("You folded.", "danger", 3000);
+      } else if (winningLabel) {
+        showCenterToast(`You lose. Winning hand: ${winningLabel}.`, "danger", 3000);
+      } else if (myLabel) {
+        showCenterToast(`You lose with ${myLabel}.`, "danger", 3000);
+      } else {
+        showCenterToast("You lose.", "danger", 3000);
+      }
+    } else if (me.lastResult === "push") {
+      playSfx("win");
+      showCenterToast(myLabel ? `Push with ${myLabel}. Pot split.` : "Push. Pot split.", "win", 3000);
+    }
+    this.lastOutcomeToastKey = roundKey;
+  }
+
+  setInviteLink(roomId) {
+    if (!this.ui.invite) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("room", roomId);
+    this.ui.invite.value = url.toString();
+  }
+
+  copyInvite() {
+    if (!this.ui.invite) return;
+    this.ui.invite.select();
+    document.execCommand("copy");
+    showCenterToast("Invite link copied.", "win");
+  }
+
+  showRoom() {
+    this.ui.lobby?.classList.add("hidden");
+    this.ui.room?.classList.remove("hidden");
+  }
+
+  showLobby() {
+    this.ui.lobby?.classList.remove("hidden");
+    this.ui.room?.classList.add("hidden");
+  }
+
+  setConnectionReady(ready) {
+    this.connectionReady = Boolean(ready);
+    this.ui.connecting?.classList.toggle("hidden", this.connectionReady);
+    this.updateControls();
+  }
+
+  getPlayerTurnContext() {
+    const players = Array.isArray(this.state?.players) ? this.state.players : [];
+    const me = players.find((entry) => entry.id === this.playerId) || null;
+    const current = players[this.state?.turnIndex] || null;
+    const toCall = Math.max(0, Number(this.state?.currentBet || 0) - Number(me?.roundBet || 0));
+    const maxRaiseBy = Math.max(0, Number(me?.stack || 0) - toCall);
+    return { players, me, current, toCall, maxRaiseBy };
+  }
+
+  updateBet() {
+    if (this.ui.betAmount) {
+      if (!this.state || !this.state.inRound) {
+        this.ui.betAmount.textContent = "+$0";
+        return;
+      }
+      const { toCall } = this.getPlayerTurnContext();
+      const effectiveRaiseBy = Math.max(0, Number(this.raiseAmount || 0));
+      this.ui.betAmount.textContent = `+$${toCall + effectiveRaiseBy}`;
+    }
+  }
+
+  renderRoom() {
+    const state = this.state;
+    if (!state) return;
+    if (this.ui.roomId) this.ui.roomId.textContent = state.roomId || this.roomId;
+    renderCards(this.ui.community, state.community || []);
+    if (this.ui.pot) {
+      const potAmount = Number(state.pot || 0);
+      makeChipStack(this.ui.pot, potAmount);
+    }
+    this.renderPotBreakdown();
+    this.renderPlayers();
+    this.updateBet();
+    this.updateControls();
+    this.updateStatus();
+  }
+
+  renderPotBreakdown() {
+    if (!this.ui.potBreakdown || !this.state) return;
+    const segments = Array.isArray(this.state.potBreakdown) ? this.state.potBreakdown : [];
+    this.ui.potBreakdown.innerHTML = "";
+    if (!segments.length) return;
+    segments.forEach((segment) => {
+      const row = document.createElement("div");
+      row.className = "he-pot-row";
+      const winners = Array.isArray(segment.winnerNames) ? segment.winnerNames.filter(Boolean) : [];
+      row.textContent = winners.length
+        ? `${segment.label}: $${Number(segment.amount || 0)} • Winner: ${winners.join(", ")}`
+        : `${segment.label}: $${Number(segment.amount || 0)}`;
+      this.ui.potBreakdown.appendChild(row);
+    });
+  }
+
+  renderPlayers() {
+    if (!this.ui.players || !this.state) return;
+    this.ui.players.innerHTML = "";
+    const players = Array.isArray(this.state.players) ? this.state.players : [];
+    const blindPositions = this.getBlindPositions(players);
+    const me = players.find((entry) => entry.id === this.playerId) || null;
+    const toneClass =
+      me?.lastResult === "push" ? "push" : me?.lastResult === "loss" ? "lose" : "win";
+    players.forEach((player, index) => {
+      const wrapper = document.createElement("div");
+      wrapper.className = "multi-player";
+      if (this.state.inRound && index === this.state.turnIndex) wrapper.classList.add("active");
+      const header = document.createElement("div");
+      header.className = "multi-player-header";
+
+      const name = document.createElement("div");
+      name.className = "name";
+      const txt = document.createElement("span");
+      txt.className = "player-name-text";
+      txt.textContent = player.username || "Guest";
+      name.appendChild(txt);
+      if (player.id === this.playerId) {
+        const youTag = document.createElement("span");
+        youTag.className = "player-role-tag is-you";
+        youTag.textContent = "You";
+        name.appendChild(youTag);
+      }
+      if (this.state.hostId && player.id === this.state.hostId) {
+        const hostTag = document.createElement("span");
+        hostTag.className = "player-role-tag is-host";
+        hostTag.textContent = "Host";
+        name.appendChild(hostTag);
+      }
+      if (index === blindPositions.buttonIndex) {
+        const dTag = document.createElement("span");
+        dTag.className = "player-role-tag is-dealer";
+        dTag.textContent = "Dealer";
+        name.appendChild(dTag);
+      }
+      if (index === blindPositions.smallBlindIndex) {
+        const sbTag = document.createElement("span");
+        sbTag.className = "player-role-tag is-small-blind";
+        sbTag.textContent = "Small";
+        name.appendChild(sbTag);
+      }
+      if (index === blindPositions.bigBlindIndex) {
+        const bbTag = document.createElement("span");
+        bbTag.className = "player-role-tag is-big-blind";
+        bbTag.textContent = "Big";
+        name.appendChild(bbTag);
+      }
+      const status = document.createElement("div");
+      status.className = "status";
+      if (player.folded) {
+        status.textContent = "Folded";
+      } else if (this.state.inRound && player.status === "playing") {
+        const isActiveTurn = index === this.state.turnIndex;
+        const isMe = player.id === this.playerId;
+        const actionLabel = player.lastAction ? String(player.lastAction).toUpperCase() : "";
+        const cachedAction = String(this.lastActionLabelByPlayer[player.id] || "");
+        if (actionLabel) this.lastActionLabelByPlayer[player.id] = actionLabel;
+        status.textContent = actionLabel || cachedAction || (isActiveTurn && isMe ? "YOUR TURN" : "THEIR TURN");
+      } else if (player.lastResult) {
+        status.textContent = player.lastResult.toUpperCase();
+        const resultTone = String(player.lastResult).toLowerCase();
+        if (resultTone === "win" || resultTone === "loss" || resultTone === "push") {
+          status.classList.add("is-result", `is-${resultTone}`);
+        }
+      } else {
+        status.textContent = "Waiting";
+      }
+      header.appendChild(name);
+      header.appendChild(status);
+
+      const block = document.createElement("div");
+      block.className = "hand-block";
+      const cards = document.createElement("div");
+      cards.className = "cards";
+      const isShowdown = this.state.phase === "showdown";
+      const isMe = player.id === this.playerId;
+      const cardCount = Array.isArray(player.cards) ? player.cards.length : 0;
+      if (!isShowdown && !isMe && cardCount > 0) {
+        renderHiddenCards(cards, cardCount);
+      } else {
+        renderCards(cards, player.cards || []);
+      }
+      if (
+        this.state.phase === "showdown" &&
+        (player.lastResult === "win" || player.lastResult === "push")
+      ) {
+        const winnerIndexes = Array.isArray(player.bestIndexes) ? player.bestIndexes : [];
+        const holeSet = new Set(winnerIndexes.filter((idx) => idx < 2));
+        cards.querySelectorAll(".card").forEach((cardEl, cardIdx) => {
+          cardEl.classList.remove("win", "lose", "push");
+          if (holeSet.has(cardIdx)) cardEl.classList.add(toneClass);
+        });
+      }
+      block.appendChild(cards);
+      if (this.state.inRound && player.status === "playing") {
+        const meta = document.createElement("div");
+        meta.className = "he-player-meta";
+        const stackPill = document.createElement("span");
+        stackPill.className = "he-status-pill he-status-stack";
+        stackPill.textContent = `STACK $${Number(player.stack || 0)}`;
+        meta.appendChild(stackPill);
+
+        const inPill = document.createElement("span");
+        inPill.className = "he-status-pill he-status-in";
+        inPill.textContent = `IN $${Number(player.committed || 0)}`;
+        meta.appendChild(inPill);
+        block.appendChild(meta);
+      }
+      if (this.state.phase === "showdown" && player.lastResult) {
+        if (player.bestLabel) {
+          const resultWrap = document.createElement("div");
+          resultWrap.className = "he-result-wrap";
+          const hand = document.createElement("div");
+          hand.className = "he-result-hand";
+          hand.textContent = player.bestLabel;
+          resultWrap.appendChild(hand);
+          block.appendChild(resultWrap);
+        }
+      }
+      wrapper.appendChild(header);
+      wrapper.appendChild(block);
+      this.ui.players.appendChild(wrapper);
+    });
+
+    if (this.ui.community) {
+      const allWinningSets = players
+        .filter((entry) => entry.lastResult === "win" || entry.lastResult === "push")
+        .flatMap((entry) => (Array.isArray(entry.bestIndexes) ? entry.bestIndexes : []));
+      const communitySet = new Set(
+        allWinningSets.filter((idx) => idx >= 2).map((idx) => idx - 2)
+      );
+      this.ui.community.querySelectorAll(".card").forEach((cardEl, idx) => {
+        cardEl.classList.remove("win", "lose", "push");
+        if (this.state.phase === "showdown" && communitySet.has(idx)) {
+          cardEl.classList.add(toneClass);
+        }
+      });
+    }
+  }
+
+  updateControls() {
+    if (!this.state) return;
+    const { players, me, current, toCall } = this.getPlayerTurnContext();
+    const myTurn = Boolean(this.state.inRound && current && current.id === this.playerId);
+    const isHost = this.state.hostId ? this.state.hostId === this.playerId : false;
+    const inCooldown = this.state.phase === "showdown";
+    const canRaise = myTurn && Number(me?.stack || 0) > toCall;
+
+    if (this.ui.startBtn) {
+      this.ui.startBtn.disabled = !this.connectionReady || inCooldown || this.state.inRound || !isHost;
+      this.ui.startBtn.classList.toggle("hidden", inCooldown || this.state.inRound || !isHost);
+    }
+    if (this.ui.betRow) {
+      this.ui.betRow.classList.toggle("hidden", !this.state.inRound || inCooldown || !myTurn);
+    }
+    if (this.ui.betBtn) {
+      this.ui.betBtn.disabled = !this.connectionReady || !myTurn;
+      this.ui.betBtn.classList.toggle("hidden", !myTurn);
+      const maxRaiseBy = Math.max(0, Number(me?.stack || 0) - toCall);
+      const effectiveRaiseBy = Math.min(Math.max(0, Number(this.raiseAmount || 0)), maxRaiseBy);
+      if (effectiveRaiseBy > 0 && canRaise) {
+        this.ui.betBtn.textContent = `Raise $${effectiveRaiseBy}`;
+      } else if (toCall > 0) {
+        this.ui.betBtn.textContent = `Call $${toCall}`;
+      } else {
+        this.ui.betBtn.textContent = "Check";
+      }
+    }
+    if (this.ui.foldBtn) {
+      this.ui.foldBtn.disabled = !this.connectionReady || !myTurn;
+      this.ui.foldBtn.classList.toggle("hidden", !myTurn);
+    }
+    this.ui.betButtons?.forEach((btn) => {
+      btn.disabled = !this.connectionReady || inCooldown || !myTurn;
+    });
+    if (this.ui.betClear) {
+      this.ui.betClear.disabled = !this.connectionReady || inCooldown || !myTurn;
+    }
+  }
+
+  getBlindPositions(players) {
+    const list = Array.isArray(players) ? players : [];
+    if (!list.length) {
+      return { buttonIndex: -1, smallBlindIndex: -1, bigBlindIndex: -1 };
+    }
+
+    if (this.state?.inRound) {
+      return {
+        buttonIndex: Number(this.state.buttonIndex ?? -1),
+        smallBlindIndex: Number(this.state.smallBlindIndex ?? -1),
+        bigBlindIndex: Number(this.state.bigBlindIndex ?? -1),
+      };
+    }
+
+    const nextSeat = (start) => {
+      for (let step = 0; step < list.length; step += 1) {
+        const idx = (start + step + list.length) % list.length;
+        if (list[idx]) return idx;
+      }
+      return -1;
+    };
+
+    const currentButton = Number(this.state?.buttonIndex ?? -1);
+    const buttonIndex = nextSeat(currentButton + 1);
+    const smallBlindIndex = nextSeat(buttonIndex + 1);
+    const bigBlindIndex = nextSeat(smallBlindIndex + 1);
+    return { buttonIndex, smallBlindIndex, bigBlindIndex };
+  }
+
+  handleBetAction() {
+    if (!this.state || !this.state.inRound) return;
+    const { me, current, toCall, maxRaiseBy } = this.getPlayerTurnContext();
+    if (!me || !current || current.id !== this.playerId) return;
+    const raiseBy = Math.min(Math.max(0, Number(this.raiseAmount || 0)), maxRaiseBy);
+    if (raiseBy > 0) {
+      this.sendAction("RAISE", { amount: raiseBy });
+    } else if (toCall > 0) {
+      this.sendAction("CALL");
+    } else {
+      this.sendAction("CHECK");
+    }
+  }
+
+  updateStatus() {
+    if (!this.ui.status || !this.state) return;
+    if (!this.connectionReady) {
+      this.ui.status.textContent = "Connecting to table...";
+      return;
+    }
+    if (this.state.phase === "showdown") {
+      this.ui.status.textContent = "Round complete. Clearing soon...";
+      return;
+    }
+    if (!this.state.inRound) {
+      const isHost = this.state.hostId ? this.state.hostId === this.playerId : false;
+      this.ui.status.textContent = isHost
+        ? "PRESS START ROUND TO BEGIN NEXT ROUND"
+        : "WAITING FOR HOST TO START NEXT ROUND";
+      return;
+    }
+    const current = this.state.players?.[this.state.turnIndex];
+    const phase = String(this.state.phase || "preflop").toUpperCase();
+    const bet = Number(this.state.currentBet || 0);
+    this.ui.status.textContent = current
+      ? `${phase} • Bet $${bet} • Turn: ${current.username}`
+      : `${phase} • Round in progress.`;
   }
 }

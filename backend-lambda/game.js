@@ -37,29 +37,15 @@ const {
   applyPokerFold,
 } = require("./game/poker");
 const {
-  createHoldemState,
-  applyHoldemAction,
-  applyHoldemFold,
-  resolveHoldemShowdown,
-} = require("./game/holdem");
-const { 
-  createBlackjackState, 
-  applyBlackjackStats, 
-  applyHit, 
-  applyStand, 
-  applyDouble, 
-  applySplit
+  createBlackjackState,
+  addPlayer: addBlackjackPlayer,
+  removePlayer: removeBlackjackPlayer,
 } = require("./game/blackjack");
 const {
-  createBlackjackMultiState,
-  addPlayer: addBlackjackMultiPlayer,
-  removePlayer: removeBlackjackMultiPlayer,
-} = require("./game/blackjack_multi");
-const {
-  createHoldemMultiState,
-  addPlayer: addHoldemMultiPlayer,
-  removePlayer: removeHoldemMultiPlayer,
-} = require("./game/holdem_multi");
+  createHoldemState,
+  addPlayer: addHoldemPlayer,
+  removePlayer: removeHoldemPlayer,
+} = require("./game/holdem");
 
 const { GAME_SESSIONS_TABLE, ROOMS_TABLE, CORS_ORIGIN = "*" } = process.env;
 
@@ -69,7 +55,7 @@ const roomSessionId = (roomId) => `room:${roomId}`;
 const playerIdFromToken = (token) =>
   crypto.createHash("sha256").update(token || "").digest("hex").slice(0, 12);
 
-const formatBlackjackMultiUsername = (session, playerId) => {
+const formatBlackjackUsername = (session, playerId) => {
   const raw = String(session?.username || "").trim();
   if (!raw || raw.toLowerCase() === "guest") {
     return `Guest ${String(playerId || "").slice(0, 4)}`;
@@ -112,7 +98,7 @@ const saveRoomState = (roomId, state) =>
     TableName: GAME_SESSIONS_TABLE,
     Item: {
       session_id: roomSessionId(roomId),
-      game: state?.game || "blackjack-multi",
+      game: state?.game || "blackjack",
       state,
       updated_at: new Date().toISOString(),
     },
@@ -175,7 +161,7 @@ exports.handler = async (event) => {
     });
   }
 
-  if (path.endsWith("/games/blackjack-multi/rooms") && method === "GET") {
+  if (path.endsWith("/games/blackjack/rooms") && method === "GET") {
     if (!ROOMS_TABLE) {
       return jsonResponse(500, { error: "Rooms table not configured." }, CORS_ORIGIN);
     }
@@ -184,7 +170,7 @@ exports.handler = async (event) => {
       (item) =>
         item.player_id === "meta" &&
         item.is_public &&
-        (!item.game || item.game === "blackjack-multi")
+        (!item.game || item.game === "blackjack")
     );
     const rooms = [];
     for (const item of publicMeta) {
@@ -206,21 +192,21 @@ exports.handler = async (event) => {
     return jsonResponse(200, { rooms }, CORS_ORIGIN);
   }
 
-  if (path.endsWith("/games/blackjack-multi/rooms") && method === "POST") {
+  if (path.endsWith("/games/blackjack/rooms") && method === "POST") {
     if (!ROOMS_TABLE) {
       return jsonResponse(500, { error: "Rooms table not configured." }, CORS_ORIGIN);
     }
     const body = parseJson(event);
     const roomId = crypto.randomUUID().slice(0, 8);
     const hostId = playerIdFromToken(token);
-    const host = formatBlackjackMultiUsername(session, hostId);
+    const host = formatBlackjackUsername(session, hostId);
     const maxPlayers = Number(body.maxPlayers || 5);
-    const state = createBlackjackMultiState({ roomId, host, hostId, maxPlayers });
+    const state = createBlackjackState({ roomId, host, hostId, maxPlayers });
     await saveRoomState(roomId, state);
     await saveRoomMeta({
       room_id: roomId,
       player_id: "meta",
-      game: "blackjack-multi",
+      game: "blackjack",
       name: body.name || "Blackjack Table",
       host,
       is_public: body.public !== false,
@@ -235,7 +221,7 @@ exports.handler = async (event) => {
   }
 
   const bjMultiMatch = path.match(
-    /\/games\/blackjack-multi\/rooms\/([^/]+)(?:\/(state|join|leave))?$/
+    /\/games\/blackjack\/rooms\/([^/]+)(?:\/(state|join|leave))?$/
   );
   if (bjMultiMatch) {
     if (!ROOMS_TABLE) {
@@ -250,7 +236,7 @@ exports.handler = async (event) => {
         await closeRoom(roomId);
         return jsonResponse(404, { error: "Room expired due to inactivity." }, CORS_ORIGIN);
       }
-      return respondWithState(200, "blackjack-multi", { state });
+      return respondWithState(200, "blackjack", { state });
     }
     if (method === "POST" && action === "join") {
       const state = await getRoomState(roomId);
@@ -261,8 +247,8 @@ exports.handler = async (event) => {
         return jsonResponse(404, { error: "Room expired due to inactivity." }, CORS_ORIGIN);
       }
       const playerId = playerIdFromToken(token);
-      const username = formatBlackjackMultiUsername(session, playerId);
-      const result = addBlackjackMultiPlayer(state, { id: playerId, username });
+      const username = formatBlackjackUsername(session, playerId);
+      const result = addBlackjackPlayer(state, { id: playerId, username });
       if (result?.error) return jsonResponse(400, { error: result.error }, CORS_ORIGIN);
       await saveRoomState(roomId, state);
       await saveRoomMeta({
@@ -275,7 +261,7 @@ exports.handler = async (event) => {
         last_activity_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
-      return respondWithState(200, "blackjack-multi", { state, playerId });
+      return respondWithState(200, "blackjack", { state, playerId });
     }
     if (method === "POST" && action === "leave") {
       const state = await getRoomState(roomId);
@@ -286,11 +272,11 @@ exports.handler = async (event) => {
         return jsonResponse(404, { error: "Room expired due to inactivity." }, CORS_ORIGIN);
       }
       const playerId = playerIdFromToken(token);
-      removeBlackjackMultiPlayer(state, playerId);
+      removeBlackjackPlayer(state, playerId);
       if (state.players.length === 0) {
         await del({ TableName: GAME_SESSIONS_TABLE, Key: { session_id: roomSessionId(roomId) } });
         await del({ TableName: ROOMS_TABLE, Key: { room_id: roomId, player_id: "meta" } });
-        return respondWithState(200, "blackjack-multi", { state: null, playerId, closed: true });
+        return respondWithState(200, "blackjack", { state: null, playerId, closed: true });
       }
       await saveRoomState(roomId, state);
       await saveRoomMeta({
@@ -303,17 +289,17 @@ exports.handler = async (event) => {
         last_activity_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
-      return respondWithState(200, "blackjack-multi", { state, playerId });
+      return respondWithState(200, "blackjack", { state, playerId });
     }
   }
 
-  if (path.endsWith("/games/holdem-multi/rooms") && method === "GET") {
+  if (path.endsWith("/games/holdem/rooms") && method === "GET") {
     if (!ROOMS_TABLE) {
       return jsonResponse(500, { error: "Rooms table not configured." }, CORS_ORIGIN);
     }
     const resp = await scan({ TableName: ROOMS_TABLE });
     const publicMeta = (resp.Items || []).filter(
-      (item) => item.player_id === "meta" && item.is_public && item.game === "holdem-multi"
+      (item) => item.player_id === "meta" && item.is_public && item.game === "holdem"
     );
     const rooms = [];
     for (const item of publicMeta) {
@@ -335,21 +321,21 @@ exports.handler = async (event) => {
     return jsonResponse(200, { rooms }, CORS_ORIGIN);
   }
 
-  if (path.endsWith("/games/holdem-multi/rooms") && method === "POST") {
+  if (path.endsWith("/games/holdem/rooms") && method === "POST") {
     if (!ROOMS_TABLE) {
       return jsonResponse(500, { error: "Rooms table not configured." }, CORS_ORIGIN);
     }
     const body = parseJson(event);
     const roomId = crypto.randomUUID().slice(0, 8);
     const hostId = playerIdFromToken(token);
-    const host = formatBlackjackMultiUsername(session, hostId);
+    const host = formatBlackjackUsername(session, hostId);
     const maxPlayers = Number(body.maxPlayers || 6);
-    const state = createHoldemMultiState({ roomId, host, hostId, maxPlayers });
+    const state = createHoldemState({ roomId, host, hostId, maxPlayers });
     await saveRoomState(roomId, state);
     await saveRoomMeta({
       room_id: roomId,
       player_id: "meta",
-      game: "holdem-multi",
+      game: "holdem",
       name: body.name || "Hold'em Table",
       host,
       is_public: body.public !== false,
@@ -364,7 +350,7 @@ exports.handler = async (event) => {
   }
 
   const heMultiMatch = path.match(
-    /\/games\/holdem-multi\/rooms\/([^/]+)(?:\/(state|join|leave))?$/
+    /\/games\/holdem\/rooms\/([^/]+)(?:\/(state|join|leave))?$/
   );
   if (heMultiMatch) {
     if (!ROOMS_TABLE) {
@@ -380,7 +366,7 @@ exports.handler = async (event) => {
         return jsonResponse(404, { error: "Room expired due to inactivity." }, CORS_ORIGIN);
       }
       const viewerId = playerIdFromToken(token);
-      return respondWithState(200, "holdem-multi", { state }, viewerId);
+      return respondWithState(200, "holdem", { state }, viewerId);
     }
     if (method === "POST" && action === "join") {
       const state = await getRoomState(roomId);
@@ -391,22 +377,22 @@ exports.handler = async (event) => {
         return jsonResponse(404, { error: "Room expired due to inactivity." }, CORS_ORIGIN);
       }
       const playerId = playerIdFromToken(token);
-      const username = formatBlackjackMultiUsername(session, playerId);
-      const result = addHoldemMultiPlayer(state, { id: playerId, username });
+      const username = formatBlackjackUsername(session, playerId);
+      const result = addHoldemPlayer(state, { id: playerId, username });
       if (result?.error) return jsonResponse(400, { error: result.error }, CORS_ORIGIN);
       await saveRoomState(roomId, state);
       await saveRoomMeta({
         ...(meta || {}),
         room_id: roomId,
         player_id: "meta",
-        game: "holdem-multi",
+        game: "holdem",
         host: state.host,
         player_count: state.players.length,
         in_round: Boolean(state.inRound),
         last_activity_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
-      return respondWithState(200, "holdem-multi", { state, playerId }, playerId);
+      return respondWithState(200, "holdem", { state, playerId }, playerId);
     }
     if (method === "POST" && action === "leave") {
       const state = await getRoomState(roomId);
@@ -417,25 +403,25 @@ exports.handler = async (event) => {
         return jsonResponse(404, { error: "Room expired due to inactivity." }, CORS_ORIGIN);
       }
       const playerId = playerIdFromToken(token);
-      removeHoldemMultiPlayer(state, playerId);
+      removeHoldemPlayer(state, playerId);
       if (state.players.length === 0) {
         await del({ TableName: GAME_SESSIONS_TABLE, Key: { session_id: roomSessionId(roomId) } });
         await del({ TableName: ROOMS_TABLE, Key: { room_id: roomId, player_id: "meta" } });
-        return respondWithState(200, "holdem-multi", { state: null, playerId, closed: true }, playerId);
+        return respondWithState(200, "holdem", { state: null, playerId, closed: true }, playerId);
       }
       await saveRoomState(roomId, state);
       await saveRoomMeta({
         ...(meta || {}),
         room_id: roomId,
         player_id: "meta",
-        game: "holdem-multi",
+        game: "holdem",
         host: state.host,
         player_count: state.players.length,
         in_round: Boolean(state.inRound),
         last_activity_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
-      return respondWithState(200, "holdem-multi", { state, playerId }, playerId);
+      return respondWithState(200, "holdem", { state, playerId }, playerId);
     }
   }
 
@@ -668,224 +654,6 @@ exports.handler = async (event) => {
       playerTotal: result.playerTotal,
       dealerTotal: result.dealerTotal,
       payout: result.payout,
-    });
-  }
-
-  if (method === "POST" && path.endsWith("/games/blackjack/deal")) {
-    const { bet } = parseJson(event);
-    const wager = Number(bet);
-    if (!Number.isFinite(wager) || wager <= 0) {
-      return jsonResponse(400, { error: "Invalid bet." }, CORS_ORIGIN);
-    }
-    const { user, balance } = await resolveBalance(session);
-    if (balance < wager) {
-      return jsonResponse(400, { error: "Not enough credits." }, CORS_ORIGIN);
-    }
-    const state = createBlackjackState(wager);
-    await saveGameState(token, session, "blackjack", state);
-    const nextBalance = await persistBalance(session, user, balance - wager);
-    return respondWithState(200, "blackjack", {
-      state,
-      balance: nextBalance,
-      message: null,
-    });
-  }
-
-  if (method === "POST" && path.endsWith("/games/blackjack/hit")) {
-    const state = await getGameState(token, "blackjack");
-    if (!state || !state.inRound) {
-      return jsonResponse(400, { error: "Round not running." }, CORS_ORIGIN);
-    }
-    const result = applyHit(state);
-    if (result.finished) {
-      const { user, balance } = await resolveBalance(session);
-      applyBlackjackStats(user, state, result.outcomes);
-      const nextBalance = await persistBalance(session, user, balance + result.payoutTotal);
-      if (user) await putUser(user);
-      await saveGameState(token, session, "blackjack", state);
-      return respondWithState(200, "blackjack", {
-        state,
-        outcomes: result.outcomes,
-        payoutTotal: result.payoutTotal,
-        messages: result.messages,
-        balance: nextBalance,
-      });
-    }
-    await saveGameState(token, session, "blackjack", state);
-    return respondWithState(200, "blackjack", { state, messages: result.messages });
-  }
-
-  if (method === "POST" && path.endsWith("/games/blackjack/stand")) {
-    const state = await getGameState(token, "blackjack");
-    if (!state || !state.inRound) {
-      return jsonResponse(400, { error: "Round not running." }, CORS_ORIGIN);
-    }
-    const result = applyStand(state);
-    if (result.finished) {
-      const { user, balance } = await resolveBalance(session);
-      applyBlackjackStats(user, state, result.outcomes);
-      const nextBalance = await persistBalance(session, user, balance + result.payoutTotal);
-      if (user) await putUser(user);
-      await saveGameState(token, session, "blackjack", state);
-      return respondWithState(200, "blackjack", {
-        state,
-        outcomes: result.outcomes,
-        payoutTotal: result.payoutTotal,
-        messages: result.messages,
-        balance: nextBalance,
-      });
-    }
-    await saveGameState(token, session, "blackjack", state);
-    return respondWithState(200, "blackjack", { state, messages: result.messages });
-  }
-
-  if (method === "POST" && path.endsWith("/games/blackjack/double")) {
-    const state = await getGameState(token, "blackjack");
-    if (!state || !state.inRound) {
-      return jsonResponse(400, { error: "Round not running." }, CORS_ORIGIN);
-    }
-    const hand = state.hands[state.activeHand];
-    if (hand.length !== 2) {
-      return jsonResponse(400, { error: "Cannot double now." }, CORS_ORIGIN);
-    }
-    const bet = state.bets[state.activeHand];
-    const { user, balance } = await resolveBalance(session);
-    if (balance < bet) {
-      return jsonResponse(400, { error: "Not enough credits." }, CORS_ORIGIN);
-    }
-    const nextBalance = await persistBalance(session, user, balance - bet);
-    const result = applyDouble(state);
-    if (result.finished) {
-      applyBlackjackStats(user, state, result.outcomes);
-      const finalBalance = await persistBalance(session, user, nextBalance + result.payoutTotal);
-      if (user) await putUser(user);
-      await saveGameState(token, session, "blackjack", state);
-      return respondWithState(200, "blackjack", {
-        state,
-        outcomes: result.outcomes,
-        payoutTotal: result.payoutTotal,
-        messages: result.messages,
-        balance: finalBalance,
-      });
-    }
-    await saveGameState(token, session, "blackjack", state);
-    return respondWithState(200, "blackjack", { state, messages: result.messages, balance: nextBalance });
-  }
-
-  if (method === "POST" && path.endsWith("/games/blackjack/split")) {
-    const state = await getGameState(token, "blackjack");
-    if (!state || !state.inRound) {
-      return jsonResponse(400, { error: "Round not running." }, CORS_ORIGIN);
-    }
-    const bet = state.bets[state.activeHand];
-    const { user, balance } = await resolveBalance(session);
-    if (balance < bet) {
-      return jsonResponse(400, { error: "Not enough credits." }, CORS_ORIGIN);
-    }
-    const nextBalance = await persistBalance(session, user, balance - bet);
-    const splitResult = applySplit(state);
-    if (splitResult.error) {
-      return jsonResponse(400, { error: splitResult.error }, CORS_ORIGIN);
-    }
-    await saveGameState(token, session, "blackjack", state);
-    return respondWithState(200, "blackjack", { state, balance: nextBalance, messages: [] });
-  }
-
-  if (method === "POST" && path.endsWith("/games/holdem/deal")) {
-    const body = parseJson(event);
-    const incoming = body.state || {};
-    const blindSmall = Number(incoming.blindSmall) || 5;
-    const blindBig = Number(incoming.blindBig) || 10;
-    const dealerButton = Boolean(incoming.dealerButton);
-    const nextDealerButton = !dealerButton;
-    const desiredPlayerBlind = nextDealerButton ? blindBig : blindSmall;
-    const desiredDealerBlind = nextDealerButton ? blindSmall : blindBig;
-    const { user, balance } = await resolveBalance(session);
-    const playerBlind = Math.min(desiredPlayerBlind, balance);
-    const dealerBlind = Math.min(desiredDealerBlind, balance);
-    if (playerBlind <= 0) {
-      return jsonResponse(400, { error: "Not enough credits." }, CORS_ORIGIN);
-    }
-    const nextBalance = await persistBalance(session, user, balance - playerBlind);
-    const state = createHoldemState({
-      blindSmall,
-      blindBig,
-      dealerButton,
-      playerBlind,
-      dealerBlind,
-      balanceAfterBlind: nextBalance,
-    });
-    const message = `Blinds in. You: $${playerBlind}, Dealer: $${dealerBlind}.`;
-    if (nextBalance <= 0) {
-      const messages = [{ text: message, tone: "win", duration: 1600 }];
-      const showdownResult = resolveHoldemShowdown(state, nextBalance, messages);
-      const finalBalance = await persistBalance(session, user, showdownResult.balance);
-      await saveGameState(token, session, "holdem", showdownResult.state);
-      return respondWithState(200, "holdem", {
-        state: showdownResult.state,
-        balance: finalBalance,
-        messages,
-        showdown: showdownResult.showdown,
-      });
-    }
-    await saveGameState(token, session, "holdem", state);
-    return respondWithState(200, "holdem", {
-      state,
-      balance: nextBalance,
-      messages: [{ text: message, tone: "win", duration: 1600 }],
-    });
-  }
-
-  if (method === "POST" && path.endsWith("/games/holdem/action")) {
-    const body = parseJson(event);
-    const state = await getGameState(token, "holdem");
-    const betAmount = Number(body.betAmount) || 0;
-    const { user, balance } = await resolveBalance(session);
-    const result = applyHoldemAction(state, betAmount, balance);
-    if (result?.error) {
-      return jsonResponse(400, { error: result.error }, CORS_ORIGIN);
-    }
-    if (result?.net !== undefined && user) {
-      user.stats = updateStats(user.stats, {
-        game: "holdem",
-        bet: state.playerPaid,
-        net: result.net,
-        result: result.net > 0 ? "win" : result.net < 0 ? "loss" : "push",
-      });
-      await putUser(user);
-    }
-    const nextBalance = await persistBalance(session, user, result.balance);
-    await saveGameState(token, session, "holdem", state);
-    return respondWithState(200, "holdem", {
-      state,
-      balance: nextBalance,
-      messages: result.messages || [],
-      showdown: result.showdown,
-    });
-  }
-
-  if (method === "POST" && path.endsWith("/games/holdem/fold")) {
-    const state = await getGameState(token, "holdem");
-    const { user, balance } = await resolveBalance(session);
-    const result = applyHoldemFold(state, balance);
-    if (result?.error) {
-      return jsonResponse(400, { error: result.error }, CORS_ORIGIN);
-    }
-    if (user) {
-      user.stats = updateStats(user.stats, {
-        game: "holdem",
-        bet: state.playerPaid,
-        net: result.net,
-        result: "loss",
-      });
-      await putUser(user);
-    }
-    const nextBalance = await persistBalance(session, user, result.balance);
-    await saveGameState(token, session, "holdem", state);
-    return respondWithState(200, "holdem", {
-      state,
-      balance: nextBalance,
-      messages: result.messages || [],
     });
   }
 

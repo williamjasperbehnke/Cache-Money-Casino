@@ -15,7 +15,7 @@ variable "cors_origin" {
   default = "*"
 }
 
-variable "blackjack_multi_room_idle_timeout_seconds" {
+variable "multi_room_idle_timeout_seconds" {
   type    = number
   default = 3600
 }

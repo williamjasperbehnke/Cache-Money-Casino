@@ -2,7 +2,7 @@ const DEFAULT_ROOM_IDLE_TIMEOUT_SECONDS = 60 * 60;
 
 const getRoomIdleTimeoutMs = () => {
   const raw = Number(
-    process.env.BLACKJACK_MULTI_ROOM_IDLE_TIMEOUT_SECONDS ||
+    process.env.MULTI_ROOM_IDLE_TIMEOUT_SECONDS ||
       process.env.BLACKJACK_MULTI_ROOM_IDLE_SECONDS ||
       DEFAULT_ROOM_IDLE_TIMEOUT_SECONDS
   );
