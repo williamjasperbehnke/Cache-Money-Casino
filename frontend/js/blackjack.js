@@ -434,7 +434,7 @@ export class BlackjackGame {
     }
     const me = this.state.players?.find((entry) => entry.id === this.playerId) || null;
     this.lastInRound = Boolean(this.state.inRound);
-    if (this.lastInRound) {
+    if (!prevInRound && this.lastInRound) {
       this.sawBustThisRound = false;
     }
     if (this.lastInRound && me) {
